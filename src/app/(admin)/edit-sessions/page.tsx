@@ -227,9 +227,11 @@ export default function EditSessionsPage() {
   }
 
   const handleAddSession = (hallId: string, timeSlotId: string) => {
+    console.log('🔧 handleAddSession called with:', { hallId, timeSlotId })
     setSessionToAdd({ hallId, timeSlotId })
     setEditingSession(null)
     setIsModalOpen(true)
+    console.log('🔧 Modal should now be open, isModalOpen will be:', true)
   }
 
   const handleCloseModal = () => {
@@ -675,6 +677,16 @@ export default function EditSessionsPage() {
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Add Hall
+              </button>
+              <button
+                onClick={() => {
+                  console.log('🔧 Test modal button clicked')
+                  setIsModalOpen(true)
+                  setSessionToAdd({ hallId: 'test', timeSlotId: 'test' })
+                }}
+                className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md shadow-sm text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Test Modal
               </button>
             </div>
           </div>
