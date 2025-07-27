@@ -568,6 +568,27 @@ export default function EditSessionsPage() {
     
     if (sanitizedName) {
       try {
+        // First, let's check if the stages table exists and get its structure
+        const { data: tableInfo, error: tableError } = await supabase
+          .from('stages')
+          .select('*')
+          .limit(1)
+
+        if (tableError) {
+          console.error('Table error:', tableError)
+          // If table doesn't exist, create a mock hall locally for now
+          const newHall: Hall = {
+            id: `hall-${Date.now()}`,
+            name: sanitizedName,
+            color: 'bg-gray-50 border-gray-200'
+          }
+          setHalls(prev => [...prev, newHall])
+          setShowAddHallModal(false)
+          setNewHallName('')
+          alert('Hall added locally (database table may not exist yet)')
+          return
+        }
+
         const { error } = await supabase
           .from('stages')
           .insert({
@@ -577,15 +598,17 @@ export default function EditSessionsPage() {
 
         if (error) {
           console.error('Error adding hall:', error)
-          throw error
+          // Show the actual error message
+          alert(`Error adding hall: ${error.message}`)
+          return
         }
 
         await loadHalls()
         setShowAddHallModal(false)
         setNewHallName('')
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error adding hall:', error)
-        alert('Error adding hall. Please try again.')
+        alert(`Error adding hall: ${error.message || 'Unknown error'}`)
       }
     }
   }
@@ -596,6 +619,25 @@ export default function EditSessionsPage() {
     
     if (availableNames.length > 0) {
       try {
+        // Check if stages table exists
+        const { data: tableInfo, error: tableError } = await supabase
+          .from('stages')
+          .select('*')
+          .limit(1)
+
+        if (tableError) {
+          console.error('Table error:', tableError)
+          // If table doesn't exist, create a mock hall locally
+          const newHall: Hall = {
+            id: `hall-${Date.now()}`,
+            name: availableNames[0],
+            color: 'bg-gray-50 border-gray-200'
+          }
+          setHalls(prev => [...prev, newHall])
+          alert('Hall added locally (database table may not exist yet)')
+          return
+        }
+
         const { error } = await supabase
           .from('stages')
           .insert({
@@ -605,12 +647,15 @@ export default function EditSessionsPage() {
 
         if (error) {
           console.error('Error adding hall:', error)
-          throw error
+          alert(`Error adding hall: ${error.message}`)
+          setShowAddHallModal(true)
+          return
         }
 
         await loadHalls()
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error adding hall:', error)
+        alert(`Error adding hall: ${error.message || 'Unknown error'}`)
         setShowAddHallModal(true)
       }
     } else {
@@ -1030,8 +1075,14 @@ export default function EditSessionsPage() {
                 if (e.key === 'Enter') {
                   e.preventDefault()
                   handleAddHall()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setShowAddHallModal(false)
+                  setNewHallName('')
                 }
               }}
+              autoFocus
+              maxLength={50}
             />
           </div>
           <div className="flex justify-end space-x-3">
