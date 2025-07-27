@@ -756,12 +756,32 @@ export default function EditSessionsPage() {
 
   const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
 
-  // 1. Define time slots for the sticky time column (e.g., 8:00 to 20:00, every 1 hour)
-  const timeLabels = Array.from({ length: 13 }, (_, i) => {
-    const hour = 8 + i;
-    const label = hour < 10 ? `0${hour}:00` : `${hour}:00`;
-    return label;
+  // Define time slots for the sticky time column (8:00 AM to 8:00 PM, every 30 minutes)
+  const timeSlots = Array.from({ length: 25 }, (_, i) => {
+    const hour = Math.floor(i / 2) + 8;
+    const minute = (i % 2) * 30;
+    const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    return {
+      id: `time-${i}`,
+      time: timeString,
+      displayTime: `${hour}:${minute === 0 ? '00' : minute}`
+    };
   });
+
+  // Helper function to get vertical position based on time
+  const getTimePosition = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const totalMinutes = (hours - 8) * 60 + minutes;
+    return (totalMinutes / 30) * 40; // 40px per 30-minute slot
+  };
+
+  // Helper function to get session height based on duration
+  const getSessionHeight = (startTime: string, endTime: string) => {
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const [endHours, endMinutes] = endTime.split(':').map(Number);
+    const durationMinutes = (endHours - startHours) * 60 + (endMinutes - startMinutes);
+    return Math.max((durationMinutes / 30) * 40, 60); // Minimum 60px height
+  };
 
   if (loading) {
     return (
@@ -878,7 +898,7 @@ export default function EditSessionsPage() {
         </div>
       </div>
 
-      {/* Program Content - Grid Layout */}
+      {/* Program Content - Redesigned Grid Layout */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Day Header */}
         <div className="mb-8 text-center print:mb-4">
@@ -889,91 +909,188 @@ export default function EditSessionsPage() {
             {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
           </p>
         </div>
-        {/* Sticky Time Column + Halls Grid */}
-        <div className="flex w-full overflow-x-auto gap-4">
-          {/* Sticky Time Column */}
-          <div className="sticky left-0 z-10 bg-gray-50 flex flex-col items-end pr-2 min-w-[70px] border-r border-gray-200" style={{ minWidth: 70 }}>
-            <div className="h-14" /> {/* Spacer for hall headers */}
-            {timeLabels.map(time => (
-              <div key={time} className="h-20 flex items-center justify-end text-xs text-gray-400 font-medium">
-                {time}
-              </div>
-            ))}
-          </div>
-          {/* Halls Columns */}
-          <div className="flex gap-4">
-            {halls.map((hall) => {
-              // Sessions for this hall, sorted by start_time
-              const hallSessions = filteredSessions
-                .filter(session => session.stage_name === hall.name)
-                .sort((a, b) => a.start_time.localeCompare(b.start_time));
-              // Helper to get vertical offset for a session based on start_time
-              const getSessionOffset = (startTime: string) => {
-                const [h, m] = startTime.split(":").map(Number);
-                return ((h - 8) * 60 + m) / 60 * 80; // 80px per hour
-              };
-              return (
-                <div key={hall.id} className="min-w-[250px] flex flex-col relative bg-white border rounded-md p-2">
-                  {/* Hall Header */}
-                  <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 px-2 py-3 text-center font-bold text-gray-900 text-base">
-                    {hall.name}
+
+        {/* Main Grid Container */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          {/* Grid Header */}
+          <div className="flex border-b border-gray-200 bg-gray-50">
+            {/* Time Column Header */}
+            <div className="sticky left-0 z-20 bg-gray-50 border-r border-gray-200 px-4 py-3 min-w-[100px] flex items-center justify-center">
+              <span className="text-sm font-semibold text-gray-700">Time</span>
+            </div>
+            
+            {/* Hall Headers */}
+            <div className="flex overflow-x-auto">
+              {halls.map((hall) => (
+                <div 
+                  key={hall.id} 
+                  className="min-w-[280px] px-4 py-3 border-r border-gray-200 bg-gray-50 flex items-center justify-between group"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-semibold text-gray-900">{hall.name}</span>
+                    <span className="text-xs text-gray-500">
+                      ({filteredSessions.filter(s => s.stage_name === hall.name).length} sessions)
+                    </span>
                   </div>
-                  {/* Sessions Grid */}
-                  <div className="relative flex-1" style={{ minHeight: 80 * timeLabels.length }}>
-                    {hallSessions.length === 0 && (
-                      <div className="text-center text-gray-400 text-sm mt-8 mb-2">No sessions yet</div>
-                    )}
-                    {hallSessions.map((session, idx) => {
-                      const offset = getSessionOffset(session.start_time);
-                      const [startH, startM] = session.start_time.split(":").map(Number);
-                      const [endH, endM] = session.end_time.split(":").map(Number);
-                      const duration = ((endH - startH) * 60 + (endM - startM)) / 60 * 80; // 80px per hour
-                      return (
-                        <div
-                          key={session.id}
-                          className="absolute left-0 right-0"
-                          style={{ top: offset, height: Math.max(duration, 48) }}
-                        >
-                          <div
-                            className="bg-white shadow-md rounded-md p-3 mb-2 border border-indigo-100 hover:shadow-lg transition-shadow cursor-pointer flex flex-col justify-between h-full group"
-                            onClick={() => handleEditSession(session)}
-                          >
-                            <div className="text-sm font-medium text-indigo-600 mb-1">
-                              {formatTimeRange(session.start_time, session.end_time)}
-                            </div>
-                            <div className="text-lg font-semibold text-gray-900 mb-1">
-                              {session.title}
-                            </div>
-                            {session.description && (
-                              <div className="text-sm text-gray-600 mb-1">{session.description}</div>
-                            )}
-                            <div className="flex space-x-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity self-end">
-                              <button
-                                onClick={e => { e.stopPropagation(); handleEditSession(session); }}
-                                className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
-                              >Edit</button>
-                              <button
-                                onClick={e => { e.stopPropagation(); handleDeleteSession(session.id); }}
-                                className="text-xs text-red-600 hover:text-red-900 font-medium"
-                              >Delete</button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {/* Add Session Button at the bottom */}
-                    <div className="absolute left-0 right-0" style={{ top: 80 * timeLabels.length + 8 }}>
-                      <button
-                        onClick={() => handleAddSession(hall.id)}
-                        className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-md px-3 py-2 w-full mt-2 text-sm font-medium shadow"
-                      >
-                        + Add Session
-                      </button>
-                    </div>
+                  
+                  {/* Hall Actions */}
+                  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleEditHallName(hall.id)}
+                      className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                      title="Edit hall name"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteHall(hall)}
+                      className="p-1 text-gray-400 hover:text-red-600 rounded"
+                      title="Delete hall"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+
+          {/* Grid Body */}
+          <div className="flex overflow-x-auto">
+            {/* Sticky Time Column */}
+            <div className="sticky left-0 z-10 bg-white border-r border-gray-200">
+              {timeSlots.map((slot) => (
+                <div 
+                  key={slot.id} 
+                  className="h-10 flex items-center justify-center border-b border-gray-100 px-4 min-w-[100px]"
+                >
+                  <span className="text-xs text-gray-500 font-medium">
+                    {slot.displayTime}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Halls Columns */}
+            <div className="flex">
+              {halls.map((hall) => {
+                const hallSessions = filteredSessions
+                  .filter(session => session.stage_name === hall.name)
+                  .sort((a, b) => a.start_time.localeCompare(b.start_time));
+
+                return (
+                  <div 
+                    key={hall.id} 
+                    className="min-w-[280px] relative border-r border-gray-200 last:border-r-0"
+                  >
+                    {/* Time Grid Background */}
+                    <div className="relative" style={{ height: timeSlots.length * 40 }}>
+                      {timeSlots.map((slot, index) => (
+                        <div 
+                          key={slot.id} 
+                          className="h-10 border-b border-gray-100"
+                        />
+                      ))}
+
+                      {/* Sessions */}
+                      {hallSessions.length === 0 ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                          <div className="text-gray-400 text-sm mb-3">No sessions yet</div>
+                          <button
+                            onClick={() => handleAddSession(hall.id)}
+                            className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-colors"
+                          >
+                            + Add Session
+                          </button>
+                        </div>
+                      ) : (
+                        hallSessions.map((session) => {
+                          const top = getTimePosition(session.start_time);
+                          const height = getSessionHeight(session.start_time, session.end_time);
+                          
+                          return (
+                            <div
+                              key={session.id}
+                              className="absolute left-2 right-2 rounded-lg shadow-md border border-gray-200 bg-white hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                              style={{ 
+                                top: `${top}px`, 
+                                height: `${height}px`,
+                                minHeight: '60px'
+                              }}
+                              onClick={() => handleEditSession(session)}
+                            >
+                              <div className="p-3 h-full flex flex-col">
+                                {/* Time Range */}
+                                <div className="text-xs font-semibold text-indigo-600 mb-1">
+                                  {formatTimeRange(session.start_time, session.end_time)}
+                                </div>
+                                
+                                {/* Title */}
+                                <div className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
+                                  {session.title}
+                                </div>
+                                
+                                {/* Description */}
+                                {session.description && (
+                                  <div className="text-xs text-gray-600 line-clamp-2 flex-1">
+                                    {session.description}
+                                  </div>
+                                )}
+                                
+                                {/* Session Type Badge */}
+                                <div className="mt-2">
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(session.session_type)}`}>
+                                    {getSessionIcon(session.session_type)} {getSessionTypeLabel(session.session_type)}
+                                  </span>
+                                </div>
+
+                                {/* Action Buttons - Show on Hover */}
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleEditSession(session); }}
+                                    className="p-1 bg-white rounded shadow-sm text-gray-600 hover:text-indigo-600"
+                                    title="Edit session"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
+                                    className="p-1 bg-white rounded shadow-sm text-gray-600 hover:text-red-600"
+                                    title="Delete session"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+
+                      {/* Add Session Button - Always visible if there are sessions */}
+                      {hallSessions.length > 0 && (
+                        <div className="absolute bottom-4 left-2 right-2">
+                          <button
+                            onClick={() => handleAddSession(hall.id)}
+                            className="w-full bg-indigo-600 text-white hover:bg-indigo-700 rounded-md px-3 py-2 text-sm font-medium shadow-sm transition-colors"
+                          >
+                            + Add Session
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -989,8 +1106,7 @@ export default function EditSessionsPage() {
             </svg>
             Print Program
           </button>
-          </div>
-      </div>
+        </div>
 
       {/* Session Modal */}
       <Modal
