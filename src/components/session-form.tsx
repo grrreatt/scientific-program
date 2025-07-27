@@ -9,6 +9,7 @@ interface SessionFormData {
   topic: string
   day_id: string
   stage_id: string
+  time_slot_id: string
   start_time: string
   end_time: string
   description: string
@@ -44,6 +45,7 @@ interface SessionFormProps {
   onSubmit: (data: SessionFormData, sessionType: string) => void
   onCancel: () => void
   isSubmitting?: boolean
+  hideTimeSelection?: boolean
 }
 
 export function SessionForm({ 
@@ -51,7 +53,8 @@ export function SessionForm({
   sessionType = 'lecture', 
   onSubmit, 
   onCancel, 
-  isSubmitting = false 
+  isSubmitting = false,
+  hideTimeSelection = false
 }: SessionFormProps) {
   const [currentSessionType, setCurrentSessionType] = useState(sessionType)
   const [formData, setFormData] = useState<SessionFormData>({
@@ -59,6 +62,7 @@ export function SessionForm({
     topic: '',
     day_id: '',
     stage_id: '',
+    time_slot_id: '',
     start_time: '',
     end_time: '',
     description: '',
@@ -550,7 +554,7 @@ export function SessionForm({
             if (field === 'topic') return renderField(field, 'Topic', 'text', true)
             if (field === 'day_id') return renderField(field, 'Day', 'select', true)
             if (field === 'stage_id') return renderField(field, 'Stage/Hall', 'select', true)
-            if (field === 'start_time') return (
+            if (field === 'start_time') return hideTimeSelection ? null : (
               <TimePicker
                 key={field}
                 value={formData.start_time}
@@ -559,7 +563,7 @@ export function SessionForm({
                 required={true}
               />
             )
-            if (field === 'end_time') return (
+            if (field === 'end_time') return hideTimeSelection ? null : (
               <TimePicker
                 key={field}
                 value={formData.end_time}
