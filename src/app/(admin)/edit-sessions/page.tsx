@@ -756,6 +756,13 @@ export default function EditSessionsPage() {
 
   const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
 
+  // 1. Define time slots for the sticky time column (e.g., 8:00 to 20:00, every 1 hour)
+  const timeLabels = Array.from({ length: 13 }, (_, i) => {
+    const hour = 8 + i;
+    const label = hour < 10 ? `0${hour}:00` : `${hour}:00`;
+    return label;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -882,156 +889,94 @@ export default function EditSessionsPage() {
             {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
           </p>
         </div>
-
-        {/* Halls Layout - No Time Column */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 overflow-x-auto">
-          {halls.map((hall, index) => (
-            <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              {/* Hall Header */}
-              <div className="p-4 bg-gray-50 border-b border-gray-200 relative group">
-                {editingHallId === hall.id ? (
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={editingHallName}
-                      onChange={(e) => setEditingHallName(e.target.value)}
-                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleSaveHallName()
-                        } else if (e.key === 'Escape') {
-                          handleCancelEditHall()
-                        }
-                      }}
-                      autoFocus
-                      aria-label="Edit hall name"
-                      maxLength={50}
-                    />
-            <button
-                      onClick={handleSaveHallName}
-                      className="text-green-600 hover:text-green-800 text-sm"
-                      aria-label="Save hall name"
-                      title="Save changes"
-                    >
-                      ✓
-                    </button>
-            <button
-                      onClick={handleCancelEditHall}
-                      className="text-red-600 hover:text-red-800 text-sm"
-                      aria-label="Cancel editing"
-                      title="Cancel changes"
-                    >
-                      ✕
-            </button>
+        {/* Sticky Time Column + Halls Grid */}
+        <div className="flex w-full overflow-x-auto gap-4">
+          {/* Sticky Time Column */}
+          <div className="sticky left-0 z-10 bg-gray-50 flex flex-col items-end pr-2 min-w-[70px] border-r border-gray-200" style={{ minWidth: 70 }}>
+            <div className="h-14" /> {/* Spacer for hall headers */}
+            {timeLabels.map(time => (
+              <div key={time} className="h-20 flex items-center justify-end text-xs text-gray-400 font-medium">
+                {time}
+              </div>
+            ))}
           </div>
-        ) : (
-                  <div className="flex items-center justify-between">
-                    <span 
-                      className="cursor-pointer hover:text-indigo-600 font-medium text-gray-900"
-                      onClick={() => handleEditHallName(hall.id)}
-                    >
-                      {hall.name}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      <button
-                        onClick={() => handleDeleteHall(hall)}
-                        className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-sm transition-opacity"
-                        title="Delete hall"
-                      >
-                        ×
-                      </button>
-                      {index === halls.length - 1 && (
-                        <button
-                          onClick={handleQuickAddHall}
-                          className="opacity-0 group-hover:opacity-100 text-green-600 hover:text-green-800 text-sm transition-opacity"
-                          title="Add new hall"
-                        >
-                          +
-                        </button>
-                      )}
-                </div>
+          {/* Halls Columns */}
+          <div className="flex gap-4">
+            {halls.map((hall) => {
+              // Sessions for this hall, sorted by start_time
+              const hallSessions = filteredSessions
+                .filter(session => session.stage_name === hall.name)
+                .sort((a, b) => a.start_time.localeCompare(b.start_time));
+              // Helper to get vertical offset for a session based on start_time
+              const getSessionOffset = (startTime: string) => {
+                const [h, m] = startTime.split(":").map(Number);
+                return ((h - 8) * 60 + m) / 60 * 80; // 80px per hour
+              };
+              return (
+                <div key={hall.id} className="min-w-[250px] flex flex-col relative bg-white border rounded-md p-2">
+                  {/* Hall Header */}
+                  <div className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 px-2 py-3 text-center font-bold text-gray-900 text-base">
+                    {hall.name}
                   </div>
-                )}
-            </div>
-
-              {/* Hall Content - Sessions */}
-              <div className="p-4">
-                {/* Find sessions for this hall */}
-                {(() => {
-                  const hallSessions = filteredSessions.filter(session => 
-                    session.stage_name === hall.name
-                  )
-                  
-                  if (hallSessions.length === 0) {
-                    return (
-                      <div className="text-center py-8">
-                        <div className="text-gray-400 text-sm mb-4">No sessions yet</div>
-                        <button
-                          onClick={() => handleAddSession(hall.id)}
-                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                          + Add Session
-                        </button>
-                    </div>
-                    )
-                  }
-                    
-                    return (
-                    <div className="space-y-4">
-                      {hallSessions.map((session) => (
-                        <div 
+                  {/* Sessions Grid */}
+                  <div className="relative flex-1" style={{ minHeight: 80 * timeLabels.length }}>
+                    {hallSessions.length === 0 && (
+                      <div className="text-center text-gray-400 text-sm mt-8 mb-2">No sessions yet</div>
+                    )}
+                    {hallSessions.map((session, idx) => {
+                      const offset = getSessionOffset(session.start_time);
+                      const [startH, startM] = session.start_time.split(":").map(Number);
+                      const [endH, endM] = session.end_time.split(":").map(Number);
+                      const duration = ((endH - startH) * 60 + (endM - startM)) / 60 * 80; // 80px per hour
+                      return (
+                        <div
                           key={session.id}
-                          className="mb-6 p-6 bg-white border border-gray-200 rounded-xl shadow hover:shadow-md transition-shadow cursor-pointer group flex flex-col"
-                          onClick={() => handleEditSession(session)}
+                          className="absolute left-0 right-0"
+                          style={{ top: offset, height: Math.max(duration, 48) }}
                         >
-                          {/* Time at the top */}
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-semibold text-indigo-600">
+                          <div
+                            className="bg-white shadow-md rounded-md p-3 mb-2 border border-indigo-100 hover:shadow-lg transition-shadow cursor-pointer flex flex-col justify-between h-full group"
+                            onClick={() => handleEditSession(session)}
+                          >
+                            <div className="text-sm font-medium text-indigo-600 mb-1">
                               {formatTimeRange(session.start_time, session.end_time)}
-                            </span>
-                          </div>
-                          {/* Session Title */}
-                          <h3 className="text-lg font-bold text-gray-900 mb-1">
-                            {session.title}
-                          </h3>
-                          {/* Session Details */}
-                          <div className="text-sm text-gray-700 space-y-1">
-                            {session.topic && <div><span className="font-medium">Topic:</span> {session.topic}</div>}
-                            {session.speaker_name && <div><span className="font-medium">Speaker:</span> {session.speaker_name}</div>}
-                            {session.moderator_name && <div><span className="font-medium">Moderator:</span> {session.moderator_name}</div>}
-                            {session.panelist_names && session.panelist_names.length > 0 && (
-                              <div><span className="font-medium">Panelists:</span> {session.panelist_names.join(', ')}</div>
+                            </div>
+                            <div className="text-lg font-semibold text-gray-900 mb-1">
+                              {session.title}
+                            </div>
+                            {session.description && (
+                              <div className="text-sm text-gray-600 mb-1">{session.description}</div>
                             )}
-                            {session.description && <div className="text-gray-500 mt-1">{session.description}</div>}
-                          </div>
-                          {/* Edit/Delete Controls on hover */}
-                          <div className="flex space-x-2 pt-3 opacity-0 group-hover:opacity-100 transition-opacity self-end">
-                            <button
-                              onClick={e => { e.stopPropagation(); handleEditSession(session); }}
-                              className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
-                            >Edit</button>
-                            <button
-                              onClick={e => { e.stopPropagation(); handleDeleteSession(session.id); }}
-                              className="text-xs text-red-600 hover:text-red-900 font-medium"
-                            >Delete</button>
+                            <div className="flex space-x-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity self-end">
+                              <button
+                                onClick={e => { e.stopPropagation(); handleEditSession(session); }}
+                                className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
+                              >Edit</button>
+                              <button
+                                onClick={e => { e.stopPropagation(); handleDeleteSession(session.id); }}
+                                className="text-xs text-red-600 hover:text-red-900 font-medium"
+                              >Delete</button>
+                            </div>
                           </div>
                         </div>
-                      ))}
-                      
-                      {/* Add Session Button */}
+                      );
+                    })}
+                    {/* Add Session Button at the bottom */}
+                    <div className="absolute left-0 right-0" style={{ top: 80 * timeLabels.length + 8 }}>
                       <button
                         onClick={() => handleAddSession(hall.id)}
-                        className="w-full p-4 border-2 border-dashed border-gray-200 rounded-lg text-gray-400 hover:border-gray-300 hover:text-gray-500 transition-colors"
+                        className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-md px-3 py-2 w-full mt-2 text-sm font-medium shadow"
                       >
                         + Add Session
                       </button>
-                      </div>
-                    )
-                })()}
-              </div>
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
         {/* Print Button */}
         <div className="mt-8 text-center print:hidden">
@@ -1056,23 +1001,23 @@ export default function EditSessionsPage() {
       >
         <SessionForm
           initialData={editingSession ? {
-            title: editingSession.title,
-            topic: editingSession.topic || '',
-            day_id: editingSession.day_name === 'Day 1' ? 'day1' : 
-                    editingSession.day_name === 'Day 2' ? 'day2' : 'day3',
-            stage_id: editingSession.stage_name === 'Main Hall' ? 'main-hall' :
-                      editingSession.stage_name === 'Seminar Room A' ? 'seminar-a' :
-                      editingSession.stage_name === 'Seminar Room B' ? 'seminar-b' : 
-                      editingSession.stage_name === 'Example Hall' ? 'example-hall' :
-                      editingSession.stage_name === 'Hall A' ? 'hall-a' :
-                      editingSession.stage_name === 'Hall B' ? 'hall-b' : 'workshop',
-            start_time: editingSession.start_time,
-            end_time: editingSession.end_time,
-            speaker_id: editingSession.speaker_name === 'Dr. Sarah Johnson' ? 'speaker1' :
-                       editingSession.speaker_name === 'Dr. Michael Chen' ? 'speaker2' :
-                       editingSession.speaker_name === 'Dr. Emily Rodriguez' ? 'speaker3' :
-                       editingSession.speaker_name === 'Prof. David Thompson' ? 'speaker4' :
-                       editingSession.speaker_name === 'Dr. Lisa Wang' ? 'speaker5' : ''
+            title: editingSession?.title ?? '',
+            topic: editingSession?.topic ?? '',
+            day_id: editingSession?.day_name === 'Day 1' ? 'day1' : 
+                    editingSession?.day_name === 'Day 2' ? 'day2' : 'day3',
+            stage_id: editingSession?.stage_name === 'Main Hall' ? 'main-hall' :
+                      editingSession?.stage_name === 'Seminar Room A' ? 'seminar-a' :
+                      editingSession?.stage_name === 'Seminar Room B' ? 'seminar-b' : 
+                      editingSession?.stage_name === 'Example Hall' ? 'example-hall' :
+                      editingSession?.stage_name === 'Hall A' ? 'hall-a' :
+                      editingSession?.stage_name === 'Hall B' ? 'hall-b' : 'workshop',
+            start_time: editingSession?.start_time ?? '',
+            end_time: editingSession?.end_time ?? '',
+            speaker_id: editingSession?.speaker_name === 'Dr. Sarah Johnson' ? 'speaker1' :
+                       editingSession?.speaker_name === 'Dr. Michael Chen' ? 'speaker2' :
+                       editingSession?.speaker_name === 'Dr. Emily Rodriguez' ? 'speaker3' :
+                       editingSession?.speaker_name === 'Prof. David Thompson' ? 'speaker4' :
+                       editingSession?.speaker_name === 'Dr. Lisa Wang' ? 'speaker5' : ''
           } : {}}
           sessionType={editingSession?.session_type || 'lecture'}
           onSubmit={handleSubmitSession}
