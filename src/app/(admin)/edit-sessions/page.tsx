@@ -102,18 +102,27 @@ export default function EditSessionsPage() {
   // Load sessions from Supabase
   const loadSessions = async () => {
     try {
+      console.log('🔄 Loading sessions from Supabase...')
       const { data, error } = await supabase
         .from('sessions')
         .select('*')
         .order('start_time', { ascending: true })
 
       if (error) {
-        console.error('Error loading sessions:', error)
+        console.error('❌ Error loading sessions:', error)
+        console.error('❌ Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
         // If no data, create mock data
         const { mockSession } = createMockData()
         setSessions([mockSession])
         return
       }
+
+      console.log('✅ Sessions loaded successfully:', data?.length || 0, 'sessions')
 
       // Helper function to map stage_id to stage_name
       const getStageName = (stageId: string) => {
@@ -161,7 +170,7 @@ export default function EditSessionsPage() {
       setSessions(transformedSessions.length > 0 ? transformedSessions : [createMockData().mockSession])
       setError(null)
     } catch (error) {
-      console.error('Error loading sessions:', error)
+      console.error('❌ Exception loading sessions:', error)
       setError('Failed to load sessions. Please refresh the page.')
       // Fallback to mock data
       const { mockSession } = createMockData()
@@ -172,18 +181,28 @@ export default function EditSessionsPage() {
   // Load halls from Supabase
   const loadHalls = async () => {
     try {
+      console.log('🔄 Loading halls from Supabase...')
       const { data, error } = await supabase
         .from('stages')
         .select('*')
         .order('name', { ascending: true })
 
       if (error) {
-        console.error('Error loading halls:', error)
+        console.error('❌ Error loading halls:', error)
+        console.error('❌ Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
         // If no data, create mock data
         const { mockHall } = createMockData()
         setHalls([mockHall])
         return
       }
+
+      console.log('✅ Halls loaded successfully:', data?.length || 0, 'halls')
+      console.log('📋 Hall data:', data)
 
       // Transform Supabase data to our Hall format
       const transformedHalls: Hall[] = data.map((stage: any) => ({
@@ -198,10 +217,13 @@ export default function EditSessionsPage() {
         { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
         { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
       ]
-      setHalls(transformedHalls.length > 0 ? transformedHalls : defaultHalls)
+      
+      const finalHalls = transformedHalls.length > 0 ? transformedHalls : defaultHalls
+      console.log('🎯 Setting halls to:', finalHalls)
+      setHalls(finalHalls)
       setError(null)
     } catch (error) {
-      console.error('Error loading halls:', error)
+      console.error('❌ Exception loading halls:', error)
       setError('Failed to load halls. Please refresh the page.')
       // Fallback to default halls
       const defaultHalls: Hall[] = [
@@ -334,6 +356,10 @@ export default function EditSessionsPage() {
   }
 
   const handleSubmitSession = async (formData: any, sessionType: string) => {
+    console.log('🚀 Starting session submission...')
+    console.log('📝 Form data:', formData)
+    console.log('🎯 Session type:', sessionType)
+    
     // Input validation
     if (!formData.title?.trim()) {
       alert('Session title is required')
@@ -365,214 +391,248 @@ export default function EditSessionsPage() {
       let timeSlot: TimeSlot | undefined
       
       if (editingSession) {
+        console.log('✏️ Editing existing session:', editingSession)
         // For editing, find hall by name
         hall = halls.find(h => h.name === editingSession.stage_name)
         timeSlot = timeSlots.find(ts => ts.start_time === editingSession.start_time)
       } else {
+        console.log('➕ Creating new session for hall:', sessionToAdd?.hallId)
         // For new session, find hall by ID
         hall = halls.find(h => h.id === sessionToAdd?.hallId)
         timeSlot = timeSlots.find(ts => ts.id === sessionToAdd?.timeSlotId)
       }
       
+      console.log('🏢 Found hall:', hall)
+      console.log('⏰ Found time slot:', timeSlot)
+      
       if (editingSession) {
+        console.log('🔄 Updating existing session in Supabase...')
         // Update existing session in Supabase
+        const updateData = {
+          title: formData.title,
+          session_type: sessionType,
+          topic: formData.topic,
+          description: formData.description,
+          start_time: formData.start_time || editingSession.start_time,
+          end_time: formData.end_time || editingSession.end_time,
+          people_data: {
+            speaker_id: formData.speaker_id,
+            speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                         formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
+                         formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                         formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
+                         formData.speaker_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+            moderator_id: formData.moderator_id,
+            moderator_name: formData.moderator_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                           formData.moderator_id === 'speaker2' ? 'Dr. Michael Chen' :
+                           formData.moderator_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                           formData.moderator_id === 'speaker4' ? 'Prof. David Thompson' :
+                           formData.moderator_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+            panelist_ids: formData.panelist_ids,
+            panelist_names: formData.panelist_ids?.map((id: string) => 
+              id === 'speaker1' ? 'Dr. Sarah Johnson' :
+              id === 'speaker2' ? 'Dr. Michael Chen' :
+              id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+              id === 'speaker4' ? 'Prof. David Thompson' :
+              id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            ).filter((name: string) => name),
+            chairperson_id: formData.chairperson_id,
+            chairperson_name: formData.chairperson_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                             formData.chairperson_id === 'speaker2' ? 'Dr. Michael Chen' :
+                             formData.chairperson_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                             formData.chairperson_id === 'speaker4' ? 'Prof. David Thompson' :
+                             formData.chairperson_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+            workshop_lead_ids: formData.workshop_lead_ids,
+            workshop_lead_names: formData.workshop_lead_ids?.map((id: string) => 
+              id === 'speaker1' ? 'Dr. Sarah Johnson' :
+              id === 'speaker2' ? 'Dr. Michael Chen' :
+              id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+              id === 'speaker4' ? 'Prof. David Thompson' :
+              id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            ).filter((name: string) => name),
+            assistant_ids: formData.assistant_ids,
+            assistant_names: formData.assistant_ids?.map((id: string) => 
+              id === 'speaker1' ? 'Dr. Sarah Johnson' :
+              id === 'speaker2' ? 'Dr. Michael Chen' :
+              id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+              id === 'speaker4' ? 'Prof. David Thompson' :
+              id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            ).filter((name: string) => name),
+            introducer_id: formData.introducer_id,
+            introducer_name: formData.introducer_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                            formData.introducer_id === 'speaker2' ? 'Dr. Michael Chen' :
+                            formData.introducer_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                            formData.introducer_id === 'speaker4' ? 'Prof. David Thompson' :
+                            formData.introducer_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+            presenter_ids: formData.presenter_ids,
+            presenter_names: formData.presenter_ids?.map((id: string) => 
+              id === 'speaker1' ? 'Dr. Sarah Johnson' :
+              id === 'speaker2' ? 'Dr. Michael Chen' :
+              id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+              id === 'speaker4' ? 'Prof. David Thompson' :
+              id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            ).filter((name: string) => name),
+            discussion_leader_id: formData.discussion_leader_id,
+            discussion_leader_name: formData.discussion_leader_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                                  formData.discussion_leader_id === 'speaker2' ? 'Dr. Michael Chen' :
+                                  formData.discussion_leader_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                                  formData.discussion_leader_id === 'speaker4' ? 'Prof. David Thompson' :
+                                  formData.discussion_leader_id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+          },
+          capacity: formData.capacity ? parseInt(formData.capacity) : null,
+          is_parallel_meal: formData.is_parallel_meal,
+          parallel_meal_type: formData.parallel_meal_type,
+          meal_type: formData.meal_type,
+          symposium_data: sessionType === 'symposium' ? {
+            subtalks: formData.symposium_subtalks || []
+          } : {},
+          custom_data: sessionType === 'other' ? {
+            custom_fields: formData.custom_data || {}
+          } : {},
+          updated_at: new Date().toISOString()
+        }
+        
+        console.log('📤 Update data:', updateData)
+        
         const { error } = await supabase
           .from('sessions')
-          .update({
-            title: formData.title,
-            session_type: sessionType,
-            topic: formData.topic,
-            description: formData.description,
-            start_time: formData.start_time || editingSession.start_time,
-            end_time: formData.end_time || editingSession.end_time,
-            people_data: {
-              speaker_id: formData.speaker_id,
-              speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                           formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
-                           formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                           formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
-                           formData.speaker_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              moderator_id: formData.moderator_id,
-              moderator_name: formData.moderator_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                             formData.moderator_id === 'speaker2' ? 'Dr. Michael Chen' :
-                             formData.moderator_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                             formData.moderator_id === 'speaker4' ? 'Prof. David Thompson' :
-                             formData.moderator_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              panelist_ids: formData.panelist_ids,
-              panelist_names: formData.panelist_ids?.map((id: string) => 
-                id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                id === 'speaker2' ? 'Dr. Michael Chen' :
-                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                id === 'speaker4' ? 'Prof. David Thompson' :
-                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-              ).filter((name: string) => name),
-              chairperson_id: formData.chairperson_id,
-              chairperson_name: formData.chairperson_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                               formData.chairperson_id === 'speaker2' ? 'Dr. Michael Chen' :
-                               formData.chairperson_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                               formData.chairperson_id === 'speaker4' ? 'Prof. David Thompson' :
-                               formData.chairperson_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              workshop_lead_ids: formData.workshop_lead_ids,
-              workshop_lead_names: formData.workshop_lead_ids?.map((id: string) => 
-                id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                id === 'speaker2' ? 'Dr. Michael Chen' :
-                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                id === 'speaker4' ? 'Prof. David Thompson' :
-                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-              ).filter((name: string) => name),
-              assistant_ids: formData.assistant_ids,
-              assistant_names: formData.assistant_ids?.map((id: string) => 
-                id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                id === 'speaker2' ? 'Dr. Michael Chen' :
-                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                id === 'speaker4' ? 'Prof. David Thompson' :
-                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-              ).filter((name: string) => name),
-              introducer_id: formData.introducer_id,
-              introducer_name: formData.introducer_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                              formData.introducer_id === 'speaker2' ? 'Dr. Michael Chen' :
-                              formData.introducer_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                              formData.introducer_id === 'speaker4' ? 'Prof. David Thompson' :
-                              formData.introducer_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              presenter_ids: formData.presenter_ids,
-              presenter_names: formData.presenter_ids?.map((id: string) => 
-                id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                id === 'speaker2' ? 'Dr. Michael Chen' :
-                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                id === 'speaker4' ? 'Prof. David Thompson' :
-                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-              ).filter((name: string) => name),
-              discussion_leader_id: formData.discussion_leader_id,
-              discussion_leader_name: formData.discussion_leader_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                                    formData.discussion_leader_id === 'speaker2' ? 'Dr. Michael Chen' :
-                                    formData.discussion_leader_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                                    formData.discussion_leader_id === 'speaker4' ? 'Prof. David Thompson' :
-                                    formData.discussion_leader_id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-            },
-            capacity: formData.capacity ? parseInt(formData.capacity) : null,
-            is_parallel_meal: formData.is_parallel_meal,
-            parallel_meal_type: formData.parallel_meal_type,
-            meal_type: formData.meal_type,
-            symposium_data: sessionType === 'symposium' ? {
-              subtalks: formData.symposium_subtalks || []
-            } : {},
-            custom_data: sessionType === 'other' ? {
-              custom_fields: formData.custom_data || {}
-            } : {},
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', editingSession.id)
 
         if (error) {
-          console.error('Error updating session:', error)
+          console.error('❌ Error updating session:', error)
+          console.error('❌ Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          })
           throw error
         }
+        
+        console.log('✅ Session updated successfully')
       } else {
+        console.log('🆕 Creating new session in Supabase...')
         // Create new session in Supabase
+        const insertData = {
+          title: formData.title,
+          session_type: sessionType,
+          day_id: selectedDay === 'Day 1' ? 'day1' : selectedDay === 'Day 2' ? 'day2' : 'day3',
+          stage_id: hall?.name === 'Main Hall' ? 'main-hall' :
+                    hall?.name === 'Seminar Room A' ? 'seminar-a' :
+                    hall?.name === 'Seminar Room B' ? 'seminar-b' : 
+                    hall?.name === 'Example Hall' ? 'example-hall' :
+                    hall?.name === 'Hall A' ? 'hall-a' :
+                    hall?.name === 'Hall B' ? 'hall-b' : 'workshop',
+          start_time: timeSlot?.start_time || '09:00',
+          end_time: formData.end_time || timeSlot?.end_time || '10:00',
+          topic: formData.topic,
+          description: formData.description,
+          people_data: {
+            speaker_id: formData.speaker_id,
+            speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                         formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
+                         formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                         formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
+                         formData.speaker_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+            moderator_id: formData.moderator_id,
+            moderator_name: formData.moderator_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                           formData.moderator_id === 'speaker2' ? 'Dr. Michael Chen' :
+                           formData.moderator_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                           formData.moderator_id === 'speaker4' ? 'Prof. David Thompson' :
+                           formData.moderator_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+            panelist_ids: formData.panelist_ids,
+            panelist_names: formData.panelist_ids?.map((id: string) => 
+              id === 'speaker1' ? 'Dr. Sarah Johnson' :
+              id === 'speaker2' ? 'Dr. Michael Chen' :
+              id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+              id === 'speaker4' ? 'Prof. David Thompson' :
+              id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            ).filter((name: string) => name),
+            chairperson_id: formData.chairperson_id,
+            chairperson_name: formData.chairperson_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                             formData.chairperson_id === 'speaker2' ? 'Dr. Michael Chen' :
+                             formData.chairperson_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                             formData.chairperson_id === 'speaker4' ? 'Prof. David Thompson' :
+                             formData.chairperson_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+            workshop_lead_ids: formData.workshop_lead_ids,
+            workshop_lead_names: formData.workshop_lead_ids?.map((id: string) => 
+              id === 'speaker1' ? 'Dr. Sarah Johnson' :
+              id === 'speaker2' ? 'Dr. Michael Chen' :
+              id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+              id === 'speaker4' ? 'Prof. David Thompson' :
+              id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            ).filter((name: string) => name),
+            assistant_ids: formData.assistant_ids,
+            assistant_names: formData.assistant_ids?.map((id: string) => 
+              id === 'speaker1' ? 'Dr. Sarah Johnson' :
+              id === 'speaker2' ? 'Dr. Michael Chen' :
+              id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+              id === 'speaker4' ? 'Prof. David Thompson' :
+              id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            ).filter((name: string) => name),
+            introducer_id: formData.introducer_id,
+            introducer_name: formData.introducer_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                            formData.introducer_id === 'speaker2' ? 'Dr. Michael Chen' :
+                            formData.introducer_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                            formData.introducer_id === 'speaker4' ? 'Prof. David Thompson' :
+                            formData.introducer_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+            presenter_ids: formData.presenter_ids,
+            presenter_names: formData.presenter_ids?.map((id: string) => 
+              id === 'speaker1' ? 'Dr. Sarah Johnson' :
+              id === 'speaker2' ? 'Dr. Michael Chen' :
+              id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+              id === 'speaker4' ? 'Prof. David Thompson' :
+              id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            ).filter((name: string) => name),
+            discussion_leader_id: formData.discussion_leader_id,
+            discussion_leader_name: formData.discussion_leader_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                                  formData.discussion_leader_id === 'speaker2' ? 'Dr. Michael Chen' :
+                                  formData.discussion_leader_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                                  formData.discussion_leader_id === 'speaker4' ? 'Prof. David Thompson' :
+                                  formData.discussion_leader_id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+          },
+          capacity: formData.capacity ? parseInt(formData.capacity) : null,
+          is_parallel_meal: formData.is_parallel_meal,
+          parallel_meal_type: formData.parallel_meal_type,
+          meal_type: formData.meal_type,
+          symposium_data: sessionType === 'symposium' ? {
+            subtalks: formData.symposium_subtalks || []
+          } : {},
+          custom_data: sessionType === 'other' ? {
+            custom_fields: formData.custom_data || {}
+          } : {}
+        }
+        
+        console.log('📤 Insert data:', insertData)
+        
         const { error } = await supabase
           .from('sessions')
-          .insert({
-            title: formData.title,
-            session_type: sessionType,
-            day_id: selectedDay === 'Day 1' ? 'day1' : selectedDay === 'Day 2' ? 'day2' : 'day3',
-            stage_id: hall?.name === 'Main Hall' ? 'main-hall' :
-                      hall?.name === 'Seminar Room A' ? 'seminar-a' :
-                      hall?.name === 'Seminar Room B' ? 'seminar-b' : 
-                      hall?.name === 'Example Hall' ? 'example-hall' :
-                      hall?.name === 'Hall A' ? 'hall-a' :
-                      hall?.name === 'Hall B' ? 'hall-b' : 'workshop',
-            start_time: timeSlot?.start_time || '09:00',
-            end_time: formData.end_time || timeSlot?.end_time || '10:00',
-            topic: formData.topic,
-            description: formData.description,
-            people_data: {
-              speaker_id: formData.speaker_id,
-              speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                           formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
-                           formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                           formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
-                           formData.speaker_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              moderator_id: formData.moderator_id,
-              moderator_name: formData.moderator_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                             formData.moderator_id === 'speaker2' ? 'Dr. Michael Chen' :
-                             formData.moderator_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                             formData.moderator_id === 'speaker4' ? 'Prof. David Thompson' :
-                             formData.moderator_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              panelist_ids: formData.panelist_ids,
-              panelist_names: formData.panelist_ids?.map((id: string) => 
-                id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                id === 'speaker2' ? 'Dr. Michael Chen' :
-                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                id === 'speaker4' ? 'Prof. David Thompson' :
-                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-              ).filter((name: string) => name),
-              chairperson_id: formData.chairperson_id,
-              chairperson_name: formData.chairperson_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                               formData.chairperson_id === 'speaker2' ? 'Dr. Michael Chen' :
-                               formData.chairperson_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                               formData.chairperson_id === 'speaker4' ? 'Prof. David Thompson' :
-                               formData.chairperson_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              workshop_lead_ids: formData.workshop_lead_ids,
-              workshop_lead_names: formData.workshop_lead_ids?.map((id: string) => 
-                id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                id === 'speaker2' ? 'Dr. Michael Chen' :
-                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                id === 'speaker4' ? 'Prof. David Thompson' :
-                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-              ).filter((name: string) => name),
-              assistant_ids: formData.assistant_ids,
-              assistant_names: formData.assistant_ids?.map((id: string) => 
-                id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                id === 'speaker2' ? 'Dr. Michael Chen' :
-                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                id === 'speaker4' ? 'Prof. David Thompson' :
-                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-              ).filter((name: string) => name),
-              introducer_id: formData.introducer_id,
-              introducer_name: formData.introducer_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                              formData.introducer_id === 'speaker2' ? 'Dr. Michael Chen' :
-                              formData.introducer_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                              formData.introducer_id === 'speaker4' ? 'Prof. David Thompson' :
-                              formData.introducer_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              presenter_ids: formData.presenter_ids,
-              presenter_names: formData.presenter_ids?.map((id: string) => 
-                id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                id === 'speaker2' ? 'Dr. Michael Chen' :
-                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                id === 'speaker4' ? 'Prof. David Thompson' :
-                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-              ).filter((name: string) => name),
-              discussion_leader_id: formData.discussion_leader_id,
-              discussion_leader_name: formData.discussion_leader_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                                    formData.discussion_leader_id === 'speaker2' ? 'Dr. Michael Chen' :
-                                    formData.discussion_leader_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                                    formData.discussion_leader_id === 'speaker4' ? 'Prof. David Thompson' :
-                                    formData.discussion_leader_id === 'speaker5' ? 'Dr. Lisa Wang' : ''
-            },
-            capacity: formData.capacity ? parseInt(formData.capacity) : null,
-            is_parallel_meal: formData.is_parallel_meal,
-            parallel_meal_type: formData.parallel_meal_type,
-            meal_type: formData.meal_type,
-            symposium_data: sessionType === 'symposium' ? {
-              subtalks: formData.symposium_subtalks || []
-            } : {},
-            custom_data: sessionType === 'other' ? {
-              custom_fields: formData.custom_data || {}
-            } : {}
-          })
+          .insert(insertData)
 
         if (error) {
-          console.error('Error creating session:', error)
+          console.error('❌ Error creating session:', error)
+          console.error('❌ Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          })
           throw error
         }
+        
+        console.log('✅ Session created successfully')
       }
       
       // Reload sessions from database
+      console.log('🔄 Reloading sessions...')
       await loadSessions()
       handleCloseModal()
+      console.log('🎉 Session submission completed successfully!')
     } catch (error) {
-      console.error('Error saving session:', error)
-      alert('Error saving session. Please try again.')
+      console.error('❌ Error saving session:', error)
+      console.error('❌ Full error object:', error)
+      alert(`Error saving session: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -592,13 +652,19 @@ export default function EditSessionsPage() {
           .eq('id', sessionId)
 
         if (error) {
-          console.error('Error deleting session:', error)
+          console.error('❌ Error deleting session:', error)
+          console.error('❌ Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          })
           throw error
         }
 
         await loadSessions()
       } catch (error) {
-        console.error('Error deleting session:', error)
+        console.error('❌ Error deleting session:', error)
         alert('Error deleting session. Please try again.')
       }
     }
@@ -634,7 +700,13 @@ export default function EditSessionsPage() {
           .eq('id', editingHallId)
 
         if (error) {
-          console.error('Error updating hall:', error)
+          console.error('❌ Error updating hall:', error)
+          console.error('❌ Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          })
           throw error
         }
 
@@ -642,7 +714,7 @@ export default function EditSessionsPage() {
         setEditingHallId(null)
         setEditingHallName('')
       } catch (error) {
-        console.error('Error updating hall:', error)
+        console.error('❌ Error updating hall:', error)
         alert('Error updating hall name. Please try again.')
       }
     }
@@ -683,7 +755,13 @@ export default function EditSessionsPage() {
             .eq('stage_id', getStageId(hallToDelete.name))
 
           if (error) {
-            console.error('Error moving sessions:', error)
+            console.error('❌ Error moving sessions:', error)
+            console.error('❌ Error details:', {
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+              code: error.code
+            })
           }
         }
 
@@ -693,7 +771,13 @@ export default function EditSessionsPage() {
           .eq('id', hallToDelete.id)
 
         if (error) {
-          console.error('Error deleting hall:', error)
+          console.error('❌ Error deleting hall:', error)
+          console.error('❌ Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          })
           throw error
         }
 
@@ -702,7 +786,7 @@ export default function EditSessionsPage() {
         setHallToDelete(null)
         setDeletePassword('')
       } catch (error) {
-        console.error('Error deleting hall:', error)
+        console.error('❌ Error deleting hall:', error)
         alert('Error deleting hall. Please try again.')
       }
     } else {
@@ -733,7 +817,13 @@ export default function EditSessionsPage() {
           .limit(1)
 
         if (tableError) {
-          console.error('Table error:', tableError)
+          console.error('❌ Table error:', tableError)
+          console.error('❌ Error details:', {
+            message: tableError.message,
+            details: tableError.details,
+            hint: tableError.hint,
+            code: tableError.code
+          })
           // If table doesn't exist, create a mock hall locally for now
           const newHall: Hall = {
             id: `hall-${Date.now()}`,
@@ -755,7 +845,13 @@ export default function EditSessionsPage() {
           })
 
         if (error) {
-          console.error('Error adding hall:', error)
+          console.error('❌ Error adding hall:', error)
+          console.error('❌ Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          })
           // Show the actual error message
           alert(`Error adding hall: ${error.message}`)
           return
@@ -765,7 +861,13 @@ export default function EditSessionsPage() {
         setShowAddHallModal(false)
         setNewHallName('')
       } catch (error: any) {
-        console.error('Error adding hall:', error)
+        console.error('❌ Error adding hall:', error)
+        console.error('❌ Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
         alert(`Error adding hall: ${error.message || 'Unknown error'}`)
       }
     }
@@ -784,7 +886,13 @@ export default function EditSessionsPage() {
           .limit(1)
 
         if (tableError) {
-          console.error('Table error:', tableError)
+          console.error('❌ Table error:', tableError)
+          console.error('❌ Error details:', {
+            message: tableError.message,
+            details: tableError.details,
+            hint: tableError.hint,
+            code: tableError.code
+          })
           // If table doesn't exist, create a mock hall locally
           const newHall: Hall = {
             id: `hall-${Date.now()}`,
@@ -804,7 +912,13 @@ export default function EditSessionsPage() {
           })
 
         if (error) {
-          console.error('Error adding hall:', error)
+          console.error('❌ Error adding hall:', error)
+          console.error('❌ Error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          })
           alert(`Error adding hall: ${error.message}`)
           setShowAddHallModal(true)
           return
@@ -812,7 +926,13 @@ export default function EditSessionsPage() {
 
         await loadHalls()
       } catch (error: any) {
-        console.error('Error adding hall:', error)
+        console.error('❌ Error adding hall:', error)
+        console.error('❌ Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
         alert(`Error adding hall: ${error.message || 'Unknown error'}`)
         setShowAddHallModal(true)
       }
@@ -836,7 +956,7 @@ export default function EditSessionsPage() {
         setNewDayName('')
         setNewDayDate('')
       } catch (error) {
-        console.error('Error adding day:', error)
+        console.error('❌ Error adding day:', error)
         alert('Error adding day. Please try again.')
       }
     }
@@ -872,6 +992,36 @@ export default function EditSessionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Debug Panel - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-yellow-50 border-b border-yellow-200 p-4">
+          <div className="max-w-7xl mx-auto">
+            <h3 className="text-sm font-medium text-yellow-800 mb-2">🔧 Debug Information</h3>
+            <div className="text-xs text-yellow-700 space-y-1">
+              <div>📊 Sessions: {sessions.length} | Halls: {halls.length} | Days: {days.length}</div>
+              <div>🌐 Supabase URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Set' : '❌ Missing'}</div>
+              <div>🔑 Supabase Key: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'}</div>
+              <div>🔒 Admin Password: {process.env.NEXT_PUBLIC_ADMIN_PASSWORD ? '✅ Set' : '❌ Missing'}</div>
+              <div>📱 Selected Day: {selectedDay}</div>
+              <button
+                onClick={() => {
+                  console.log('🔍 Current State:', {
+                    sessions,
+                    halls,
+                    days,
+                    selectedDay,
+                    error
+                  })
+                  alert('Check browser console for detailed state information')
+                }}
+                className="text-xs bg-yellow-200 px-2 py-1 rounded hover:bg-yellow-300"
+              >
+                Log State to Console
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header - Same as public page */}
       <div className="bg-white shadow-sm border-b print:shadow-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -956,10 +1106,8 @@ export default function EditSessionsPage() {
                       className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          e.preventDefault()
                           handleSaveHallName()
                         } else if (e.key === 'Escape') {
-                          e.preventDefault()
                           handleCancelEditHall()
                         }
                       }}
@@ -1227,10 +1375,8 @@ export default function EditSessionsPage() {
               placeholder="Enter hall name"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  e.preventDefault()
                   handleAddHall()
                 } else if (e.key === 'Escape') {
-                  e.preventDefault()
                   setShowAddHallModal(false)
                   setNewHallName('')
                 }
