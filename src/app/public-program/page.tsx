@@ -19,6 +19,7 @@ interface Session {
   description?: string
   is_parallel_meal?: boolean
   parallel_meal_type?: string
+  discussion_leader_id?: string
 }
 
 interface TimeSlot {
@@ -161,14 +162,14 @@ export default function PublicProgramPage() {
   }
 
   const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
-  const days = [...new Set(sessions.map(s => s.day_name))]
+  const days = Array.from(new Set(sessions.map(s => s.day_name)))
 
   // Get unique stages/halls
-  const stages = [...new Set(filteredSessions.map(s => s.stage_name))].sort()
+  const stages = Array.from(new Set(filteredSessions.map(s => s.stage_name))).sort()
 
   // Create time slots
   const timeSlots: TimeSlot[] = []
-  const allTimes = [...new Set(filteredSessions.map(s => s.start_time))].sort()
+  const allTimes = Array.from(new Set(filteredSessions.map(s => s.start_time))).sort()
   
   allTimes.forEach(time => {
     const sessionsAtTime = filteredSessions.filter(s => s.start_time === time)
