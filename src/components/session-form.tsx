@@ -25,6 +25,17 @@ interface SessionFormData {
   presenter_ids: string[]
   discussion_leader_id: string
   meal_type: string
+  // Symposium specific
+  symposium_subtalks: Array<{
+    title: string
+    speaker_name: string
+    start_time: string
+    end_time: string
+    topic: string
+    description?: string
+  }>
+  // Custom data for other session types
+  custom_data: Record<string, any>
 }
 
 interface SessionFormProps {
@@ -64,6 +75,8 @@ export function SessionForm({
     presenter_ids: [''],
     discussion_leader_id: '',
     meal_type: '',
+    symposium_subtalks: [],
+    custom_data: {},
     ...initialData
   })
 
@@ -103,6 +116,7 @@ export function SessionForm({
     // Validate required fields based on session type
     const sessionConfig = SESSION_TYPES[currentSessionType]
     const requiredFields = sessionConfig.fields.required
+    const optionalFields = sessionConfig.fields.optional
     
     for (const field of requiredFields) {
       if (!formData[field as keyof typeof formData]) {
@@ -266,6 +280,203 @@ export function SessionForm({
     )
   }
 
+  const renderSymposiumSubtalkFields = () => {
+    const subtalks = formData.symposium_subtalks as Array<{
+      title: string;
+      speaker_name: string;
+      start_time: string;
+      end_time: string;
+      topic: string;
+      description?: string;
+    }>;
+
+    return (
+      <div className="space-y-4">
+        {subtalks.map((subtalk, index) => (
+          <div key={index} className="grid grid-cols-4 gap-4 items-end">
+            <div>
+              <label htmlFor={`subtalk-title-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                Subtalk Title {index + 1}
+              </label>
+              <input
+                type="text"
+                id={`subtalk-title-${index}`}
+                value={subtalk.title}
+                onChange={(e) => {
+                  const newSubtalks = [...subtalks];
+                  newSubtalks[index].title = e.target.value;
+                  setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
+                }}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+              />
+            </div>
+            <div>
+              <label htmlFor={`subtalk-speaker-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                Speaker Name
+              </label>
+              <input
+                type="text"
+                id={`subtalk-speaker-${index}`}
+                value={subtalk.speaker_name}
+                onChange={(e) => {
+                  const newSubtalks = [...subtalks];
+                  newSubtalks[index].speaker_name = e.target.value;
+                  setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
+                }}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+              />
+            </div>
+            <div>
+              <label htmlFor={`subtalk-start-time-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                Start Time
+              </label>
+              <TimePicker
+                value={subtalk.start_time}
+                onChange={(time) => {
+                  const newSubtalks = [...subtalks];
+                  newSubtalks[index].start_time = time;
+                  setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
+                }}
+                label="Start Time"
+                required={true}
+              />
+            </div>
+            <div>
+              <label htmlFor={`subtalk-end-time-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                End Time
+              </label>
+              <TimePicker
+                value={subtalk.end_time}
+                onChange={(time) => {
+                  const newSubtalks = [...subtalks];
+                  newSubtalks[index].end_time = time;
+                  setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
+                }}
+                label="End Time"
+                required={true}
+              />
+            </div>
+            <div>
+              <label htmlFor={`subtalk-topic-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                Topic
+              </label>
+              <input
+                type="text"
+                id={`subtalk-topic-${index}`}
+                value={subtalk.topic}
+                onChange={(e) => {
+                  const newSubtalks = [...subtalks];
+                  newSubtalks[index].topic = e.target.value;
+                  setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
+                }}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+              />
+            </div>
+            <div>
+              <label htmlFor={`subtalk-description-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                id={`subtalk-description-${index}`}
+                value={subtalk.description || ''}
+                onChange={(e) => {
+                  const newSubtalks = [...subtalks];
+                  newSubtalks[index].description = e.target.value;
+                  setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
+                }}
+                rows={1}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+              />
+            </div>
+            {subtalks.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeArrayItem('symposium_subtalks', index)}
+                className="text-red-600 hover:text-red-900 text-sm"
+              >
+                Remove Subtalk
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => addArrayItem('symposium_subtalks')}
+          className="text-sm text-indigo-600 hover:text-indigo-900"
+        >
+          + Add Subtalk
+        </button>
+      </div>
+    );
+  };
+
+  const renderCustomDataFields = () => {
+    const customData = formData.custom_data as Record<string, any>;
+    const keys = Object.keys(customData);
+
+    return (
+      <div className="space-y-4">
+        {keys.map((key, index) => (
+          <div key={key} className="grid grid-cols-2 gap-2 items-end">
+            <div>
+              <label htmlFor={`custom-key-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                Key
+              </label>
+              <input
+                type="text"
+                id={`custom-key-${index}`}
+                value={key}
+                onChange={(e) => {
+                  const newCustomData = { ...customData };
+                  newCustomData[e.target.value] = newCustomData[key];
+                  delete newCustomData[key];
+                  setFormData(prev => ({ ...prev, custom_data: newCustomData }));
+                }}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+              />
+            </div>
+            <div>
+              <label htmlFor={`custom-value-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
+                Value
+              </label>
+              <input
+                type="text"
+                id={`custom-value-${index}`}
+                value={customData[key] || ''}
+                onChange={(e) => {
+                  const newCustomData = { ...customData };
+                  newCustomData[key] = e.target.value;
+                  setFormData(prev => ({ ...prev, custom_data: newCustomData }));
+                }}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+              />
+            </div>
+            {keys.length > 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const newCustomData = { ...customData };
+                  delete newCustomData[key];
+                  setFormData(prev => ({ ...prev, custom_data: newCustomData }));
+                }}
+                className="text-red-600 hover:text-red-900 text-sm"
+              >
+                Remove Custom Field
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setFormData(prev => ({ ...prev, custom_data: { ...prev.custom_data, [`custom_field_${Object.keys(prev.custom_data).length + 1}`]: '' } }))}
+          className="text-sm text-indigo-600 hover:text-indigo-900"
+        >
+          + Add Custom Field
+        </button>
+      </div>
+    );
+  };
+
   const sessionConfig = SESSION_TYPES[currentSessionType]
   const requiredFields = sessionConfig.fields.required
   const optionalFields = sessionConfig.fields.optional
@@ -353,10 +564,32 @@ export function SessionForm({
             if (field === 'parallel_meal_type') {
               return formData.is_parallel_meal ? renderField(field, 'Meal Type', 'select') : null
             }
+            if (field === 'symposium_subtalks') {
+              return currentSessionType === 'symposium' ? renderSymposiumSubtalkFields() : null
+            }
+            if (field === 'custom_data') {
+              return currentSessionType === 'other' ? renderCustomDataFields() : null
+            }
             return null
           })}
         </div>
       </div>
+
+      {/* Symposium Subtalks Section */}
+      {currentSessionType === 'symposium' && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-900">Symposium Subtalks</h3>
+          {renderSymposiumSubtalkFields()}
+        </div>
+      )}
+
+      {/* Custom Data Section */}
+      {currentSessionType === 'other' && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-900">Custom Fields</h3>
+          {renderCustomDataFields()}
+        </div>
+      )}
 
       {/* Form Actions */}
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">

@@ -243,10 +243,44 @@ export default function PublicProgramPage() {
     // Load data from Supabase
     const loadData = async () => {
       await Promise.all([loadSessions(), loadHalls(), loadDays()])
-    setLoading(false)
+      setLoading(false)
     }
     
     loadData()
+
+    // Set up real-time subscriptions for instant updates
+    const sessionsChannel = supabase
+      .channel('public-sessions-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'sessions' }, 
+        (payload) => {
+          console.log('Public: Session change detected:', payload)
+          // Reload sessions when any change occurs
+          loadSessions()
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'stages' }, 
+        (payload) => {
+          console.log('Public: Stage change detected:', payload)
+          // Reload halls when any change occurs
+          loadHalls()
+        }
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'days' }, 
+        (payload) => {
+          console.log('Public: Day change detected:', payload)
+          // Reload days when any change occurs
+          loadDays()
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      sessionsChannel.unsubscribe()
+    }
   }, [])
 
   const getSessionTypeLabel = (type: string) => {
