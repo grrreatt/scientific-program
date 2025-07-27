@@ -1,8 +1,33 @@
--- Scientific Program Database Setup - COMPLETE VERSION
+-- Scientific Program Database Setup - COMPLETE CLEAN VERSION
 -- Run this in your Supabase SQL Editor
 
--- 1. Create stages (halls) table
-CREATE TABLE IF NOT EXISTS stages (
+-- ========================================
+-- STEP 1: CLEAN UP - DROP ALL EXISTING TABLES
+-- ========================================
+
+-- Drop all tables in reverse dependency order
+DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS people CASCADE;
+DROP TABLE IF EXISTS stages CASCADE;
+DROP TABLE IF EXISTS days CASCADE;
+
+-- Drop any existing functions
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+
+-- ========================================
+-- STEP 2: CREATE FRESH TABLES
+-- ========================================
+
+-- 1. Create days table
+CREATE TABLE days (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    date TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Create stages (halls) table
+CREATE TABLE stages (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     capacity INTEGER DEFAULT 100,
@@ -10,16 +35,8 @@ CREATE TABLE IF NOT EXISTS stages (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Create days table
-CREATE TABLE IF NOT EXISTS days (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    date TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- 3. Create people table (for speakers, moderators, etc.)
-CREATE TABLE IF NOT EXISTS people (
+CREATE TABLE people (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     title TEXT,
@@ -31,7 +48,7 @@ CREATE TABLE IF NOT EXISTS people (
 );
 
 -- 4. Create sessions table with ALL form fields
-CREATE TABLE IF NOT EXISTS sessions (
+CREATE TABLE sessions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     
     -- Basic session info
@@ -65,7 +82,17 @@ CREATE TABLE IF NOT EXISTS sessions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. Insert default people
+-- ========================================
+-- STEP 3: INSERT INITIAL DATA
+-- ========================================
+
+-- Insert default days
+INSERT INTO days (name, date) VALUES
+    ('Day 1', 'March 15, 2024'),
+    ('Day 2', 'March 16, 2024'),
+    ('Day 3', 'March 17, 2024');
+
+-- Insert default people
 INSERT INTO people (name, title, organization) VALUES
     ('Dr. Sarah Johnson', 'Professor', 'Medical University'),
     ('Dr. Michael Chen', 'Associate Professor', 'Research Institute'),
@@ -76,7 +103,7 @@ INSERT INTO people (name, title, organization) VALUES
     ('Prof. Maria Garcia', 'Department Head', 'University Hospital'),
     ('Dr. Robert Brown', 'Research Fellow', 'Institute of Medicine');
 
--- 6. Insert default halls
+-- Insert default halls
 INSERT INTO stages (name, capacity) VALUES
     ('Example Hall', 100),
     ('Hall A', 80),
@@ -86,13 +113,7 @@ INSERT INTO stages (name, capacity) VALUES
     ('Seminar Room B', 50),
     ('Workshop Room', 30);
 
--- 7. Insert default days
-INSERT INTO days (name, date) VALUES
-    ('Day 1', 'March 15, 2024'),
-    ('Day 2', 'March 16, 2024'),
-    ('Day 3', 'March 17, 2024');
-
--- 8. Insert sample sessions with complete data structure
+-- Insert sample sessions with complete data structure
 INSERT INTO sessions (
     title, 
     topic, 
@@ -179,32 +200,46 @@ INSERT INTO sessions (
         'lunch'
     );
 
--- 9. Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_sessions_day_id ON sessions(day_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_stage_id ON sessions(stage_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_start_time ON sessions(start_time);
-CREATE INDEX IF NOT EXISTS idx_sessions_session_type ON sessions(session_type);
-CREATE INDEX IF NOT EXISTS idx_people_name ON people(name);
+-- ========================================
+-- STEP 4: CREATE INDEXES FOR PERFORMANCE
+-- ========================================
 
--- 10. Enable Row Level Security (RLS)
+CREATE INDEX idx_sessions_day_id ON sessions(day_id);
+CREATE INDEX idx_sessions_stage_id ON sessions(stage_id);
+CREATE INDEX idx_sessions_start_time ON sessions(start_time);
+CREATE INDEX idx_sessions_session_type ON sessions(session_type);
+CREATE INDEX idx_people_name ON people(name);
+
+-- ========================================
+-- STEP 5: ENABLE ROW LEVEL SECURITY
+-- ========================================
+
 ALTER TABLE stages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE days ENABLE ROW LEVEL SECURITY;
 ALTER TABLE people ENABLE ROW LEVEL SECURITY;
 
--- 11. Create policies for public read access
+-- ========================================
+-- STEP 6: CREATE SECURITY POLICIES
+-- ========================================
+
+-- Public read access
 CREATE POLICY "Allow public read access to stages" ON stages FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to sessions" ON sessions FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to days" ON days FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to people" ON people FOR SELECT USING (true);
 
--- 12. Create policies for authenticated users to manage data
+-- Authenticated user management
 CREATE POLICY "Allow authenticated users to manage stages" ON stages FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users to manage sessions" ON sessions FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users to manage days" ON days FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated users to manage people" ON people FOR ALL USING (auth.role() = 'authenticated');
 
--- 13. Create a function to update the updated_at timestamp
+-- ========================================
+-- STEP 7: CREATE AUTO-UPDATE TRIGGERS
+-- ========================================
+
+-- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -213,7 +248,19 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- 14. Create triggers to automatically update updated_at
+-- Triggers for auto-updating updated_at
 CREATE TRIGGER update_stages_updated_at BEFORE UPDATE ON stages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_sessions_updated_at BEFORE UPDATE ON sessions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_people_updated_at BEFORE UPDATE ON people FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 
+CREATE TRIGGER update_people_updated_at BEFORE UPDATE ON people FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ========================================
+-- STEP 8: VERIFICATION QUERY
+-- ========================================
+
+-- This will show you what was created
+SELECT 
+    'Tables created successfully!' as status,
+    (SELECT COUNT(*) FROM days) as days_count,
+    (SELECT COUNT(*) FROM stages) as stages_count,
+    (SELECT COUNT(*) FROM people) as people_count,
+    (SELECT COUNT(*) FROM sessions) as sessions_count; 
