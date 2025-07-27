@@ -544,9 +544,49 @@ export default function EditSessionsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading sessions...</div>
-        <div className="mt-2 text-sm text-gray-500">Please wait while we fetch your data</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header Skeleton */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex justify-between items-center">
+              <div className="text-center flex-1">
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-48 mx-auto"></div>
+              </div>
+              <div className="flex space-x-3">
+                <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Day Navigation Skeleton */}
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex space-x-8 py-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center mb-8">
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-32 mx-auto mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-48 mx-auto"></div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+              <div className="text-lg text-gray-600 mb-2">Loading your conference program...</div>
+              <div className="text-sm text-gray-500">Connecting to real-time database</div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -554,15 +594,29 @@ export default function EditSessionsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="text-lg text-red-600 mb-2">Error Loading Data</div>
+        <div className="text-center max-w-md">
+          <div className="text-lg text-red-600 mb-2">⚠️ Connection Error</div>
           <div className="text-sm text-gray-600 mb-4">{error}</div>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-          >
-            Refresh Page
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={() => {
+                setError(null)
+                setLoading(true)
+                loadSessions()
+                loadHalls()
+                loadDays()
+              }}
+              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              🔄 Retry Connection
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            >
+              🔄 Refresh Page
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -647,15 +701,15 @@ export default function EditSessionsPage() {
         </div>
       </div>
 
-      {/* Day Navigation */}
-      <div className="bg-white border-b print:hidden">
+      {/* Day Navigation - Sticky */}
+      <div className="sticky top-0 z-30 bg-white border-b print:hidden shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto">
             {days.map(day => (
               <button
                 key={day.id}
                 onClick={() => setSelectedDay(day.name)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                   selectedDay === day.name
                     ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -666,7 +720,7 @@ export default function EditSessionsPage() {
             ))}
             <button
               onClick={handleAddDay}
-              className="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              className="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap"
             >
               + Add Day
             </button>
@@ -793,8 +847,11 @@ export default function EditSessionsPage() {
                                 onClick={() => handleEditSession(sessionInThisSlot)}
                               >
                                 <div className="p-2 h-full flex flex-col">
-                                  {/* Title */}
-                                  <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+                                  {/* Title with tooltip */}
+                                  <div 
+                                    className="text-sm font-semibold text-gray-900 line-clamp-2"
+                                    title={sessionInThisSlot.title}
+                                  >
                                     {sessionInThisSlot.title}
                                   </div>
                                   
@@ -804,6 +861,16 @@ export default function EditSessionsPage() {
                                       {getSessionIcon(sessionInThisSlot.session_type)} {getSessionTypeLabel(sessionInThisSlot.session_type)}
                                     </span>
                                   </div>
+
+                                  {/* Description preview if available */}
+                                  {sessionInThisSlot.description && (
+                                    <div 
+                                      className="text-xs text-gray-600 mt-1 line-clamp-1"
+                                      title={sessionInThisSlot.description}
+                                    >
+                                      {sessionInThisSlot.description}
+                                    </div>
+                                  )}
 
                                   {/* Action Buttons - Show on Hover */}
                                   <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
@@ -831,12 +898,13 @@ export default function EditSessionsPage() {
                             ) : (
                               <button
                                 onClick={() => handleAddSession(hall.id, slot.id)}
-                                className="absolute inset-0 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 group"
                                 title="Add session"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                 </svg>
+                                <span className="text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Add Session</span>
                               </button>
                             )}
                           </div>
@@ -911,9 +979,14 @@ export default function EditSessionsPage() {
               onChange={(e) => setDeletePassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Enter password"
+              autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   confirmDeleteHall()
+                } else if (e.key === 'Escape') {
+                  setIsDeleteModalOpen(false)
+                  setHallToDelete(null)
+                  setDeletePassword('')
                 }
               }}
             />

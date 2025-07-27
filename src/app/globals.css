@@ -113,11 +113,15 @@
     font-size: 12pt;
     line-height: 1.4;
     background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   /* Ensure grid layout works in print */
   .grid {
     display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+    gap: 1rem !important;
   }
 
   /* Hide shadows and borders that don't print well */
@@ -125,6 +129,7 @@
   .shadow,
   .shadow-lg {
     box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
   }
 
   /* Ensure text is readable in print */
@@ -157,6 +162,53 @@
     transform: none !important;
     margin: 0 !important;
     max-width: none !important;
+  }
+
+  /* Print-specific optimizations */
+  .print-optimize {
+    font-size: 11pt !important;
+    line-height: 1.3 !important;
+  }
+
+  .print-header {
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .print-subheader {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .print-session {
+    border: 1px solid #d1d5db !important;
+    padding: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-hall {
+    page-break-inside: avoid !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* Hide interactive elements */
+  button,
+  .btn,
+  .interactive {
+    display: none !important;
+  }
+
+  /* Optimize spacing for print */
+  .space-y-4 > * + * {
+    margin-top: 0.75rem !important;
+  }
+
+  .space-y-2 > * + * {
+    margin-top: 0.5rem !important;
   }
 }
 

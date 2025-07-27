@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { formatTime, formatTimeRange, calculateDuration } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { supabase } from '@/lib/supabase/client'
+import realtimeService from '@/lib/supabase/realtime'
+import { RealtimeStatus } from '@/components/ui/realtime-status'
 
 interface Session {
   id: string
@@ -42,6 +44,8 @@ export default function PublicProgramPage() {
   const [selectedDay, setSelectedDay] = useState('Day 1')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   // Load sessions from Supabase
   const loadSessions = async () => {
@@ -248,38 +252,37 @@ export default function PublicProgramPage() {
     
     loadData()
 
-    // Set up real-time subscriptions for instant updates
-    const sessionsChannel = supabase
-      .channel('public-sessions-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'sessions' }, 
-        (payload) => {
-          console.log('Public: Session change detected:', payload)
-          // Reload sessions when any change occurs
-          loadSessions()
-        }
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'stages' }, 
-        (payload) => {
-          console.log('Public: Stage change detected:', payload)
-          // Reload halls when any change occurs
-          loadHalls()
-        }
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'days' }, 
-        (payload) => {
-          console.log('Public: Day change detected:', payload)
-          // Reload days when any change occurs
-          loadDays()
-        }
-      )
-      .subscribe()
+    // Set up enhanced real-time subscriptions
+    realtimeService.subscribeToAll({
+      onSessionChange: (payload) => {
+        console.log('Public: Session change detected:', payload)
+        setLastUpdate(new Date())
+        loadSessions()
+      },
+      onHallChange: (payload) => {
+        console.log('Public: Hall change detected:', payload)
+        setLastUpdate(new Date())
+        loadHalls()
+      },
+      onDayChange: (payload) => {
+        console.log('Public: Day change detected:', payload)
+        setLastUpdate(new Date())
+        loadDays()
+      },
+      onTimeSlotChange: (payload) => {
+        console.log('Public: Time slot change detected:', payload)
+        setLastUpdate(new Date())
+        // Reload sessions to get updated time slots
+        loadSessions()
+      },
+      onConnectionChange: (status) => {
+        console.log('Public: Connection status changed:', status)
+        setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
+      }
+    })
 
-    // Cleanup subscription on unmount
     return () => {
-      sessionsChannel.unsubscribe()
+      realtimeService.unsubscribeFromAll()
     }
   }, [])
 
@@ -321,9 +324,52 @@ export default function PublicProgramPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading program...</div>
-        <div className="mt-2 text-sm text-gray-500">Please wait while we fetch your data</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header Skeleton */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex justify-between items-center">
+              <div className="text-center flex-1">
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-48 mx-auto"></div>
+              </div>
+              <div className="flex space-x-3">
+                <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Day Navigation Skeleton */}
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex space-x-8 py-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center mb-8">
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-32 mx-auto mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded animate-pulse w-48 mx-auto"></div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="h-6 bg-gray-200 rounded animate-pulse mb-4"></div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -350,13 +396,24 @@ export default function PublicProgramPage() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b print:shadow-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Scientific Conference Program
-            </h1>
-            <p className="mt-2 text-lg text-gray-600">
-              March 15-17, 2024
-            </p>
+          <div className="flex justify-between items-center">
+            <div className="text-center flex-1">
+              <h1 className="text-3xl font-bold text-gray-900">
+                Scientific Conference Program
+              </h1>
+              <p className="mt-2 text-lg text-gray-600">
+                March 15-17, 2024
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <RealtimeStatus />
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 print:hidden"
+              >
+                🖨️ Print Program
+              </button>
+            </div>
           </div>
         </div>
       </div>
