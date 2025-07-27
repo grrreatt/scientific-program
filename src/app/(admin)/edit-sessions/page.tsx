@@ -39,8 +39,8 @@ interface Day {
 
 interface TimeSlot {
   id: string
-  start_time: string
-  end_time: string
+  time: string
+  displayTime: string
 }
 
 export default function EditSessionsPage() {
@@ -66,8 +66,7 @@ export default function EditSessionsPage() {
   const [newDayName, setNewDayName] = useState('')
   const [newDayDate, setNewDayDate] = useState('')
 
-  // No time slots needed - we're removing the time column
-  const timeSlots: TimeSlot[] = []
+  // Time slots will be defined later in the component
 
   // Create mock data for development
   const createMockData = () => {
@@ -373,13 +372,10 @@ export default function EditSessionsPage() {
     setIsSubmitting(true)
     try {
       let hall: Hall | undefined
-      let timeSlot: TimeSlot | undefined
       if (editingSession) {
         hall = halls.find(h => h.name === editingSession.stage_name)
-        timeSlot = timeSlots.find(ts => ts.start_time === editingSession.start_time)
       } else {
         hall = halls.find(h => h.id === sessionToAdd?.hallId)
-        timeSlot = timeSlots.find(ts => ts.id === sessionToAdd?.timeSlotId)
       }
       const insertData = {
         title: formData.title,
