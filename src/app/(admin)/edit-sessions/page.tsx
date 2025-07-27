@@ -413,7 +413,7 @@ export default function EditSessionsPage() {
       console.log('🟢 Supabase response:', response)
       if (response.error) {
         console.error('❌ Supabase error:', response.error)
-        alert(`Error saving session: ${response.error.message || 'Unknown error'}\nDetails: ${response.error.details || ''}`)
+        alert(`Error saving session:\n${JSON.stringify(response.error, null, 2)}`)
         return
       }
       await loadSessions()
