@@ -1,52 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatTime, formatTimeRange, calculateDuration } from '@/lib/utils'
+import { formatTime, formatTimeRange } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
 import { SessionForm } from '@/components/session-form'
 import { supabase } from '@/lib/supabase/client'
-
-interface Session {
-  id: string
-  title: string
-  session_type: string
-  day_name: string
-  stage_name: string
-  start_time: string
-  end_time: string
-  topic?: string
-  speaker_name?: string
-  moderator_name?: string
-  panelist_names?: string[]
-  description?: string
-  is_parallel_meal?: boolean
-  parallel_meal_type?: string
-  discussion_leader_id?: string
-}
-
-interface Hall {
-  id: string
-  name: string
-  color: string
-}
-
-interface Day {
-  id: string
-  name: string
-  date: string
-}
-
-interface TimeSlot {
-  id: string
-  time: string
-  displayTime: string
-}
+import { Session, DayTimeSlot, Hall, Day } from '@/types'
 
 export default function EditSessionsPage() {
-  // Error state for better error handling
   const [error, setError] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
+  const [timeSlots, setTimeSlots] = useState<DayTimeSlot[]>([])
   const [halls, setHalls] = useState<Hall[]>([])
   const [days, setDays] = useState<Day[]>([])
   const [selectedDay, setSelectedDay] = useState<string>('Day 1')
@@ -54,8 +19,6 @@ export default function EditSessionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [editingHallId, setEditingHallId] = useState<string | null>(null)
-  const [editingHallName, setEditingHallName] = useState('')
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [hallToDelete, setHallToDelete] = useState<Hall | null>(null)
   const [deletePassword, setDeletePassword] = useState('')
@@ -65,115 +28,56 @@ export default function EditSessionsPage() {
   const [showAddDayModal, setShowAddDayModal] = useState(false)
   const [newDayName, setNewDayName] = useState('')
   const [newDayDate, setNewDayDate] = useState('')
+  const [editingTimeSlot, setEditingTimeSlot] = useState<DayTimeSlot | null>(null)
 
-  // Time slots will be defined later in the component
-
-  // Create mock data for development
-  const createMockData = () => {
-    const mockDay: Day = {
-      id: 'day-1',
-      name: 'Day 1',
-      date: 'March 15, 2024'
-    }
-
-    const mockHall: Hall = {
-      id: 'mock-hall-1',
-      name: 'Example Hall',
-      color: 'bg-blue-50 border-blue-200'
-    }
-
-    const mockSession: Session = {
-      id: 'mock-session-1',
-      title: 'Mock Session',
-        session_type: 'lecture',
-        day_name: 'Day 1',
-      stage_name: 'Example Hall',
-        start_time: '09:00',
-      end_time: '10:00',
-      topic: 'Introduction to Mock Data',
-      speaker_name: 'Dr. Mock Speaker',
-      description: 'This is a mock session for testing purposes.'
-    }
-
-    return { mockDay, mockHall, mockSession }
-  }
-
-  // Load sessions from Supabase
+  // Load sessions using the new view
   const loadSessions = async () => {
     try {
       console.log('🔄 Loading sessions from Supabase...')
       const { data, error } = await supabase
-        .from('sessions')
+        .from('sessions_with_times')
         .select('*')
         .order('start_time', { ascending: true })
 
       if (error) {
         console.error('❌ Error loading sessions:', error)
-        console.error('❌ Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
-        // If no data, create mock data
-        const { mockSession } = createMockData()
-        setSessions([mockSession])
+        setSessions([])
         return
       }
 
       console.log('✅ Sessions loaded successfully:', data?.length || 0, 'sessions')
-
-      // Helper function to map stage_id to stage_name
-      const getStageName = (stageId: string) => {
-        switch (stageId) {
-          case 'main-hall': return 'Main Hall'
-          case 'seminar-a': return 'Seminar Room A'
-          case 'seminar-b': return 'Seminar Room B'
-          case 'example-hall': return 'Example Hall'
-          case 'hall-a': return 'Hall A'
-          case 'hall-b': return 'Hall B'
-          default: return 'Workshop Room'
-        }
-      }
-
-      // Helper function to map day_id to day_name
-      const getDayName = (dayId: string) => {
-        switch (dayId) {
-          case 'day1': return 'Day 1'
-          case 'day2': return 'Day 2'
-          case 'day3': return 'Day 3'
-          case 'day-1': return 'Day 1'
-          default: return 'Day 1'
-        }
-      }
-
-      // Transform Supabase data to our Session format
-      const transformedSessions: Session[] = data.map((session: any) => ({
-        id: session.id,
-        title: session.title,
-        session_type: session.session_type,
-        day_name: getDayName(session.day_id),
-        stage_name: getStageName(session.stage_id),
-        start_time: session.start_time,
-        end_time: session.end_time,
-        topic: session.topic,
-        speaker_name: session.people_data?.speaker_name,
-        moderator_name: session.people_data?.moderator_name,
-        panelist_names: session.people_data?.panelist_names,
-        description: session.description,
-        is_parallel_meal: session.is_parallel_meal,
-        parallel_meal_type: session.parallel_meal_type,
-        discussion_leader_id: session.people_data?.discussion_leader_id
-      }))
-
-      setSessions(transformedSessions.length > 0 ? transformedSessions : [createMockData().mockSession])
+      setSessions(data || [])
       setError(null)
     } catch (error) {
       console.error('❌ Exception loading sessions:', error)
       setError('Failed to load sessions. Please refresh the page.')
-      // Fallback to mock data
-      const { mockSession } = createMockData()
-      setSessions([mockSession])
+      setSessions([])
+    }
+  }
+
+  // Load time slots for the selected day
+  const loadTimeSlots = async () => {
+    try {
+      const selectedDayData = days.find(d => d.name === selectedDay)
+      if (!selectedDayData) return
+
+      const { data, error } = await supabase
+        .from('day_time_slots')
+        .select('*')
+        .eq('day_id', selectedDayData.id)
+        .order('slot_order', { ascending: true })
+
+      if (error) {
+        console.error('❌ Error loading time slots:', error)
+        setTimeSlots([])
+        return
+      }
+
+      console.log('✅ Time slots loaded successfully:', data?.length || 0, 'slots')
+      setTimeSlots(data || [])
+    } catch (error) {
+      console.error('❌ Exception loading time slots:', error)
+      setTimeSlots([])
     }
   }
 
@@ -184,116 +88,93 @@ export default function EditSessionsPage() {
       const { data, error } = await supabase
         .from('stages')
         .select('*')
-        // .order('name', { ascending: true }) // Remove alphabetical ordering
+        .order('name', { ascending: true })
 
       if (error) {
         console.error('❌ Error loading halls:', error)
-        console.error('❌ Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
-        // If no data, create mock data
-        const { mockHall } = createMockData()
-        setHalls([mockHall])
+        setHalls([])
         return
       }
 
       console.log('✅ Halls loaded successfully:', data?.length || 0, 'halls')
-      console.log('📋 Hall data:', data)
-
-      // Transform Supabase data to our Hall format
-      const transformedHalls: Hall[] = data.map((stage: any) => ({
-        id: stage.id,
-        name: stage.name,
-        color: 'bg-gray-50 border-gray-200'
-      }))
-
-      // Initialize with 3 default halls if no data from database
-      const defaultHalls: Hall[] = [
-        { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
-        { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
-        { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
-      ]
-      
-      const finalHalls = transformedHalls.length > 0 ? transformedHalls : defaultHalls
-      console.log('🎯 Setting halls to:', finalHalls)
-      setHalls(finalHalls)
+      setHalls(data || [])
       setError(null)
     } catch (error) {
       console.error('❌ Exception loading halls:', error)
       setError('Failed to load halls. Please refresh the page.')
-      // Fallback to default halls
-      const defaultHalls: Hall[] = [
-        { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
-        { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
-        { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
-      ]
-      setHalls(defaultHalls)
+      setHalls([])
     }
   }
 
-  // Load days from Supabase (or create mock)
+  // Load days from Supabase
   const loadDays = async () => {
     try {
-      // For now, we'll create mock days since we don't have a days table yet
-      const mockDays: Day[] = [
-        { id: 'day-1', name: 'Day 1', date: 'March 15, 2024' },
-        { id: 'day-2', name: 'Day 2', date: 'March 16, 2024' },
-        { id: 'day-3', name: 'Day 3', date: 'March 17, 2024' }
-      ]
-      setDays(mockDays)
+      const { data, error } = await supabase
+        .from('conference_days')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (error) {
+        console.error('❌ Error loading days:', error)
+        // Create default days if none exist
+        const defaultDays: Day[] = [
+          { id: 'day-1', name: 'Day 1', date: '2024-03-15' },
+          { id: 'day-2', name: 'Day 2', date: '2024-03-16' },
+          { id: 'day-3', name: 'Day 3', date: '2024-03-17' }
+        ]
+        setDays(defaultDays)
+        return
+      }
+
+      setDays(data || [])
     } catch (error) {
       console.error('Error loading days:', error)
-      const { mockDay } = createMockData()
-      setDays([mockDay])
+      const defaultDays: Day[] = [
+        { id: 'day-1', name: 'Day 1', date: '2024-03-15' },
+        { id: 'day-2', name: 'Day 2', date: '2024-03-16' },
+        { id: 'day-3', name: 'Day 3', date: '2024-03-17' }
+      ]
+      setDays(defaultDays)
     }
   }
 
   useEffect(() => {
-    // Load data from Supabase
     const loadData = async () => {
       await Promise.all([loadSessions(), loadHalls(), loadDays()])
-    setLoading(false)
+      setLoading(false)
     }
     
     loadData()
 
-    // Set up real-time subscriptions for instant updates
+    // Set up real-time subscriptions
     const sessionsChannel = supabase
       .channel('sessions-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'sessions' }, 
-        (payload) => {
-          console.log('Session change detected:', payload)
-          // Reload sessions when any change occurs
-          loadSessions()
-        }
+        () => loadSessions()
       )
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'stages' }, 
-        (payload) => {
-          console.log('Stage change detected:', payload)
-          // Reload halls when any change occurs
-          loadHalls()
-        }
+        () => loadHalls()
       )
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'days' }, 
-        (payload) => {
-          console.log('Day change detected:', payload)
-          // Reload days when any change occurs
-          loadDays()
-        }
+        { event: '*', schema: 'public', table: 'conference_days' }, 
+        () => loadDays()
+      )
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'day_time_slots' }, 
+        () => loadTimeSlots()
       )
       .subscribe()
 
-    // Cleanup subscription on unmount
     return () => {
       sessionsChannel.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    loadTimeSlots()
+  }, [selectedDay, days])
 
   const getSessionTypeLabel = (type: string) => {
     return SESSION_TYPES[type]?.name || type
@@ -329,21 +210,13 @@ export default function EditSessionsPage() {
     return icons[type] || '📋'
   }
 
-  // Find session for a specific hall (no time slot needed)
-  const findSession = (hallId: string): Session | null => {
-    return sessions.find(session => 
-      session.day_name === selectedDay &&
-      session.stage_name === halls.find(h => h.id === hallId)?.name
-    ) || null
-  }
-
   const handleEditSession = (session: Session) => {
     setEditingSession(session)
     setIsModalOpen(true)
   }
 
-  const handleAddSession = (hallId: string) => {
-    setSessionToAdd({ hallId, timeSlotId: 'default' })
+  const handleAddSession = (hallId: string, timeSlotId: string) => {
+    setSessionToAdd({ hallId, timeSlotId })
     setEditingSession(null)
     setIsModalOpen(true)
   }
@@ -359,49 +232,27 @@ export default function EditSessionsPage() {
     console.log('📝 Form data:', formData)
     console.log('🎯 Session type:', sessionType)
 
-    // Frontend validation for time
-    if (!formData.start_time || !formData.end_time) {
-      alert('Start and end times are required.')
-      return
-    }
-    if (formData.start_time >= formData.end_time) {
-      alert('End time must be after start time.')
-      return
-    }
-
     setIsSubmitting(true)
     try {
-      let hall: Hall | undefined
-      if (editingSession) {
-        hall = halls.find(h => h.name === editingSession.stage_name)
-      } else {
-        hall = halls.find(h => h.id === sessionToAdd?.hallId)
+      const selectedDayData = days.find(d => d.name === selectedDay)
+      if (!selectedDayData) {
+        alert('Selected day not found!')
+        return
       }
+
       const insertData = {
         title: formData.title,
         session_type: sessionType,
-        day_id: selectedDay === 'Day 1' ? 'day1' : selectedDay === 'Day 2' ? 'day2' : selectedDay === 'Day 3' ? 'day3' : formData.day_id,
-        stage_id: hall
-          ? (hall.name === 'Main Hall' ? 'main-hall'
-            : hall.name === 'Seminar Room A' ? 'seminar-a'
-            : hall.name === 'Seminar Room B' ? 'seminar-b'
-            : hall.name === 'Example Hall' ? 'example-hall'
-            : hall.name === 'Hall A' ? 'hall-a'
-            : hall.name === 'Hall B' ? 'hall-b'
-            : hall.id) // fallback to hall.id for custom halls
-          : (() => { alert('Error: Hall not found!'); throw new Error('Hall not found'); })(),
-        start_time: formData.start_time,
-        end_time: formData.end_time,
+        day_id: selectedDayData.id,
+        stage_id: sessionToAdd?.hallId || editingSession?.stage_id,
+        time_slot_id: sessionToAdd?.timeSlotId || editingSession?.time_slot_id,
         topic: formData.topic,
         description: formData.description,
-        people_data: formData.people_data || {},
-        capacity: formData.capacity ? parseInt(formData.capacity) : null,
         is_parallel_meal: formData.is_parallel_meal,
         parallel_meal_type: formData.parallel_meal_type,
-        meal_type: formData.meal_type,
-        symposium_data: sessionType === 'symposium' ? { subtalks: formData.symposium_subtalks || [] } : {},
-        custom_data: sessionType === 'other' ? { custom_fields: formData.custom_data || {} } : {}
+        data: formData.data || {}
       }
+
       console.log('📤 Insert/Update payload:', insertData)
       let response
       if (editingSession) {
@@ -409,12 +260,14 @@ export default function EditSessionsPage() {
       } else {
         response = await supabase.from('sessions').insert(insertData)
       }
+
       console.log('🟢 Supabase response:', response)
       if (response.error) {
         console.error('❌ Supabase error:', response.error)
         alert(`Error saving session:\n${JSON.stringify(response.error, null, 2)}`)
         return
       }
+
       await loadSessions()
       handleCloseModal()
       console.log('🎉 Session submission completed successfully!')
@@ -441,12 +294,6 @@ export default function EditSessionsPage() {
 
         if (error) {
           console.error('❌ Error deleting session:', error)
-          console.error('❌ Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          })
           throw error
         }
 
@@ -458,76 +305,9 @@ export default function EditSessionsPage() {
     }
   }
 
-  const handleEditHallName = (hallId: string) => {
-    const hall = halls.find(h => h.id === hallId)
-    if (hall) {
-      setEditingHallId(hallId)
-      setEditingHallName(hall.name)
-    }
-  }
-
-  const handleSaveHallName = async () => {
-    if (!editingHallId || !editingHallName.trim()) {
-      alert('Hall name cannot be empty')
-      return
-    }
-    
-    const existingHall = halls.find(h => h.name === editingHallName.trim() && h.id !== editingHallId)
-    if (existingHall) {
-      alert('A hall with this name already exists')
-      return
-    }
-    
-    const sanitizedName = editingHallName.trim().replace(/[<>]/g, '')
-    
-    if (editingHallId && sanitizedName) {
-      try {
-        const { error } = await supabase
-          .from('stages')
-          .update({ name: sanitizedName })
-          .eq('id', editingHallId)
-
-        if (error) {
-          console.error('❌ Error updating hall:', error)
-          console.error('❌ Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          })
-          throw error
-        }
-
-        await loadHalls()
-        setEditingHallId(null)
-        setEditingHallName('')
-      } catch (error) {
-        console.error('❌ Error updating hall:', error)
-        alert('Error updating hall name. Please try again.')
-      }
-    }
-  }
-
-  const handleCancelEditHall = () => {
-    setEditingHallId(null)
-    setEditingHallName('')
-  }
-
   const handleDeleteHall = (hall: Hall) => {
     setHallToDelete(hall)
     setIsDeleteModalOpen(true)
-  }
-
-  const getStageId = (hallName: string) => {
-    switch (hallName) {
-      case 'Main Hall': return 'main-hall'
-      case 'Seminar Room A': return 'seminar-a'
-      case 'Seminar Room B': return 'seminar-b'
-      case 'Example Hall': return 'example-hall'
-      case 'Hall A': return 'hall-a'
-      case 'Hall B': return 'hall-b'
-      default: return 'workshop'
-    }
   }
 
   const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '1234'
@@ -535,21 +315,16 @@ export default function EditSessionsPage() {
   const confirmDeleteHall = async () => {
     if (deletePassword === ADMIN_PASSWORD && hallToDelete) {
       try {
+        // Move sessions to first available hall
         const firstHall = halls.find(h => h.id !== hallToDelete.id)
         if (firstHall) {
           const { error } = await supabase
             .from('sessions')
-            .update({ stage_id: getStageId(firstHall.name) })
-            .eq('stage_id', getStageId(hallToDelete.name))
+            .update({ stage_id: firstHall.id })
+            .eq('stage_id', hallToDelete.id)
 
           if (error) {
             console.error('❌ Error moving sessions:', error)
-            console.error('❌ Error details:', {
-              message: error.message,
-              details: error.details,
-              hint: error.hint,
-              code: error.code
-            })
           }
         }
 
@@ -560,12 +335,6 @@ export default function EditSessionsPage() {
 
         if (error) {
           console.error('❌ Error deleting hall:', error)
-          console.error('❌ Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          })
           throw error
         }
 
@@ -598,33 +367,6 @@ export default function EditSessionsPage() {
     
     if (sanitizedName) {
       try {
-        // First, let's check if the stages table exists and get its structure
-        const { data: tableInfo, error: tableError } = await supabase
-          .from('stages')
-          .select('*')
-          .limit(1)
-
-        if (tableError) {
-          console.error('❌ Table error:', tableError)
-          console.error('❌ Error details:', {
-            message: tableError.message,
-            details: tableError.details,
-            hint: tableError.hint,
-            code: tableError.code
-          })
-          // If table doesn't exist, create a mock hall locally for now
-          const newHall: Hall = {
-            id: `hall-${Date.now()}`,
-            name: sanitizedName,
-            color: 'bg-gray-50 border-gray-200'
-          }
-          setHalls(prev => [...prev, newHall])
-          setShowAddHallModal(false)
-          setNewHallName('')
-          alert('Hall added locally (database table may not exist yet)')
-          return
-        }
-
         const { error } = await supabase
           .from('stages')
           .insert({
@@ -634,13 +376,6 @@ export default function EditSessionsPage() {
 
         if (error) {
           console.error('❌ Error adding hall:', error)
-          console.error('❌ Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          })
-          // Show the actual error message
           alert(`Error adding hall: ${error.message}`)
           return
         }
@@ -650,48 +385,17 @@ export default function EditSessionsPage() {
         setNewHallName('')
       } catch (error: any) {
         console.error('❌ Error adding hall:', error)
-        console.error('❌ Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
         alert(`Error adding hall: ${error.message || 'Unknown error'}`)
       }
     }
   }
 
   const handleQuickAddHall = async () => {
-    const hallNames = ['Workshop Room', 'Auditorium', 'Conference Room', 'Exhibition Hall', 'Outdoor Stage']
+    const hallNames = ['I', 'II', 'III', 'IV', 'V']
     const availableNames = hallNames.filter(name => !halls.some(hall => hall.name === name))
     
     if (availableNames.length > 0) {
       try {
-        // Check if stages table exists
-        const { data: tableInfo, error: tableError } = await supabase
-          .from('stages')
-          .select('*')
-          .limit(1)
-
-        if (tableError) {
-          console.error('❌ Table error:', tableError)
-          console.error('❌ Error details:', {
-            message: tableError.message,
-            details: tableError.details,
-            hint: tableError.hint,
-            code: tableError.code
-          })
-          // If table doesn't exist, create a mock hall locally
-          const newHall: Hall = {
-            id: `hall-${Date.now()}`,
-            name: availableNames[0],
-            color: 'bg-gray-50 border-gray-200'
-          }
-          setHalls(prev => [...prev, newHall])
-          alert('Hall added locally (database table may not exist yet)')
-          return
-        }
-
         const { error } = await supabase
           .from('stages')
           .insert({
@@ -701,12 +405,6 @@ export default function EditSessionsPage() {
 
         if (error) {
           console.error('❌ Error adding hall:', error)
-          console.error('❌ Error details:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code
-          })
           alert(`Error adding hall: ${error.message}`)
           setShowAddHallModal(true)
           return
@@ -715,12 +413,6 @@ export default function EditSessionsPage() {
         await loadHalls()
       } catch (error: any) {
         console.error('❌ Error adding hall:', error)
-        console.error('❌ Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
         alert(`Error adding hall: ${error.message || 'Unknown error'}`)
         setShowAddHallModal(true)
       }
@@ -736,10 +428,20 @@ export default function EditSessionsPage() {
   const handleSaveDay = async () => {
     if (newDayName.trim() && newDayDate) {
       try {
-        // For now, we'll add it to the days list locally
-        // In a real app, you'd save this to a days table in the database
-        alert(`Day "${newDayName}" with date "${newDayDate}" would be added to the database. This feature needs backend implementation.`)
-        
+        const { error } = await supabase
+          .from('conference_days')
+          .insert({
+            name: newDayName.trim(),
+            date: newDayDate
+          })
+
+        if (error) {
+          console.error('❌ Error adding day:', error)
+          alert('Error adding day. Please try again.')
+          return
+        }
+
+        await loadDays()
         setShowAddDayModal(false)
         setNewDayName('')
         setNewDayDate('')
@@ -750,34 +452,37 @@ export default function EditSessionsPage() {
     }
   }
 
+  const handleEditTimeSlot = (timeSlot: DayTimeSlot) => {
+    setEditingTimeSlot(timeSlot)
+  }
+
+  const handleSaveTimeSlot = async (timeSlotId: string, startTime: string, endTime: string, isBreak: boolean, breakTitle?: string) => {
+    try {
+      const { error } = await supabase
+        .from('day_time_slots')
+        .update({
+          start_time: startTime,
+          end_time: endTime,
+          is_break: isBreak,
+          break_title: breakTitle
+        })
+        .eq('id', timeSlotId)
+
+      if (error) {
+        console.error('❌ Error updating time slot:', error)
+        alert('Error updating time slot. Please try again.')
+        return
+      }
+
+      await loadTimeSlots()
+      setEditingTimeSlot(null)
+    } catch (error) {
+      console.error('❌ Error updating time slot:', error)
+      alert('Error updating time slot. Please try again.')
+    }
+  }
+
   const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
-
-  // Define time slots for the sticky time column (8:00 AM to 8:00 PM, every 30 minutes)
-  const timeSlots = Array.from({ length: 25 }, (_, i) => {
-    const hour = Math.floor(i / 2) + 8;
-    const minute = (i % 2) * 30;
-    const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    return {
-      id: `time-${i}`,
-      time: timeString,
-      displayTime: `${hour}:${minute === 0 ? '00' : minute}`
-    };
-  });
-
-  // Helper function to get vertical position based on time
-  const getTimePosition = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const totalMinutes = (hours - 8) * 60 + minutes;
-    return (totalMinutes / 30) * 40; // 40px per 30-minute slot
-  };
-
-  // Helper function to get session height based on duration
-  const getSessionHeight = (startTime: string, endTime: string) => {
-    const [startHours, startMinutes] = startTime.split(':').map(Number);
-    const [endHours, endMinutes] = endTime.split(':').map(Number);
-    const durationMinutes = (endHours - startHours) * 60 + (endMinutes - startMinutes);
-    return Math.max((durationMinutes / 30) * 40, 60); // Minimum 60px height
-  };
 
   if (loading) {
     return (
@@ -813,31 +518,17 @@ export default function EditSessionsPage() {
           <div className="max-w-7xl mx-auto">
             <h3 className="text-sm font-medium text-yellow-800 mb-2">🔧 Debug Information</h3>
             <div className="text-xs text-yellow-700 space-y-1">
-              <div>📊 Sessions: {sessions.length} | Halls: {halls.length} | Days: {days.length}</div>
+              <div>📊 Sessions: {sessions.length} | Halls: {halls.length} | Days: {days.length} | Time Slots: {timeSlots.length}</div>
               <div>🌐 Supabase URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Set' : '❌ Missing'}</div>
               <div>🔑 Supabase Key: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'}</div>
               <div>🔒 Admin Password: {process.env.NEXT_PUBLIC_ADMIN_PASSWORD ? '✅ Set' : '❌ Missing'}</div>
               <div>📱 Selected Day: {selectedDay}</div>
-              <button
-                onClick={() => {
-                  console.log('🔍 Current State:', {
-                    sessions,
-                    halls,
-                    days,
-                    selectedDay,
-                    error
-                  })
-                  alert('Check browser console for detailed state information')
-                }}
-                className="text-xs bg-yellow-200 px-2 py-1 rounded hover:bg-yellow-300"
-              >
-                Log State to Console
-              </button>
             </div>
           </div>
         </div>
       )}
-      {/* Header - Same as public page */}
+
+      {/* Header */}
       <div className="bg-white shadow-sm border-b print:shadow-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
@@ -850,24 +541,24 @@ export default function EditSessionsPage() {
               </p>
             </div>
             <div className="flex space-x-3">
-            <button
+              <button
                 onClick={handleAddDay}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Add Day
               </button>
-            <button
+              <button
                 onClick={handleQuickAddHall}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
+              >
                 Add Hall
-            </button>
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Day Navigation - Same as public page */}
+      {/* Day Navigation */}
       <div className="bg-white border-b print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
@@ -894,7 +585,7 @@ export default function EditSessionsPage() {
         </div>
       </div>
 
-      {/* Program Content - Redesigned Grid Layout */}
+      {/* Program Content - New Grid Layout */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Day Header */}
         <div className="mb-8 text-center print:mb-4">
@@ -911,7 +602,7 @@ export default function EditSessionsPage() {
           {/* Grid Header */}
           <div className="flex border-b border-gray-200 bg-gray-50">
             {/* Time Column Header */}
-            <div className="sticky left-0 z-20 bg-gray-50 border-r border-gray-200 px-4 py-3 min-w-[100px] flex items-center justify-center">
+            <div className="sticky left-0 z-20 bg-gray-50 border-r border-gray-200 px-4 py-3 min-w-[120px] flex items-center justify-center">
               <span className="text-sm font-semibold text-gray-700">Time</span>
             </div>
             
@@ -925,21 +616,12 @@ export default function EditSessionsPage() {
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-semibold text-gray-900">{hall.name}</span>
                     <span className="text-xs text-gray-500">
-                      ({filteredSessions.filter(s => s.stage_name === hall.name).length} sessions)
+                      ({filteredSessions.filter(s => s.stage_id === hall.id).length} sessions)
                     </span>
                   </div>
                   
                   {/* Hall Actions */}
                   <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleEditHallName(hall.id)}
-                      className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                      title="Edit hall name"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
                     <button
                       onClick={() => handleDeleteHall(hall)}
                       className="p-1 text-gray-400 hover:text-red-600 rounded"
@@ -962,11 +644,36 @@ export default function EditSessionsPage() {
               {timeSlots.map((slot) => (
                 <div 
                   key={slot.id} 
-                  className="h-10 flex items-center justify-center border-b border-gray-100 px-4 min-w-[100px]"
+                  className="h-16 flex items-center justify-center border-b border-gray-100 px-4 min-w-[120px] relative"
                 >
-                  <span className="text-xs text-gray-500 font-medium">
-                    {slot.displayTime}
-                  </span>
+                  {editingTimeSlot?.id === slot.id ? (
+                    <div className="flex flex-col space-y-1 w-full">
+                      <input
+                        type="time"
+                        defaultValue={slot.start_time}
+                        className="text-xs border rounded px-1"
+                        onBlur={(e) => handleSaveTimeSlot(slot.id, e.target.value, slot.end_time, slot.is_break, slot.break_title)}
+                      />
+                      <input
+                        type="time"
+                        defaultValue={slot.end_time}
+                        className="text-xs border rounded px-1"
+                        onBlur={(e) => handleSaveTimeSlot(slot.id, slot.start_time, e.target.value, slot.is_break, slot.break_title)}
+                      />
+                    </div>
+                  ) : (
+                    <div 
+                      className="text-xs text-gray-500 font-medium cursor-pointer hover:text-gray-700"
+                      onClick={() => handleEditTimeSlot(slot)}
+                    >
+                      {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                      {slot.is_break && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          {slot.break_title || 'Break'}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -974,114 +681,78 @@ export default function EditSessionsPage() {
             {/* Halls Columns */}
             <div className="flex">
               {halls.map((hall) => {
-                const hallSessions = filteredSessions
-                  .filter(session => session.stage_name === hall.name)
-                  .sort((a, b) => a.start_time.localeCompare(b.start_time));
-
                 return (
                   <div 
                     key={hall.id} 
                     className="min-w-[280px] relative border-r border-gray-200 last:border-r-0"
                   >
                     {/* Time Grid Background */}
-                    <div className="relative" style={{ height: timeSlots.length * 40 }}>
-                      {timeSlots.map((slot, index) => (
-                        <div 
-                          key={slot.id} 
-                          className="h-10 border-b border-gray-100"
-                        />
-                      ))}
-
-                      {/* Sessions */}
-                      {hallSessions.length === 0 ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-                          <div className="text-gray-400 text-sm mb-3">No sessions yet</div>
-                          <button
-                            onClick={() => handleAddSession(hall.id)}
-                            className="bg-indigo-600 text-white hover:bg-indigo-700 rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-colors"
+                    <div className="relative" style={{ height: timeSlots.length * 64 }}>
+                      {timeSlots.map((slot) => {
+                        const sessionInThisSlot = filteredSessions.find(
+                          session => session.stage_id === hall.id && session.time_slot_id === slot.id
+                        );
+                        
+                        return (
+                          <div 
+                            key={slot.id} 
+                            className="h-16 border-b border-gray-100 relative"
                           >
-                            + Add Session
-                          </button>
-                        </div>
-                      ) : (
-                        hallSessions.map((session) => {
-                          const top = getTimePosition(session.start_time);
-                          const height = getSessionHeight(session.start_time, session.end_time);
-                          
-                          return (
-                            <div
-                              key={session.id}
-                              className="absolute left-2 right-2 rounded-lg shadow-md border border-gray-200 bg-white hover:shadow-lg transition-all duration-200 cursor-pointer group"
-                              style={{ 
-                                top: `${top}px`, 
-                                height: `${height}px`,
-                                minHeight: '60px'
-                              }}
-                              onClick={() => handleEditSession(session)}
-                            >
-                              <div className="p-3 h-full flex flex-col">
-                                {/* Time Range */}
-                                <div className="text-xs font-semibold text-indigo-600 mb-1">
-                                  {formatTimeRange(session.start_time, session.end_time)}
-                                </div>
-                                
-                                {/* Title */}
-                                <div className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2">
-                                  {session.title}
-                                </div>
-                                
-                                {/* Description */}
-                                {session.description && (
-                                  <div className="text-xs text-gray-600 line-clamp-2 flex-1">
-                                    {session.description}
+                            {sessionInThisSlot ? (
+                              <div
+                                className="absolute left-2 right-2 top-1 bottom-1 rounded-lg shadow-md border border-gray-200 bg-white hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                                onClick={() => handleEditSession(sessionInThisSlot)}
+                              >
+                                <div className="p-2 h-full flex flex-col">
+                                  {/* Title */}
+                                  <div className="text-sm font-semibold text-gray-900 line-clamp-2">
+                                    {sessionInThisSlot.title}
                                   </div>
-                                )}
-                                
-                                {/* Session Type Badge */}
-                                <div className="mt-2">
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(session.session_type)}`}>
-                                    {getSessionIcon(session.session_type)} {getSessionTypeLabel(session.session_type)}
-                                  </span>
-                                </div>
+                                  
+                                  {/* Session Type Badge */}
+                                  <div className="mt-1">
+                                    <span className={`inline-flex items-center px-1 py-0.5 rounded-full text-xs font-medium ${getSessionTypeColor(sessionInThisSlot.session_type)}`}>
+                                      {getSessionIcon(sessionInThisSlot.session_type)} {getSessionTypeLabel(sessionInThisSlot.session_type)}
+                                    </span>
+                                  </div>
 
-                                {/* Action Buttons - Show on Hover */}
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleEditSession(session); }}
-                                    className="p-1 bg-white rounded shadow-sm text-gray-600 hover:text-indigo-600"
-                                    title="Edit session"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteSession(session.id); }}
-                                    className="p-1 bg-white rounded shadow-sm text-gray-600 hover:text-red-600"
-                                    title="Delete session"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
+                                  {/* Action Buttons - Show on Hover */}
+                                  <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleEditSession(sessionInThisSlot); }}
+                                      className="p-1 bg-white rounded shadow-sm text-gray-600 hover:text-indigo-600"
+                                      title="Edit session"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteSession(sessionInThisSlot.id); }}
+                                      className="p-1 bg-white rounded shadow-sm text-gray-600 hover:text-red-600"
+                                      title="Delete session"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })
-                      )}
-
-                      {/* Add Session Button - Always visible if there are sessions */}
-                      {hallSessions.length > 0 && (
-                        <div className="absolute bottom-4 left-2 right-2">
-                          <button
-                            onClick={() => handleAddSession(hall.id)}
-                            className="w-full bg-indigo-600 text-white hover:bg-indigo-700 rounded-md px-3 py-2 text-sm font-medium shadow-sm transition-colors"
-                          >
-                            + Add Session
-                          </button>
-                        </div>
-                      )}
+                            ) : (
+                              <button
+                                onClick={() => handleAddSession(hall.id, slot.id)}
+                                className="absolute inset-0 flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                title="Add session"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -1090,19 +761,6 @@ export default function EditSessionsPage() {
           </div>
         </div>
       </div>
-
-        {/* Print Button */}
-        <div className="mt-8 text-center print:hidden">
-          <button
-            onClick={() => window.print()}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Print Program
-          </button>
-        </div>
 
       {/* Session Modal */}
       <Modal
@@ -1115,26 +773,26 @@ export default function EditSessionsPage() {
           initialData={editingSession ? {
             title: editingSession?.title ?? '',
             topic: editingSession?.topic ?? '',
-            day_id: editingSession?.day_name === 'Day 1' ? 'day1' : 
-                    editingSession?.day_name === 'Day 2' ? 'day2' : 'day3',
-            stage_id: editingSession?.stage_name === 'Main Hall' ? 'main-hall' :
-                      editingSession?.stage_name === 'Seminar Room A' ? 'seminar-a' :
-                      editingSession?.stage_name === 'Seminar Room B' ? 'seminar-b' : 
-                      editingSession?.stage_name === 'Example Hall' ? 'example-hall' :
-                      editingSession?.stage_name === 'Hall A' ? 'hall-a' :
-                      editingSession?.stage_name === 'Hall B' ? 'hall-b' : 'workshop',
+            day_id: editingSession?.day_id ?? '',
+            stage_id: editingSession?.stage_id ?? '',
+            time_slot_id: editingSession?.time_slot_id ?? '',
             start_time: editingSession?.start_time ?? '',
             end_time: editingSession?.end_time ?? '',
-            speaker_id: editingSession?.speaker_name === 'Dr. Sarah Johnson' ? 'speaker1' :
-                       editingSession?.speaker_name === 'Dr. Michael Chen' ? 'speaker2' :
-                       editingSession?.speaker_name === 'Dr. Emily Rodriguez' ? 'speaker3' :
-                       editingSession?.speaker_name === 'Prof. David Thompson' ? 'speaker4' :
-                       editingSession?.speaker_name === 'Dr. Lisa Wang' ? 'speaker5' : ''
-          } : {}}
+            description: editingSession?.description ?? '',
+            is_parallel_meal: editingSession?.is_parallel_meal ?? false,
+            parallel_meal_type: editingSession?.parallel_meal_type ?? ''
+          } : {
+            day_id: days.find(d => d.name === selectedDay)?.id ?? '',
+            stage_id: sessionToAdd?.hallId ?? '',
+            time_slot_id: sessionToAdd?.timeSlotId ?? '',
+            start_time: timeSlots.find(ts => ts.id === sessionToAdd?.timeSlotId)?.start_time ?? '',
+            end_time: timeSlots.find(ts => ts.id === sessionToAdd?.timeSlotId)?.end_time ?? ''
+          }}
           sessionType={editingSession?.session_type || 'lecture'}
           onSubmit={handleSubmitSession}
           onCancel={handleCloseModal}
           isSubmitting={isSubmitting}
+          hideTimeSelection={true}
         />
       </Modal>
 
@@ -1207,7 +865,7 @@ export default function EditSessionsPage() {
               value={newHallName}
               onChange={(e) => setNewHallName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Enter hall name"
+              placeholder="Enter hall name (e.g., I, II, III)"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleAddHall()
