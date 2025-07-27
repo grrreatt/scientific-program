@@ -66,29 +66,8 @@ export default function EditSessionsPage() {
   const [newDayName, setNewDayName] = useState('')
   const [newDayDate, setNewDayDate] = useState('')
 
-  // Generate time slots from 8:00 AM to 6:00 PM with 30-minute intervals
-  const generateTimeSlots = (): TimeSlot[] => {
-    const slots: TimeSlot[] = []
-    let currentTime = new Date()
-    currentTime.setHours(8, 0, 0, 0) // Start at 8:00 AM
-    
-    for (let i = 0; i < 20; i++) { // 20 slots = 10 hours (30-minute intervals)
-      const startTime = new Date(currentTime)
-      const endTime = new Date(currentTime.getTime() + 30 * 60 * 1000) // Add 30 minutes
-      
-      slots.push({
-        id: `slot-${i}`,
-        start_time: startTime.toTimeString().slice(0, 5),
-        end_time: endTime.toTimeString().slice(0, 5)
-      })
-      
-      currentTime = endTime
-    }
-    
-    return slots
-  }
-
-  const timeSlots = generateTimeSlots()
+  // No time slots needed - we're removing the time column
+  const timeSlots: TimeSlot[] = []
 
   // Create mock data for development
   const createMockData = () => {
@@ -100,7 +79,7 @@ export default function EditSessionsPage() {
 
     const mockHall: Hall = {
       id: 'mock-hall-1',
-      name: 'Mock Hall',
+      name: 'Example Hall',
       color: 'bg-blue-50 border-blue-200'
     }
 
@@ -109,7 +88,7 @@ export default function EditSessionsPage() {
       title: 'Mock Session',
       session_type: 'lecture',
       day_name: 'Day 1',
-      stage_name: 'Mock Hall',
+      stage_name: 'Example Hall',
       start_time: '09:00',
       end_time: '10:00',
       topic: 'Introduction to Mock Data',
@@ -142,7 +121,9 @@ export default function EditSessionsPage() {
           case 'main-hall': return 'Main Hall'
           case 'seminar-a': return 'Seminar Room A'
           case 'seminar-b': return 'Seminar Room B'
-          case 'mock-hall': return 'Mock Hall'
+          case 'example-hall': return 'Example Hall'
+          case 'hall-a': return 'Hall A'
+          case 'hall-b': return 'Hall B'
           default: return 'Workshop Room'
         }
       }
@@ -211,14 +192,24 @@ export default function EditSessionsPage() {
         color: 'bg-gray-50 border-gray-200'
       }))
 
-      setHalls(transformedHalls.length > 0 ? transformedHalls : [createMockData().mockHall])
+      // Initialize with 3 default halls if no data from database
+      const defaultHalls: Hall[] = [
+        { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
+        { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
+        { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
+      ]
+      setHalls(transformedHalls.length > 0 ? transformedHalls : defaultHalls)
       setError(null)
     } catch (error) {
       console.error('Error loading halls:', error)
       setError('Failed to load halls. Please refresh the page.')
-      // Fallback to mock data
-      const { mockHall } = createMockData()
-      setHalls([mockHall])
+      // Fallback to default halls
+      const defaultHalls: Hall[] = [
+        { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
+        { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
+        { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
+      ]
+      setHalls(defaultHalls)
     }
   }
 
@@ -283,12 +274,11 @@ export default function EditSessionsPage() {
     return icons[type] || '📋'
   }
 
-  // Find session for a specific hall and time slot
-  const findSession = (hallId: string, timeSlot: TimeSlot): Session | null => {
+  // Find session for a specific hall (no time slot needed)
+  const findSession = (hallId: string): Session | null => {
     return sessions.find(session => 
       session.day_name === selectedDay &&
-      session.stage_name === halls.find(h => h.id === hallId)?.name &&
-      session.start_time === timeSlot.start_time
+      session.stage_name === halls.find(h => h.id === hallId)?.name
     ) || null
   }
 
@@ -297,8 +287,8 @@ export default function EditSessionsPage() {
     setIsModalOpen(true)
   }
 
-  const handleAddSession = (hallId: string, timeSlotId: string) => {
-    setSessionToAdd({ hallId, timeSlotId })
+  const handleAddSession = (hallId: string) => {
+    setSessionToAdd({ hallId, timeSlotId: 'default' })
     setEditingSession(null)
     setIsModalOpen(true)
   }
@@ -389,7 +379,9 @@ export default function EditSessionsPage() {
             stage_id: hall?.name === 'Main Hall' ? 'main-hall' :
                       hall?.name === 'Seminar Room A' ? 'seminar-a' :
                       hall?.name === 'Seminar Room B' ? 'seminar-b' : 
-                      hall?.name === 'Mock Hall' ? 'mock-hall' : 'workshop',
+                      hall?.name === 'Example Hall' ? 'example-hall' :
+                      hall?.name === 'Hall A' ? 'hall-a' :
+                      hall?.name === 'Hall B' ? 'hall-b' : 'workshop',
             start_time: timeSlot?.start_time || '09:00',
             end_time: formData.end_time || timeSlot?.end_time || '10:00',
             topic: formData.topic,
@@ -507,7 +499,9 @@ export default function EditSessionsPage() {
       case 'Main Hall': return 'main-hall'
       case 'Seminar Room A': return 'seminar-a'
       case 'Seminar Room B': return 'seminar-b'
-      case 'Mock Hall': return 'mock-hall'
+      case 'Example Hall': return 'example-hall'
+      case 'Hall A': return 'hall-a'
+      case 'Hall B': return 'hall-b'
       default: return 'workshop'
     }
   }
@@ -783,18 +777,12 @@ export default function EditSessionsPage() {
           </p>
         </div>
 
-        {/* Schedule Grid - True Grid Layout */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-gray-300">
-          {/* Grid Header */}
-          <div className="grid border-b border-gray-200 bg-gray-50" style={{ gridTemplateColumns: `100px repeat(${halls.length}, 1fr)` }}>
-            <div className="p-4 font-medium text-gray-900 border-r border-gray-200">
-              Time
-            </div>
-            {halls.map((hall, index) => (
-              <div 
-                key={hall.id} 
-                className="p-4 font-medium text-gray-900 border-r border-gray-200 relative group"
-              >
+        {/* Halls Layout - No Time Column */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {halls.map((hall, index) => (
+            <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              {/* Hall Header */}
+              <div className="p-4 bg-gray-50 border-b border-gray-200 relative group">
                 {editingHallId === hall.id ? (
                   <div className="flex items-center space-x-2">
                     <input
@@ -835,7 +823,7 @@ export default function EditSessionsPage() {
                 ) : (
                   <div className="flex items-center justify-between">
                     <span 
-                      className="cursor-pointer hover:text-indigo-600"
+                      className="cursor-pointer hover:text-indigo-600 font-medium text-gray-900"
                       onClick={() => handleEditHallName(hall.id)}
                     >
                       {hall.name}
@@ -844,6 +832,7 @@ export default function EditSessionsPage() {
                       <button
                         onClick={() => handleDeleteHall(hall)}
                         className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-sm transition-opacity"
+                        title="Delete hall"
                       >
                         ×
                       </button>
@@ -851,6 +840,7 @@ export default function EditSessionsPage() {
                         <button
                           onClick={handleQuickAddHall}
                           className="opacity-0 group-hover:opacity-100 text-green-600 hover:text-green-800 text-sm transition-opacity"
+                          title="Add new hall"
                         >
                           +
                         </button>
@@ -859,42 +849,39 @@ export default function EditSessionsPage() {
                   </div>
                 )}
               </div>
-            ))}
-          </div>
 
-          {/* Grid Content - Time slots as rows */}
-          <div className="divide-y divide-gray-200">
-            {timeSlots.map((timeSlot) => (
-              <div 
-                key={timeSlot.id}
-                className="grid hover:bg-gray-50 transition-colors relative group"
-                style={{ gridTemplateColumns: `100px repeat(${halls.length}, 1fr)` }}
-              >
-                {/* Time Column */}
-                <div className="p-4 bg-gray-50 border-r border-gray-200 flex items-center">
-                  <div className="text-sm font-medium text-gray-900">
-                    {formatTime(timeSlot.start_time)}
-                  </div>
-                </div>
-
-                {/* Hall Columns */}
-                {halls.map((hall, hallIndex) => {
-                  const session = findSession(hall.id, timeSlot)
+              {/* Hall Content - Sessions */}
+              <div className="p-4">
+                {/* Find sessions for this hall */}
+                {(() => {
+                  const hallSessions = filteredSessions.filter(session => 
+                    session.stage_name === hall.name
+                  )
                   
+                  if (hallSessions.length === 0) {
+                    return (
+                      <div className="text-center py-8">
+                        <div className="text-gray-400 text-sm mb-4">No sessions yet</div>
+                        <button
+                          onClick={() => handleAddSession(hall.id)}
+                          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                          + Add Session
+                        </button>
+                      </div>
+                    )
+                  }
+
                   return (
-                    <div 
-                      key={hall.id}
-                      className={`p-4 border-r border-gray-200 ${
-                        hallIndex < halls.length - 1 ? 'border-r border-gray-200' : ''
-                      }`}
-                    >
-                      {session ? (
+                    <div className="space-y-4">
+                      {hallSessions.map((session) => (
                         <div 
-                          className="space-y-2 group cursor-pointer"
+                          key={session.id}
+                          className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors cursor-pointer group"
                           onClick={() => handleEditSession(session)}
                         >
                           {/* Session Type Badge */}
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 mb-2">
                             <span className="text-lg">{getSessionIcon(session.session_type)}</span>
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
                               {getSessionTypeLabel(session.session_type)}
@@ -902,7 +889,7 @@ export default function EditSessionsPage() {
                           </div>
 
                           {/* Session Title */}
-                          <h3 className="font-semibold text-gray-900 text-sm leading-tight">
+                          <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-2">
                             {session.title}
                           </h3>
 
@@ -939,20 +926,21 @@ export default function EditSessionsPage() {
                             </button>
                           </div>
                         </div>
-                      ) : (
-                        <div 
-                          className="text-gray-400 text-sm flex items-center justify-center h-20 border-2 border-dashed border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
-                          onClick={() => handleAddSession(hall.id, timeSlot.id)}
-                        >
-                          <span>+ Add Session</span>
-                        </div>
-                      )}
+                      ))}
+                      
+                      {/* Add Session Button */}
+                      <button
+                        onClick={() => handleAddSession(hall.id)}
+                        className="w-full p-4 border-2 border-dashed border-gray-200 rounded-lg text-gray-400 hover:border-gray-300 hover:text-gray-500 transition-colors"
+                      >
+                        + Add Session
+                      </button>
                     </div>
                   )
-                })}
+                })()}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
 
         {/* Print Button */}
@@ -985,7 +973,9 @@ export default function EditSessionsPage() {
             stage_id: editingSession.stage_name === 'Main Hall' ? 'main-hall' :
                       editingSession.stage_name === 'Seminar Room A' ? 'seminar-a' :
                       editingSession.stage_name === 'Seminar Room B' ? 'seminar-b' : 
-                      editingSession.stage_name === 'Mock Hall' ? 'mock-hall' : 'workshop',
+                      editingSession.stage_name === 'Example Hall' ? 'example-hall' :
+                      editingSession.stage_name === 'Hall A' ? 'hall-a' :
+                      editingSession.stage_name === 'Hall B' ? 'hall-b' : 'workshop',
             start_time: editingSession.start_time,
             end_time: editingSession.end_time,
             speaker_id: editingSession.speaker_name === 'Dr. Sarah Johnson' ? 'speaker1' :
