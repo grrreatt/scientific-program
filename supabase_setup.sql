@@ -6,14 +6,15 @@
 -- ========================================
 
 -- Drop all tables in reverse dependency order
-DROP TABLE IF EXISTS sessions CASCADE;
 DROP TABLE IF EXISTS symposium_subtalks CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
 DROP TABLE IF EXISTS people CASCADE;
 DROP TABLE IF EXISTS stages CASCADE;
 DROP TABLE IF EXISTS days CASCADE;
 
 -- Drop any existing functions
 DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS validate_session_data() CASCADE;
 
 -- ========================================
 -- STEP 2: CREATE FRESH TABLES
@@ -48,22 +49,7 @@ CREATE TABLE people (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Create symposium subtalks table (for symposium sessions)
-CREATE TABLE symposium_subtalks (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    speaker_id TEXT,
-    speaker_name TEXT,
-    start_time TEXT NOT NULL,
-    end_time TEXT NOT NULL,
-    topic TEXT,
-    description TEXT,
-    order_index INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 5. Create sessions table with ALL form fields
+-- 4. Create sessions table with ALL form fields (MUST BE BEFORE symposium_subtalks)
 CREATE TABLE sessions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     
@@ -99,6 +85,21 @@ CREATE TABLE sessions (
     -- Metadata
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Create symposium subtalks table (AFTER sessions table)
+CREATE TABLE symposium_subtalks (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    speaker_id TEXT,
+    speaker_name TEXT,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    topic TEXT,
+    description TEXT,
+    order_index INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- ========================================
