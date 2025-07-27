@@ -146,26 +146,40 @@ export default function EditSessionsPage() {
     
     loadData()
 
-    // Set up real-time subscriptions
+    // Set up real-time subscriptions with better error handling
     const sessionsChannel = supabase
       .channel('sessions-changes')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'sessions' }, 
-        () => loadSessions()
+        (payload) => {
+          console.log('🔄 Session change detected:', payload)
+          loadSessions()
+        }
       )
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'stages' }, 
-        () => loadHalls()
+        (payload) => {
+          console.log('🔄 Stage change detected:', payload)
+          loadHalls()
+        }
       )
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'conference_days' }, 
-        () => loadDays()
+        (payload) => {
+          console.log('🔄 Day change detected:', payload)
+          loadDays()
+        }
       )
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'day_time_slots' }, 
-        () => loadTimeSlots()
+        (payload) => {
+          console.log('🔄 Time slot change detected:', payload)
+          loadTimeSlots()
+        }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('📡 Subscription status:', status)
+      })
 
     return () => {
       sessionsChannel.unsubscribe()
@@ -428,27 +442,34 @@ export default function EditSessionsPage() {
   const handleSaveDay = async () => {
     if (newDayName.trim() && newDayDate) {
       try {
-        const { error } = await supabase
+        console.log('🔄 Adding new day:', { name: newDayName.trim(), date: newDayDate })
+        
+        const { data, error } = await supabase
           .from('conference_days')
           .insert({
             name: newDayName.trim(),
             date: newDayDate
           })
+          .select()
 
         if (error) {
           console.error('❌ Error adding day:', error)
-          alert('Error adding day. Please try again.')
+          alert(`Error adding day: ${error.message}`)
           return
         }
 
+        console.log('✅ Day added successfully:', data)
         await loadDays()
         setShowAddDayModal(false)
         setNewDayName('')
         setNewDayDate('')
+        alert('Day added successfully!')
       } catch (error) {
         console.error('❌ Error adding day:', error)
-        alert('Error adding day. Please try again.')
+        alert(`Error adding day: ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
+    } else {
+      alert('Please fill in both day name and date.')
     }
   }
 
@@ -523,6 +544,36 @@ export default function EditSessionsPage() {
               <div>🔑 Supabase Key: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'}</div>
               <div>🔒 Admin Password: {process.env.NEXT_PUBLIC_ADMIN_PASSWORD ? '✅ Set' : '❌ Missing'}</div>
               <div>📱 Selected Day: {selectedDay}</div>
+              <div className="flex space-x-2 mt-2">
+                <button
+                  onClick={() => {
+                    console.log('🔄 Manual refresh triggered')
+                    loadSessions()
+                    loadHalls()
+                    loadDays()
+                    loadTimeSlots()
+                  }}
+                  className="text-xs bg-yellow-200 px-2 py-1 rounded hover:bg-yellow-300"
+                >
+                  🔄 Refresh All Data
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('🔍 Current State:', {
+                      sessions,
+                      halls,
+                      days,
+                      timeSlots,
+                      selectedDay,
+                      error
+                    })
+                    alert('Check browser console for detailed state information')
+                  }}
+                  className="text-xs bg-yellow-200 px-2 py-1 rounded hover:bg-yellow-300"
+                >
+                  📊 Log State
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -822,6 +873,11 @@ export default function EditSessionsPage() {
               onChange={(e) => setDeletePassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Enter password"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  confirmDeleteHall()
+                }
+              }}
             />
           </div>
           <div className="flex justify-end space-x-3">
