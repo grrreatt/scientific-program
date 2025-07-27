@@ -59,19 +59,19 @@ export default function EditSessionsPage() {
   const [showAddHallModal, setShowAddHallModal] = useState(false)
   const [newHallName, setNewHallName] = useState('')
   const [sessionToAdd, setSessionToAdd] = useState<{ hallId: string; timeSlotId: string } | null>(null)
-  const [editingTimeSlotId, setEditingTimeSlotId] = useState<string | null>(null)
-  const [editingTimeStart, setEditingTimeStart] = useState('')
-  const [editingTimeEnd, setEditingTimeEnd] = useState('')
+  const [showAddDayModal, setShowAddDayModal] = useState(false)
+  const [newDayName, setNewDayName] = useState('')
+  const [newDayDate, setNewDayDate] = useState('')
 
-  // Generate time slots from 8:00 AM to 6:00 PM with 5-minute intervals
+  // Generate time slots from 8:00 AM to 6:00 PM with 30-minute intervals
   const generateTimeSlots = () => {
     const slots: TimeSlot[] = []
     let currentTime = new Date()
     currentTime.setHours(8, 0, 0, 0) // Start at 8:00 AM
     
-    for (let i = 0; i < 120; i++) { // 120 slots = 10 hours (5-minute intervals)
+    for (let i = 0; i < 20; i++) { // 20 slots = 10 hours (30-minute intervals)
       const startTime = new Date(currentTime)
-      const endTime = new Date(currentTime.getTime() + 5 * 60 * 1000) // Add 5 minutes
+      const endTime = new Date(currentTime.getTime() + 30 * 60 * 1000) // Add 30 minutes
       
       slots.push({
         id: `slot-${i}`,
@@ -84,14 +84,6 @@ export default function EditSessionsPage() {
     }
     
     return slots
-  }
-
-  // Helper function to add 5 minutes to a time string
-  const addFiveMinutes = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(':').map(Number)
-    const date = new Date()
-    date.setHours(hours, minutes + 5, 0, 0)
-    return date.toTimeString().slice(0, 5)
   }
 
   // Load sessions from Supabase
@@ -107,15 +99,33 @@ export default function EditSessionsPage() {
         return
       }
 
+      // Helper function to map stage_id to stage_name
+      const getStageName = (stageId: string) => {
+        switch (stageId) {
+          case 'main-hall': return 'Main Hall'
+          case 'seminar-a': return 'Seminar Room A'
+          case 'seminar-b': return 'Seminar Room B'
+          default: return 'Workshop Room'
+        }
+      }
+
+      // Helper function to map day_id to day_name
+      const getDayName = (dayId: string) => {
+        switch (dayId) {
+          case 'day1': return 'Day 1'
+          case 'day2': return 'Day 2'
+          case 'day3': return 'Day 3'
+          default: return 'Day 1'
+        }
+      }
+
       // Transform Supabase data to our Session format
       const transformedSessions: Session[] = data.map((session: any) => ({
         id: session.id,
         title: session.title,
         session_type: session.session_type,
-        day_name: session.day_id === 'day1' ? 'Day 1' : session.day_id === 'day2' ? 'Day 2' : 'Day 3',
-        stage_name: session.stage_id === 'main-hall' ? 'Main Hall' : 
-                   session.stage_id === 'seminar-a' ? 'Seminar Room A' :
-                   session.stage_id === 'seminar-b' ? 'Seminar Room B' : 'Workshop Room',
+        day_name: getDayName(session.day_id),
+        stage_name: getStageName(session.stage_id),
         start_time: session.start_time,
         end_time: session.end_time,
         topic: session.topic,
@@ -171,7 +181,7 @@ export default function EditSessionsPage() {
     // Load data from Supabase
     const loadData = async () => {
       await Promise.all([loadSessions(), loadHalls()])
-    setLoading(false)
+      setLoading(false)
     }
     
     loadData()
@@ -254,8 +264,18 @@ export default function EditSessionsPage() {
     setIsSubmitting(true)
     
     try {
-      const hall = halls.find(h => h.id === (sessionToAdd?.hallId || editingSession?.stage_name))
-      const timeSlot = timeSlots.find(ts => ts.id === sessionToAdd?.timeSlotId)
+      let hall: Hall | undefined
+      let timeSlot: TimeSlot | undefined
+      
+      if (editingSession) {
+        // For editing, find hall by name
+        hall = halls.find(h => h.name === editingSession.stage_name)
+        timeSlot = timeSlots.find(ts => ts.start_time === editingSession.start_time)
+      } else {
+        // For new session, find hall by ID
+        hall = halls.find(h => h.id === sessionToAdd?.hallId)
+        timeSlot = timeSlots.find(ts => ts.id === sessionToAdd?.timeSlotId)
+      }
       
       if (editingSession) {
         // Update existing session in Supabase
@@ -290,21 +310,21 @@ export default function EditSessionsPage() {
         const { error } = await supabase
           .from('sessions')
           .insert({
-          title: formData.title,
-          session_type: sessionType,
+            title: formData.title,
+            session_type: sessionType,
             day_id: selectedDay === 'Day 1' ? 'day1' : selectedDay === 'Day 2' ? 'day2' : 'day3',
             stage_id: hall?.name === 'Main Hall' ? 'main-hall' :
                       hall?.name === 'Seminar Room A' ? 'seminar-a' :
                       hall?.name === 'Seminar Room B' ? 'seminar-b' : 'workshop',
             start_time: timeSlot?.start_time || '09:00',
             end_time: formData.end_time || timeSlot?.end_time || '10:00',
-          topic: formData.topic,
+            topic: formData.topic,
             description: formData.description,
             data: {
-          speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                       formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
-                       formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                       formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
+              speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                           formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
+                           formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                           formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
                            formData.speaker_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
               moderator_name: formData.moderator_name,
               panelist_names: formData.panelist_names
@@ -392,6 +412,16 @@ export default function EditSessionsPage() {
     setIsDeleteModalOpen(true)
   }
 
+  // Helper function to map hall names to stage_ids
+  const getStageId = (hallName: string) => {
+    switch (hallName) {
+      case 'Main Hall': return 'main-hall'
+      case 'Seminar Room A': return 'seminar-a'
+      case 'Seminar Room B': return 'seminar-b'
+      default: return 'workshop'
+    }
+  }
+
   const confirmDeleteHall = async () => {
     if (deletePassword === '1234' && hallToDelete) {
       try {
@@ -400,8 +430,8 @@ export default function EditSessionsPage() {
         if (firstHall) {
           const { error } = await supabase
             .from('sessions')
-            .update({ stage_id: firstHall.name === 'Main Hall' ? 'main-hall' : 'workshop' })
-            .eq('stage_id', hallToDelete.name === 'Main Hall' ? 'main-hall' : 'workshop')
+            .update({ stage_id: getStageId(firstHall.name) })
+            .eq('stage_id', getStageId(hallToDelete.name))
 
           if (error) {
             console.error('Error moving sessions:', error)
@@ -488,107 +518,24 @@ export default function EditSessionsPage() {
     }
   }
 
-  const handleEditTimeSlot = (timeSlotId: string) => {
-    const timeSlot = timeSlots.find(ts => ts.id === timeSlotId)
-    if (timeSlot) {
-      setEditingTimeSlotId(timeSlotId)
-      setEditingTimeStart(timeSlot.start_time)
-      setEditingTimeEnd(timeSlot.end_time)
-    }
+  const handleAddDay = () => {
+    setShowAddDayModal(true)
   }
 
-  const handleSaveTimeSlot = async () => {
-    if (editingTimeSlotId && editingTimeStart && editingTimeEnd) {
+  const handleSaveDay = async () => {
+    if (newDayName.trim() && newDayDate) {
       try {
-        // Update sessions that use this time slot
-        const { error } = await supabase
-          .from('sessions')
-          .update({
-            start_time: editingTimeStart,
-            end_time: editingTimeEnd,
-            updated_at: new Date().toISOString()
-          })
-          .eq('start_time', timeSlots.find(ts => ts.id === editingTimeSlotId)?.start_time)
-          .eq('day_id', selectedDay === 'Day 1' ? 'day1' : selectedDay === 'Day 2' ? 'day2' : 'day3')
-
-        if (error) {
-          console.error('Error updating time slot:', error)
-          throw error
-        }
-
-        // Update local time slots
-        setTimeSlots(prev => prev.map(slot => 
-          slot.id === editingTimeSlotId 
-            ? { ...slot, start_time: editingTimeStart, end_time: editingTimeEnd }
-            : slot
-        ))
-
-        // Reload sessions
-        await loadSessions()
+        // For now, we'll add it to the days list locally
+        // In a real app, you'd save this to a days table in the database
+        // For now, we'll just close the modal and let the user know
+        alert(`Day "${newDayName}" with date "${newDayDate}" would be added to the database. This feature needs backend implementation.`)
         
-        setEditingTimeSlotId(null)
-        setEditingTimeStart('')
-        setEditingTimeEnd('')
+        setShowAddDayModal(false)
+        setNewDayName('')
+        setNewDayDate('')
       } catch (error) {
-        console.error('Error updating time slot:', error)
-        alert('Error updating time slot. Please try again.')
-      }
-    }
-  }
-
-  const handleCancelEditTime = () => {
-    setEditingTimeSlotId(null)
-    setEditingTimeStart('')
-    setEditingTimeEnd('')
-  }
-
-  const handleAddTimeSlot = (afterSlotId: string) => {
-    const afterSlot = timeSlots.find(ts => ts.id === afterSlotId)
-    if (afterSlot) {
-      const newStartTime = addFiveMinutes(afterSlot.end_time)
-      const newEndTime = addFiveMinutes(newStartTime)
-      
-      const newTimeSlot: TimeSlot = {
-        id: `slot-${Date.now()}`,
-        start_time: newStartTime,
-        end_time: newEndTime,
-        sessions: {}
-      }
-      
-      // Insert the new slot after the specified slot
-      const afterIndex = timeSlots.findIndex(ts => ts.id === afterSlotId)
-      setTimeSlots(prev => [
-        ...prev.slice(0, afterIndex + 1),
-        newTimeSlot,
-        ...prev.slice(afterIndex + 1)
-      ])
-    }
-  }
-
-  const handleDeleteTimeSlot = async (timeSlotId: string) => {
-    const timeSlot = timeSlots.find(ts => ts.id === timeSlotId)
-    if (timeSlot && confirm('Are you sure you want to delete this time slot? This will also delete any sessions in this slot.')) {
-      try {
-        // Delete sessions in this time slot
-        const { error } = await supabase
-          .from('sessions')
-          .delete()
-          .eq('start_time', timeSlot.start_time)
-          .eq('day_id', selectedDay === 'Day 1' ? 'day1' : selectedDay === 'Day 2' ? 'day2' : 'day3')
-
-        if (error) {
-          console.error('Error deleting sessions:', error)
-          throw error
-        }
-
-        // Delete the time slot locally
-        setTimeSlots(prev => prev.filter(ts => ts.id !== timeSlotId))
-        
-        // Reload sessions
-        await loadSessions()
-      } catch (error) {
-        console.error('Error deleting time slot:', error)
-        alert('Error deleting time slot. Please try again.')
+        console.error('Error adding day:', error)
+        alert('Error adding day. Please try again.')
       }
     }
   }
@@ -620,17 +567,23 @@ export default function EditSessionsPage() {
             </div>
             <div className="flex space-x-3">
               <button
+                onClick={handleAddDay}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Add Day
+              </button>
+              <button
                 onClick={handleQuickAddHall}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Add Hall
               </button>
-            <button
+              <button
                 onClick={() => handleAddSession(halls[0]?.id || '', timeSlots[0]?.id || '')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Add Session
-            </button>
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Add Session
+              </button>
             </div>
           </div>
         </div>
@@ -653,6 +606,12 @@ export default function EditSessionsPage() {
                 {day}
               </button>
             ))}
+            <button
+              onClick={handleAddDay}
+              className="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            >
+              + Add Day
+            </button>
           </nav>
         </div>
       </div>
@@ -703,7 +662,15 @@ export default function EditSessionsPage() {
                         value={editingHallName}
                         onChange={(e) => setEditingHallName(e.target.value)}
                         className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        onKeyPress={(e) => e.key === 'Enter' && handleSaveHallName()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleSaveHallName()
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault()
+                            handleCancelEditHall()
+                          }
+                        }}
                         autoFocus
                       />
                       <button
@@ -758,58 +725,9 @@ export default function EditSessionsPage() {
                 >
                   {/* Time Column - Same as public page but editable */}
                   <div className="p-4 bg-gray-50 border-r border-gray-200 flex items-center justify-between">
-                    {editingTimeSlotId === timeSlot.id ? (
-                      <div className="flex items-center space-x-2 w-full">
-                        <input
-                          type="time"
-                          value={editingTimeStart}
-                          onChange={(e) => setEditingTimeStart(e.target.value)}
-                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <span className="text-xs text-gray-500">-</span>
-                        <input
-                          type="time"
-                          value={editingTimeEnd}
-                          onChange={(e) => setEditingTimeEnd(e.target.value)}
-                          className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <button
-                          onClick={handleSaveTimeSlot}
-                          className="text-green-600 hover:text-green-800 text-xs"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={handleCancelEditTime}
-                          className="text-red-600 hover:text-red-800 text-xs"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="text-sm font-medium text-gray-900 cursor-pointer hover:text-indigo-600"
-                             onClick={() => handleEditTimeSlot(timeSlot.id)}>
-                          {formatTime(timeSlot.start_time)}
-                        </div>
-                        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => handleAddTimeSlot(timeSlot.id)}
-                            className="text-green-600 hover:text-green-800 text-xs"
-                            title="Add time slot after this"
-                          >
-                            +
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTimeSlot(timeSlot.id)}
-                            className="text-red-600 hover:text-red-800 text-xs"
-                            title="Delete this time slot"
-                          >
-                            ×
-                          </button>
+                    <div className="text-sm font-medium text-gray-900">
+                      {formatTime(timeSlot.start_time)}
                     </div>
-                      </>
-                    )}
                   </div>
 
                   {/* Hall Columns - Same as public page but with editing */}
@@ -997,7 +915,12 @@ export default function EditSessionsPage() {
               onChange={(e) => setNewHallName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Enter hall name"
-              onKeyPress={(e) => e.key === 'Enter' && handleAddHall()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleAddHall()
+                }
+              }}
             />
           </div>
           <div className="flex justify-end space-x-3">
@@ -1016,6 +939,68 @@ export default function EditSessionsPage() {
               className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add Hall
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Day Modal */}
+      <Modal
+        isOpen={showAddDayModal}
+        onClose={() => {
+          setShowAddDayModal(false)
+          setNewDayName('')
+          setNewDayDate('')
+        }}
+        title="Add New Day"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Day Name
+            </label>
+            <select
+              value={newDayName}
+              onChange={(e) => setNewDayName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Select Day</option>
+              <option value="Day 4">Day 4</option>
+              <option value="Day 5">Day 5</option>
+              <option value="Day 6">Day 6</option>
+              <option value="Day 7">Day 7</option>
+              <option value="Day 8">Day 8</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date
+            </label>
+            <input
+              type="date"
+              value={newDayDate}
+              onChange={(e) => setNewDayDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => {
+                setShowAddDayModal(false)
+                setNewDayName('')
+                setNewDayDate('')
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveDay}
+              disabled={!newDayName.trim() || !newDayDate}
+              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add Day
             </button>
           </div>
         </div>
