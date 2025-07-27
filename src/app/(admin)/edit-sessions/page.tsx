@@ -442,34 +442,8 @@ export default function EditSessionsPage() {
   }
 
   const handleQuickAddHall = async () => {
-    const hallNames = ['I', 'II', 'III', 'IV', 'V']
-    const availableNames = hallNames.filter(name => !halls.some(hall => hall.name === name))
-    
-    if (availableNames.length > 0) {
-      try {
-        const { error } = await supabase
-          .from('stages')
-          .insert({
-            name: availableNames[0],
-            capacity: 100
-          })
-
-        if (error) {
-          console.error('❌ Error adding hall:', error)
-          alert(`Error adding hall: ${error.message}`)
-          setShowAddHallModal(true)
-          return
-        }
-
-        await loadHalls()
-      } catch (error: any) {
-        console.error('❌ Error adding hall:', error)
-        alert(`Error adding hall: ${error.message || 'Unknown error'}`)
-        setShowAddHallModal(true)
-      }
-    } else {
-      setShowAddHallModal(true)
-    }
+    // Always show the modal for custom naming
+    setShowAddHallModal(true)
   }
 
   const handleAddDay = () => {
@@ -477,36 +451,42 @@ export default function EditSessionsPage() {
   }
 
   const handleSaveDay = async () => {
-    if (newDayName.trim() && newDayDate) {
-      try {
-        console.log('🔄 Adding new day:', { name: newDayName.trim(), date: newDayDate })
-        
-        const { data, error } = await supabase
-          .from('conference_days')
-          .insert({
-            name: newDayName.trim(),
-            date: newDayDate
-          })
-          .select()
+    if (!newDayName.trim()) {
+      alert('Please enter a day name.')
+      return
+    }
+    
+    if (!newDayDate) {
+      alert('Please select a date.')
+      return
+    }
 
-        if (error) {
-          console.error('❌ Error adding day:', error)
-          alert(`Error adding day: ${error.message}`)
-          return
-        }
+    try {
+      console.log('🔄 Adding new day:', { name: newDayName.trim(), date: newDayDate })
+      
+      const { data, error } = await supabase
+        .from('conference_days')
+        .insert({
+          name: newDayName.trim(),
+          date: newDayDate
+        })
+        .select()
 
-        console.log('✅ Day added successfully:', data)
-        await loadDays()
-        setShowAddDayModal(false)
-        setNewDayName('')
-        setNewDayDate('')
-        alert('Day added successfully!')
-      } catch (error) {
+      if (error) {
         console.error('❌ Error adding day:', error)
-        alert(`Error adding day: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        alert(`Error adding day: ${error.message || 'Database error occurred'}`)
+        return
       }
-    } else {
-      alert('Please fill in both day name and date.')
+
+      console.log('✅ Day added successfully:', data)
+      await loadDays()
+      setShowAddDayModal(false)
+      setNewDayName('')
+      setNewDayDate('')
+      alert('Day added successfully!')
+    } catch (error) {
+      console.error('❌ Error adding day:', error)
+      alert(`Error adding day: ${error instanceof Error ? error.message : 'Network or database error occurred'}`)
     }
   }
 
@@ -758,8 +738,8 @@ export default function EditSessionsPage() {
                 >
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-semibold text-gray-900">{hall.name}</span>
-                    <span className="text-xs text-gray-500">
-                      ({filteredSessions.filter(s => s.stage_id === hall.id).length} sessions)
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                      {filteredSessions.filter(s => s.stage_id === hall.id).length} sessions
                     </span>
                   </div>
                   
@@ -846,26 +826,29 @@ export default function EditSessionsPage() {
                                 className="absolute left-2 right-2 top-1 bottom-1 rounded-lg shadow-md border border-gray-200 bg-white hover:shadow-lg transition-all duration-200 cursor-pointer group"
                                 onClick={() => handleEditSession(sessionInThisSlot)}
                               >
-                                <div className="p-2 h-full flex flex-col">
-                                  {/* Title with tooltip */}
+                                <div className="p-3 h-full flex flex-col justify-between">
+                                  {/* Header with time and type */}
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                                      {formatTime(sessionInThisSlot.start_time || '')} - {formatTime(sessionInThisSlot.end_time || '')}
+                                    </div>
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(sessionInThisSlot.session_type)}`}>
+                                      {getSessionIcon(sessionInThisSlot.session_type)} {getSessionTypeLabel(sessionInThisSlot.session_type)}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Title */}
                                   <div 
-                                    className="text-sm font-semibold text-gray-900 line-clamp-2"
+                                    className="text-sm font-semibold text-gray-900 line-clamp-2 mb-2"
                                     title={sessionInThisSlot.title}
                                   >
                                     {sessionInThisSlot.title}
-                                  </div>
-                                  
-                                  {/* Session Type Badge */}
-                                  <div className="mt-1">
-                                    <span className={`inline-flex items-center px-1 py-0.5 rounded-full text-xs font-medium ${getSessionTypeColor(sessionInThisSlot.session_type)}`}>
-                                      {getSessionIcon(sessionInThisSlot.session_type)} {getSessionTypeLabel(sessionInThisSlot.session_type)}
-                                    </span>
                                   </div>
 
                                   {/* Description preview if available */}
                                   {sessionInThisSlot.description && (
                                     <div 
-                                      className="text-xs text-gray-600 mt-1 line-clamp-1"
+                                      className="text-xs text-gray-600 line-clamp-1"
                                       title={sessionInThisSlot.description}
                                     >
                                       {sessionInThisSlot.description}
@@ -898,13 +881,13 @@ export default function EditSessionsPage() {
                             ) : (
                               <button
                                 onClick={() => handleAddSession(hall.id, slot.id)}
-                                className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 group"
+                                className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-200 group border-2 border-dashed border-gray-300 hover:border-indigo-400 m-1 rounded-lg"
                                 title="Add session"
                               >
-                                <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-6 h-6 group-hover:scale-110 transition-transform mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                 </svg>
-                                <span className="text-xs mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Add Session</span>
+                                <span className="text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">+ Add Session</span>
                               </button>
                             )}
                           </div>
