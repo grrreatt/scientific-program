@@ -60,6 +60,40 @@ export default function EditSessionsPage() {
     }
   }
 
+  // Generate half-hour time slots from 8:00 AM to 8:30 PM
+  const generateTimeSlots = () => {
+    const slots: DayTimeSlot[] = []
+    let currentTime = new Date()
+    currentTime.setHours(8, 0, 0, 0) // Start at 8:00 AM
+    
+    const endTime = new Date()
+    endTime.setHours(20, 30, 0, 0) // End at 8:30 PM
+    
+    let slotOrder = 1
+    
+    while (currentTime <= endTime) {
+      const startTime = currentTime.toTimeString().slice(0, 5)
+      
+      // Add 30 minutes
+      currentTime.setMinutes(currentTime.getMinutes() + 30)
+      const endTimeStr = currentTime.toTimeString().slice(0, 5)
+      
+      slots.push({
+        id: `slot-${slotOrder}`,
+        day_id: days.find(d => d.name === selectedDay)?.id || '',
+        slot_order: slotOrder,
+        start_time: startTime,
+        end_time: endTimeStr,
+        is_break: false,
+        break_title: undefined
+      })
+      
+      slotOrder++
+    }
+    
+    return slots
+  }
+
   // Load time slots for the selected day
   const loadTimeSlots = async () => {
     try {
@@ -74,15 +108,25 @@ export default function EditSessionsPage() {
 
       if (error) {
         console.error('❌ Error loading time slots:', error)
-        setTimeSlots([])
+        // Generate default time slots if none exist
+        const defaultSlots = generateTimeSlots()
+        setTimeSlots(defaultSlots)
         return
       }
 
-      console.log('✅ Time slots loaded successfully:', data?.length || 0, 'slots')
-      setTimeSlots(data || [])
+      if (data && data.length > 0) {
+        console.log('✅ Time slots loaded successfully:', data.length, 'slots')
+        setTimeSlots(data)
+      } else {
+        // Generate default time slots if none exist
+        const defaultSlots = generateTimeSlots()
+        setTimeSlots(defaultSlots)
+      }
     } catch (error) {
       console.error('❌ Exception loading time slots:', error)
-      setTimeSlots([])
+      // Generate default time slots on error
+      const defaultSlots = generateTimeSlots()
+      setTimeSlots(defaultSlots)
     }
   }
 
@@ -497,6 +541,18 @@ export default function EditSessionsPage() {
 
   const handleSaveTimeSlot = async (timeSlotId: string, startTime: string, endTime: string, isBreak: boolean, breakTitle?: string) => {
     try {
+      // Check if this is a generated slot (starts with 'slot-')
+      if (timeSlotId.startsWith('slot-')) {
+        // For generated slots, just update the local state
+        setTimeSlots(prev => prev.map(slot => 
+          slot.id === timeSlotId 
+            ? { ...slot, start_time: startTime, end_time: endTime }
+            : slot
+        ))
+        return
+      }
+
+      // For database slots, update in Supabase
       const { error } = await supabase
         .from('day_time_slots')
         .update({
@@ -773,66 +829,89 @@ export default function EditSessionsPage() {
 
           {/* Table Body */}
           <div className="divide-y divide-gray-200">
-            {filteredSessionsForHall.map((session) => (
-              <div key={session.id} className="grid grid-cols-4 gap-4 px-6 py-4 hover:bg-gray-50">
-                {/* Time */}
-                <div className="text-sm text-gray-900 font-medium">
-                  {formatTime(session.start_time || '')} - {formatTime(session.end_time || '')}
+            {timeSlots.map((slot) => {
+              const sessionInThisSlot = filteredSessionsForHall.find(
+                session => session.time_slot_id === slot.id
+              );
+              
+              return (
+                <div key={slot.id} className="grid grid-cols-4 gap-4 px-6 py-4 hover:bg-gray-50">
+                  {/* Time - Editable */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="time"
+                      value={slot.start_time}
+                      onChange={(e) => handleSaveTimeSlot(slot.id, e.target.value, slot.end_time, slot.is_break, slot.break_title)}
+                      className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <span className="text-sm text-gray-500">-</span>
+                    <input
+                      type="time"
+                      value={slot.end_time}
+                      onChange={(e) => handleSaveTimeSlot(slot.id, slot.start_time, e.target.value, slot.is_break, slot.break_title)}
+                      className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  
+                  {/* Title */}
+                  <div className="text-sm text-gray-900">
+                    {sessionInThisSlot ? (
+                      <>
+                        <div className="font-medium">{sessionInThisSlot.title}</div>
+                        {sessionInThisSlot.description && (
+                          <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                            {sessionInThisSlot.description}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-400 italic">No session scheduled</div>
+                    )}
+                  </div>
+                  
+                  {/* Speakers (from session data) */}
+                  <div className="text-sm text-gray-600">
+                    {sessionInThisSlot ? (sessionInThisSlot.data?.speakers || sessionInThisSlot.topic || 'TBD') : '-'}
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="flex items-center space-x-2">
+                    {sessionInThisSlot ? (
+                      <>
+                        <button
+                          onClick={() => handleEditSession(sessionInThisSlot)}
+                          className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSession(sessionInThisSlot.id)}
+                          className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => handleAddSession(selectedHall || halls[0]?.id || '', slot.id)}
+                        className="inline-flex items-center px-2 py-1 border border-indigo-300 rounded text-xs font-medium text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Add Session
+                      </button>
+                    )}
+                  </div>
                 </div>
-                
-                {/* Title */}
-                <div className="text-sm text-gray-900">
-                  <div className="font-medium">{session.title}</div>
-                  {session.description && (
-                    <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                      {session.description}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Speakers (from session data) */}
-                <div className="text-sm text-gray-600">
-                  {session.data?.speakers || session.topic || 'TBD'}
-                </div>
-                
-                {/* Actions */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleEditSession(session)}
-                    className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSession(session.id)}
-                    className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  >
-                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-            
-            {/* Add New Row Placeholder */}
-            <div 
-              className="grid grid-cols-4 gap-4 px-6 py-4 hover:bg-gray-50 cursor-pointer border-dashed border-gray-300"
-              onClick={() => {
-                setSessionToAdd({ hallId: '', timeSlotId: '' })
-                setEditingSession(null)
-                setIsModalOpen(true)
-              }}
-            >
-              <div className="text-sm text-gray-400 italic">+ Add new session</div>
-              <div className="text-sm text-gray-400 italic">-</div>
-              <div className="text-sm text-gray-400 italic">-</div>
-              <div className="text-sm text-gray-400 italic">-</div>
-            </div>
+              );
+            })}
           </div>
         </div>
       </div>
