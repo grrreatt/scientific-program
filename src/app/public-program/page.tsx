@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { formatTime, formatTimeRange, calculateDuration } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
+import { supabase } from '@/lib/supabase/client'
 
 interface Session {
   id: string
@@ -22,109 +23,230 @@ interface Session {
   discussion_leader_id?: string
 }
 
-interface TimeSlot {
-  time: string
-  sessions: Session[]
+interface Hall {
+  id: string
+  name: string
+  color: string
+}
+
+interface Day {
+  id: string
+  name: string
+  date: string
 }
 
 export default function PublicProgramPage() {
   const [sessions, setSessions] = useState<Session[]>([])
+  const [halls, setHalls] = useState<Hall[]>([])
+  const [days, setDays] = useState<Day[]>([])
   const [selectedDay, setSelectedDay] = useState('Day 1')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load sessions from Supabase
+  const loadSessions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('start_time', { ascending: true })
+
+      if (error) {
+        console.error('Error loading sessions:', error)
+        // Fallback to mock data
+        setSessions([
+          {
+            id: '1',
+            title: 'Mock Session',
+            session_type: 'lecture',
+            day_name: 'Day 1',
+            stage_name: 'Example Hall',
+            start_time: '09:00',
+            end_time: '10:00',
+            topic: 'Introduction to Mock Data',
+            speaker_name: 'Dr. Mock Speaker'
+          }
+        ])
+        return
+      }
+
+      // Helper function to map stage_id to stage_name
+      const getStageName = (stageId: string) => {
+        switch (stageId) {
+          case 'main-hall': return 'Main Hall'
+          case 'seminar-a': return 'Seminar Room A'
+          case 'seminar-b': return 'Seminar Room B'
+          case 'example-hall': return 'Example Hall'
+          case 'hall-a': return 'Hall A'
+          case 'hall-b': return 'Hall B'
+          default: return 'Workshop Room'
+        }
+      }
+
+      // Helper function to map day_id to day_name
+      const getDayName = (dayId: string) => {
+        switch (dayId) {
+          case 'day1': return 'Day 1'
+          case 'day2': return 'Day 2'
+          case 'day3': return 'Day 3'
+          case 'day-1': return 'Day 1'
+          default: return 'Day 1'
+        }
+      }
+
+      // Transform Supabase data to our Session format
+      const transformedSessions: Session[] = data.map((session: any) => ({
+        id: session.id,
+        title: session.title,
+        session_type: session.session_type,
+        day_name: getDayName(session.day_id),
+        stage_name: getStageName(session.stage_id),
+        start_time: session.start_time,
+        end_time: session.end_time,
+        topic: session.topic,
+        speaker_name: session.data?.speaker_name,
+        moderator_name: session.data?.moderator_name,
+        panelist_names: session.data?.panelist_names,
+        description: session.description,
+        is_parallel_meal: session.is_parallel_meal,
+        parallel_meal_type: session.parallel_meal_type,
+        discussion_leader_id: session.data?.discussion_leader_id
+      }))
+
+      setSessions(transformedSessions.length > 0 ? transformedSessions : [
+        {
+          id: '1',
+          title: 'Mock Session',
+          session_type: 'lecture',
+          day_name: 'Day 1',
+          stage_name: 'Example Hall',
+          start_time: '09:00',
+          end_time: '10:00',
+          topic: 'Introduction to Mock Data',
+          speaker_name: 'Dr. Mock Speaker'
+        }
+      ])
+      setError(null)
+    } catch (error) {
+      console.error('Error loading sessions:', error)
+      setError('Failed to load sessions. Please refresh the page.')
+      // Fallback to mock data
+      setSessions([
+        {
+          id: '1',
+          title: 'Mock Session',
+          session_type: 'lecture',
+          day_name: 'Day 1',
+          stage_name: 'Example Hall',
+          start_time: '09:00',
+          end_time: '10:00',
+          topic: 'Introduction to Mock Data',
+          speaker_name: 'Dr. Mock Speaker'
+        }
+      ])
+    }
+  }
+
+  // Load halls from Supabase
+  const loadHalls = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stages')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (error) {
+        console.error('Error loading halls:', error)
+        // Fallback to default halls
+        const defaultHalls: Hall[] = [
+          { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
+          { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
+          { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
+        ]
+        setHalls(defaultHalls)
+        return
+      }
+
+      // Transform Supabase data to our Hall format
+      const transformedHalls: Hall[] = data.map((stage: any) => ({
+        id: stage.id,
+        name: stage.name,
+        color: 'bg-gray-50 border-gray-200'
+      }))
+
+      setHalls(transformedHalls.length > 0 ? transformedHalls : [
+        { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
+        { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
+        { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
+      ])
+      setError(null)
+    } catch (error) {
+      console.error('Error loading halls:', error)
+      setError('Failed to load halls. Please refresh the page.')
+      // Fallback to default halls
+      const defaultHalls: Hall[] = [
+        { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
+        { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
+        { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
+      ]
+      setHalls(defaultHalls)
+    }
+  }
+
+  // Load days from Supabase
+  const loadDays = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('days')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (error) {
+        console.error('Error loading days:', error)
+        // Fallback to mock days
+        const mockDays: Day[] = [
+          { id: 'day-1', name: 'Day 1', date: 'March 15, 2024' },
+          { id: 'day-2', name: 'Day 2', date: 'March 16, 2024' },
+          { id: 'day-3', name: 'Day 3', date: 'March 17, 2024' }
+        ]
+        setDays(mockDays)
+        return
+      }
+
+      // Transform Supabase data to our Day format
+      const transformedDays: Day[] = data.map((day: any) => ({
+        id: day.id,
+        name: day.name,
+        date: day.date
+      }))
+
+      setDays(transformedDays.length > 0 ? transformedDays : [
+        { id: 'day-1', name: 'Day 1', date: 'March 15, 2024' },
+        { id: 'day-2', name: 'Day 2', date: 'March 16, 2024' },
+        { id: 'day-3', name: 'Day 3', date: 'March 17, 2024' }
+      ])
+      setError(null)
+    } catch (error) {
+      console.error('Error loading days:', error)
+      setError('Failed to load days. Please refresh the page.')
+      // Fallback to mock days
+      const mockDays: Day[] = [
+        { id: 'day-1', name: 'Day 1', date: 'March 15, 2024' },
+        { id: 'day-2', name: 'Day 2', date: 'March 16, 2024' },
+        { id: 'day-3', name: 'Day 3', date: 'March 17, 2024' }
+      ]
+      setDays(mockDays)
+    }
+  }
 
   useEffect(() => {
-    // Mock data for demo
-    setSessions([
-      {
-        id: '1',
-        title: 'Opening Keynote: Future of Medical Technology',
-        session_type: 'lecture',
-        day_name: 'Day 1',
-        stage_name: 'Main Hall',
-        start_time: '09:00',
-        end_time: '10:30',
-        topic: 'Medical Technology Trends',
-        speaker_name: 'Dr. Sarah Johnson'
-      },
-      {
-        id: '2',
-        title: 'Panel: AI in Healthcare',
-        session_type: 'panel',
-        day_name: 'Day 1',
-        stage_name: 'Main Hall',
-        start_time: '14:00',
-        end_time: '15:30',
-        topic: 'Artificial Intelligence Applications',
-        moderator_name: 'Dr. Michael Chen',
-        panelist_names: ['Dr. Emily Rodriguez', 'Prof. David Thompson', 'Dr. Lisa Wang']
-      },
-      {
-        id: '3',
-        title: 'Workshop: Advanced Surgical Techniques',
-        session_type: 'workshop',
-        day_name: 'Day 2',
-        stage_name: 'Workshop Room',
-        start_time: '10:00',
-        end_time: '12:00',
-        topic: 'Surgical Innovation',
-        speaker_name: 'Dr. Emily Rodriguez'
-      },
-      {
-        id: '4',
-        title: 'Lunch Break',
-        session_type: 'break',
-        day_name: 'Day 1',
-        stage_name: 'Dining Hall',
-        start_time: '12:00',
-        end_time: '13:30',
-        topic: 'Lunch'
-      },
-      {
-        id: '5',
-        title: 'Symposium: Emerging Technologies',
-        session_type: 'symposium',
-        day_name: 'Day 2',
-        stage_name: 'Main Hall',
-        start_time: '09:00',
-        end_time: '11:00',
-        topic: 'Technology Innovation',
-        moderator_name: 'Dr. Michael Chen',
-        speaker_name: 'Multiple Speakers'
-      },
-      {
-        id: '6',
-        title: 'Coffee Break',
-        session_type: 'break',
-        day_name: 'Day 1',
-        stage_name: 'Lobby',
-        start_time: '10:30',
-        end_time: '11:00',
-        topic: 'Coffee Break'
-      },
-      {
-        id: '7',
-        title: 'Research Presentation: Novel Therapies',
-        session_type: 'lecture',
-        day_name: 'Day 1',
-        stage_name: 'Seminar Room A',
-        start_time: '14:00',
-        end_time: '15:00',
-        topic: 'Therapeutic Innovations',
-        speaker_name: 'Dr. Lisa Wang'
-      },
-      {
-        id: '8',
-        title: 'Discussion: Ethics in Medicine',
-        session_type: 'discussion',
-        day_name: 'Day 1',
-        stage_name: 'Seminar Room B',
-        start_time: '14:00',
-        end_time: '15:30',
-        topic: 'Medical Ethics',
-        discussion_leader_id: 'Prof. David Thompson'
-      }
-    ])
-    setLoading(false)
+    // Load data from Supabase
+    const loadData = async () => {
+      await Promise.all([loadSessions(), loadHalls(), loadDays()])
+      setLoading(false)
+    }
+    
+    loadData()
   }, [])
 
   const getSessionTypeLabel = (type: string) => {
@@ -162,24 +284,29 @@ export default function PublicProgramPage() {
   }
 
   const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
-  const days = Array.from(new Set(sessions.map(s => s.day_name)))
-
-  // Get unique stages/halls
-  const stages = Array.from(new Set(filteredSessions.map(s => s.stage_name))).sort()
-
-  // Create time slots
-  const timeSlots: TimeSlot[] = []
-  const allTimes = Array.from(new Set(filteredSessions.map(s => s.start_time))).sort()
-  
-  allTimes.forEach(time => {
-    const sessionsAtTime = filteredSessions.filter(s => s.start_time === time)
-    timeSlots.push({ time, sessions: sessionsAtTime })
-  })
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-lg">Loading program...</div>
+        <div className="mt-2 text-sm text-gray-500">Please wait while we fetch your data</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-lg text-red-600 mb-2">Error Loading Data</div>
+          <div className="text-sm text-gray-600 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Refresh Page
+          </button>
+        </div>
       </div>
     )
   }
@@ -206,15 +333,15 @@ export default function PublicProgramPage() {
           <nav className="flex space-x-8">
             {days.map(day => (
               <button
-                key={day}
-                onClick={() => setSelectedDay(day)}
+                key={day.id}
+                onClick={() => setSelectedDay(day.name)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  selectedDay === day
+                  selectedDay === day.name
                     ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                {day}
+                {day.name}
               </button>
             ))}
           </nav>
@@ -229,100 +356,74 @@ export default function PublicProgramPage() {
             {selectedDay}
           </h2>
           <p className="mt-1 text-gray-600 print:text-sm">
-            {selectedDay === 'Day 1' && 'March 15, 2024'}
-            {selectedDay === 'Day 2' && 'March 16, 2024'}
-            {selectedDay === 'Day 3' && 'March 17, 2024'}
+            {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
           </p>
         </div>
 
-        {/* Schedule Grid */}
-        {filteredSessions.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No sessions scheduled for this day.</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-gray-300">
-            {/* Grid Header */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 border-b border-gray-200 bg-gray-50">
-              <div className="p-4 font-medium text-gray-900 border-r border-gray-200">
-                Time
+        {/* Halls Layout - Same as Edit Sessions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {halls.map((hall) => (
+            <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              {/* Hall Header */}
+              <div className="p-4 bg-gray-50 border-b border-gray-200">
+                <h3 className="font-medium text-gray-900">{hall.name}</h3>
               </div>
-              {stages.map((stage, index) => (
-                <div 
-                  key={stage} 
-                  className={`p-4 font-medium text-gray-900 ${
-                    index < stages.length - 1 ? 'border-r border-gray-200' : ''
-                  }`}
-                >
-                  {stage}
-                </div>
-              ))}
-            </div>
 
-            {/* Grid Content */}
-            <div className="divide-y divide-gray-200">
-              {timeSlots.map((timeSlot, timeIndex) => (
-                <div 
-                  key={timeSlot.time}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                >
-                  {/* Time Column */}
-                  <div className="p-4 bg-gray-50 border-r border-gray-200 flex items-center">
-                    <div className="text-sm font-medium text-gray-900">
-                      {formatTime(timeSlot.time)}
-                    </div>
-                  </div>
-
-                  {/* Stage Columns */}
-                  {stages.map((stage, stageIndex) => {
-                    const session = timeSlot.sessions.find(s => s.stage_name === stage)
-                    
+              {/* Hall Content - Sessions */}
+              <div className="p-4">
+                {/* Find sessions for this hall */}
+                {(() => {
+                  const hallSessions = filteredSessions.filter(session => 
+                    session.stage_name === hall.name
+                  )
+                  
+                  if (hallSessions.length === 0) {
                     return (
-                      <div 
-                        key={stage}
-                        className={`p-4 ${
-                          stageIndex < stages.length - 1 ? 'border-r border-gray-200' : ''
-                        }`}
-                      >
-                        {session ? (
-                          <div className="space-y-2">
-                            {/* Session Type Badge */}
-                            <div className="flex items-center space-x-2">
-                              <span className="text-lg">{getSessionIcon(session.session_type)}</span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
-                                {getSessionTypeLabel(session.session_type)}
-                              </span>
-                            </div>
-
-                            {/* Session Title */}
-                            <h3 className="font-semibold text-gray-900 text-sm leading-tight">
-                              {session.title}
-                            </h3>
-
-                            {/* Session Details */}
-                            <div className="text-xs text-gray-600 space-y-1">
-                              <p>{formatTimeRange(session.start_time, session.end_time)}</p>
-                              {session.topic && <p>Topic: {session.topic}</p>}
-                              {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
-                              {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
-                              {session.panelist_names && session.panelist_names.length > 0 && (
-                                <p>Panelists: {session.panelist_names.join(', ')}</p>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-gray-400 text-sm">
-                            —
-                          </div>
-                        )}
+                      <div className="text-center py-8">
+                        <div className="text-gray-400 text-sm">No sessions scheduled</div>
                       </div>
                     )
-                  })}
-                </div>
-              ))}
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {hallSessions.map((session) => (
+                        <div 
+                          key={session.id}
+                          className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+                        >
+                          {/* Session Type Badge */}
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span className="text-lg">{getSessionIcon(session.session_type)}</span>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
+                              {getSessionTypeLabel(session.session_type)}
+                            </span>
+                          </div>
+
+                          {/* Session Title */}
+                          <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-2">
+                            {session.title}
+                          </h3>
+
+                          {/* Session Details */}
+                          <div className="text-xs text-gray-600 space-y-1">
+                            <p>{formatTimeRange(session.start_time, session.end_time)}</p>
+                            {session.topic && <p>Topic: {session.topic}</p>}
+                            {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
+                            {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
+                            {session.panelist_names && session.panelist_names.length > 0 && (
+                              <p>Panelists: {session.panelist_names.join(', ')}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
 
         {/* Print Button */}
         <div className="mt-8 text-center print:hidden">
