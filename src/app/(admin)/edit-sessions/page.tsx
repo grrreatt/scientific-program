@@ -524,7 +524,7 @@ export default function EditSessionsPage() {
       return
     }
     
-    const existingHall = halls.find(h => h.name === newHallName.trim())
+    const existingHall = halls.find(h => h.name.toLowerCase() === newHallName.trim().toLowerCase())
     if (existingHall) {
       alert('A hall with this name already exists')
       return
@@ -534,12 +534,15 @@ export default function EditSessionsPage() {
     
     if (sanitizedName) {
       try {
-        const { error } = await supabase
+        console.log('🔄 Adding new hall:', sanitizedName)
+        
+        const { data, error } = await supabase
           .from('stages')
           .insert({
             name: sanitizedName,
             capacity: 100
           })
+          .select()
 
         if (error) {
           console.error('❌ Error adding hall:', error)
@@ -547,9 +550,11 @@ export default function EditSessionsPage() {
           return
         }
 
+        console.log('✅ Hall added successfully:', data)
         await loadHalls()
         setShowAddHallModal(false)
         setNewHallName('')
+        alert('Hall added successfully!')
       } catch (error: any) {
         console.error('❌ Error adding hall:', error)
         alert(`Error adding hall: ${error.message || 'Unknown error'}`)
@@ -1220,52 +1225,64 @@ export default function EditSessionsPage() {
         title="Add New Hall"
         maxWidth="max-w-md"
       >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hall Name
-            </label>
-            <input
-              type="text"
-              value={newHallName}
-              onChange={(e) => {
-                console.log('Hall name input changed:', e.target.value)
-                setNewHallName(e.target.value)
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Enter hall name (e.g., I, II, III)"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  console.log('Enter pressed, hall name:', newHallName)
-                  handleAddHall()
-                } else if (e.key === 'Escape') {
+        <form onSubmit={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          handleAddHall()
+        }}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Hall Name
+              </label>
+              <input
+                type="text"
+                value={newHallName}
+                onChange={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setNewHallName(e.target.value)
+                }}
+                onKeyDown={(e) => {
+                  e.stopPropagation()
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleAddHall()
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault()
+                    setShowAddHallModal(false)
+                    setNewHallName('')
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Enter hall name (e.g., Hall A, Seminar Room)"
+                autoFocus
+                maxLength={50}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
                   setShowAddHallModal(false)
                   setNewHallName('')
-                }
-              }}
-              autoFocus
-              maxLength={50}
-            />
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!newHallName.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Add Hall
+              </button>
+            </div>
           </div>
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={() => {
-                setShowAddHallModal(false)
-                setNewHallName('')
-              }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleAddHall}
-              disabled={!newHallName.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Add Hall
-            </button>
-          </div>
-        </div>
+        </form>
       </Modal>
 
       {/* Add Day Modal */}
