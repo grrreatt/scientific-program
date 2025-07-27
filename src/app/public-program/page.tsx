@@ -132,7 +132,7 @@ export default function PublicProgramPage() {
       setError('Failed to load sessions. Please refresh the page.')
       // Fallback to mock data
       setSessions([
-        {
+      {
           id: '1',
           title: 'Mock Session',
         session_type: 'lecture',
@@ -243,7 +243,7 @@ export default function PublicProgramPage() {
     // Load data from Supabase
     const loadData = async () => {
       await Promise.all([loadSessions(), loadHalls(), loadDays()])
-      setLoading(false)
+    setLoading(false)
     }
     
     loadData()
@@ -410,7 +410,7 @@ export default function PublicProgramPage() {
                   const hallSessions = filteredSessions.filter(session => 
                     session.stage_name === hall.name
                   )
-                  
+                    
                   if (hallSessions.length === 0) {
                     return (
                       <div className="text-center py-8">
