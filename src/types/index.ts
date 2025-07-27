@@ -52,6 +52,8 @@ export interface Session {
   end_time?: string
   day_name?: string
   stage_name?: string
+  // Optimistic update flag
+  optimistic?: boolean
 }
 
 export interface DayTimeSlot {

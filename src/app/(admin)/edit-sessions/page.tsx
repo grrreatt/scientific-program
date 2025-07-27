@@ -7,6 +7,8 @@ import { Modal } from '@/components/ui/modal'
 import { SessionForm } from '@/components/session-form'
 import { supabase } from '@/lib/supabase/client'
 import { Session, DayTimeSlot, Hall, Day } from '@/types'
+import realtimeService from '@/lib/supabase/realtime'
+import { RealtimeStatus } from '@/components/ui/realtime-status'
 
 export default function EditSessionsPage() {
   const [error, setError] = useState<string | null>(null)
@@ -29,6 +31,8 @@ export default function EditSessionsPage() {
   const [newDayName, setNewDayName] = useState('')
   const [newDayDate, setNewDayDate] = useState('')
   const [editingTimeSlot, setEditingTimeSlot] = useState<DayTimeSlot | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   // Load sessions using the new view
   const loadSessions = async () => {
@@ -146,43 +150,36 @@ export default function EditSessionsPage() {
     
     loadData()
 
-    // Set up real-time subscriptions with better error handling
-    const sessionsChannel = supabase
-      .channel('sessions-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'sessions' }, 
-        (payload) => {
-          console.log('🔄 Session change detected:', payload)
-          loadSessions()
-        }
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'stages' }, 
-        (payload) => {
-          console.log('🔄 Stage change detected:', payload)
-          loadHalls()
-        }
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'conference_days' }, 
-        (payload) => {
-          console.log('🔄 Day change detected:', payload)
-          loadDays()
-        }
-      )
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'day_time_slots' }, 
-        (payload) => {
-          console.log('🔄 Time slot change detected:', payload)
-          loadTimeSlots()
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Subscription status:', status)
-      })
+    // Set up enhanced real-time subscriptions
+    realtimeService.subscribeToAll({
+      onSessionChange: (payload) => {
+        console.log('🔄 Session change detected:', payload)
+        setLastUpdate(new Date())
+        loadSessions()
+      },
+      onHallChange: (payload) => {
+        console.log('🔄 Hall change detected:', payload)
+        setLastUpdate(new Date())
+        loadHalls()
+      },
+      onDayChange: (payload) => {
+        console.log('🔄 Day change detected:', payload)
+        setLastUpdate(new Date())
+        loadDays()
+      },
+      onTimeSlotChange: (payload) => {
+        console.log('🔄 Time slot change detected:', payload)
+        setLastUpdate(new Date())
+        loadTimeSlots()
+      },
+      onConnectionChange: (status) => {
+        console.log('🔗 Connection status changed:', status)
+        setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
+      }
+    })
 
     return () => {
-      sessionsChannel.unsubscribe()
+      realtimeService.unsubscribeFromAll()
     }
   }, [])
 
@@ -268,6 +265,33 @@ export default function EditSessionsPage() {
       }
 
       console.log('📤 Insert/Update payload:', insertData)
+      
+      // Optimistic update - immediately update UI
+      if (editingSession) {
+        // Update existing session optimistically
+        setSessions(prev => prev.map(s => 
+          s.id === editingSession.id 
+            ? { ...s, ...insertData, optimistic: true }
+            : s
+        ))
+      } else {
+        // Add new session optimistically
+        const optimisticSession = {
+          id: `temp-${Date.now()}`,
+          ...insertData,
+          optimistic: true,
+          day_name: selectedDay,
+          stage_name: halls.find(h => h.id === sessionToAdd?.hallId)?.name || '',
+          start_time: timeSlots.find(ts => ts.id === sessionToAdd?.timeSlotId)?.start_time || '',
+          end_time: timeSlots.find(ts => ts.id === sessionToAdd?.timeSlotId)?.end_time || ''
+        }
+        setSessions(prev => [...prev, optimisticSession])
+      }
+
+      // Close modal immediately for better UX
+      handleCloseModal()
+
+      // Perform actual database operation
       let response
       if (editingSession) {
         response = await supabase.from('sessions').update(insertData).eq('id', editingSession.id)
@@ -279,15 +303,19 @@ export default function EditSessionsPage() {
       if (response.error) {
         console.error('❌ Supabase error:', response.error)
         alert(`Error saving session:\n${JSON.stringify(response.error, null, 2)}`)
+        // Revert optimistic update on error
+        await loadSessions()
         return
       }
 
+      // Remove optimistic flag and update with real data
       await loadSessions()
-      handleCloseModal()
       console.log('🎉 Session submission completed successfully!')
     } catch (error) {
       console.error('❌ Error saving session:', error)
       alert(`Error saving session: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      // Revert optimistic update on error
+      await loadSessions()
     } finally {
       setIsSubmitting(false)
     }
@@ -591,7 +619,8 @@ export default function EditSessionsPage() {
                 March 15-17, 2024
               </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex items-center space-x-3">
+              <RealtimeStatus />
               <button
                 onClick={handleAddDay}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
