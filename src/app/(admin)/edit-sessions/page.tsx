@@ -31,24 +31,25 @@ interface Hall {
   color: string
 }
 
+interface Day {
+  id: string
+  name: string
+  date: string
+}
+
 interface TimeSlot {
   id: string
   start_time: string
   end_time: string
-  sessions: Record<string, Session | null> // hallId -> session
 }
 
 export default function EditSessionsPage() {
   // Error state for better error handling
   const [error, setError] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [halls, setHalls] = useState<Hall[]>([
-    { id: 'hall-1', name: 'Main Hall', color: 'bg-blue-50 border-blue-200' },
-    { id: 'hall-2', name: 'Seminar Room A', color: 'bg-green-50 border-green-200' },
-    { id: 'hall-3', name: 'Seminar Room B', color: 'bg-purple-50 border-purple-200' }
-  ])
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
-  const [selectedDay, setSelectedDay] = useState('Day 1')
+  const [halls, setHalls] = useState<Hall[]>([])
+  const [days, setDays] = useState<Day[]>([])
+  const [selectedDay, setSelectedDay] = useState<string>('Day 1')
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<Session | null>(null)
@@ -66,7 +67,7 @@ export default function EditSessionsPage() {
   const [newDayDate, setNewDayDate] = useState('')
 
   // Generate time slots from 8:00 AM to 6:00 PM with 30-minute intervals
-  const generateTimeSlots = () => {
+  const generateTimeSlots = (): TimeSlot[] => {
     const slots: TimeSlot[] = []
     let currentTime = new Date()
     currentTime.setHours(8, 0, 0, 0) // Start at 8:00 AM
@@ -78,14 +79,45 @@ export default function EditSessionsPage() {
       slots.push({
         id: `slot-${i}`,
         start_time: startTime.toTimeString().slice(0, 5),
-        end_time: endTime.toTimeString().slice(0, 5),
-        sessions: {}
+        end_time: endTime.toTimeString().slice(0, 5)
       })
       
       currentTime = endTime
     }
     
     return slots
+  }
+
+  const timeSlots = generateTimeSlots()
+
+  // Create mock data for development
+  const createMockData = () => {
+    const mockDay: Day = {
+      id: 'day-1',
+      name: 'Day 1',
+      date: 'March 15, 2024'
+    }
+
+    const mockHall: Hall = {
+      id: 'mock-hall-1',
+      name: 'Mock Hall',
+      color: 'bg-blue-50 border-blue-200'
+    }
+
+    const mockSession: Session = {
+      id: 'mock-session-1',
+      title: 'Mock Session',
+      session_type: 'lecture',
+      day_name: 'Day 1',
+      stage_name: 'Mock Hall',
+      start_time: '09:00',
+      end_time: '10:00',
+      topic: 'Introduction to Mock Data',
+      speaker_name: 'Dr. Mock Speaker',
+      description: 'This is a mock session for testing purposes.'
+    }
+
+    return { mockDay, mockHall, mockSession }
   }
 
   // Load sessions from Supabase
@@ -98,6 +130,9 @@ export default function EditSessionsPage() {
 
       if (error) {
         console.error('Error loading sessions:', error)
+        // If no data, create mock data
+        const { mockSession } = createMockData()
+        setSessions([mockSession])
         return
       }
 
@@ -107,6 +142,7 @@ export default function EditSessionsPage() {
           case 'main-hall': return 'Main Hall'
           case 'seminar-a': return 'Seminar Room A'
           case 'seminar-b': return 'Seminar Room B'
+          case 'mock-hall': return 'Mock Hall'
           default: return 'Workshop Room'
         }
       }
@@ -117,6 +153,7 @@ export default function EditSessionsPage() {
           case 'day1': return 'Day 1'
           case 'day2': return 'Day 2'
           case 'day3': return 'Day 3'
+          case 'day-1': return 'Day 1'
           default: return 'Day 1'
         }
       }
@@ -140,11 +177,14 @@ export default function EditSessionsPage() {
         discussion_leader_id: session.data?.discussion_leader_id
       }))
 
-      setSessions(transformedSessions)
-      setError(null) // Clear any previous errors
+      setSessions(transformedSessions.length > 0 ? transformedSessions : [createMockData().mockSession])
+      setError(null)
     } catch (error) {
       console.error('Error loading sessions:', error)
       setError('Failed to load sessions. Please refresh the page.')
+      // Fallback to mock data
+      const { mockSession } = createMockData()
+      setSessions([mockSession])
     }
   }
 
@@ -158,6 +198,9 @@ export default function EditSessionsPage() {
 
       if (error) {
         console.error('Error loading halls:', error)
+        // If no data, create mock data
+        const { mockHall } = createMockData()
+        setHalls([mockHall])
         return
       }
 
@@ -168,57 +211,43 @@ export default function EditSessionsPage() {
         color: 'bg-gray-50 border-gray-200'
       }))
 
-      setHalls(transformedHalls.length > 0 ? transformedHalls : [
-        { id: 'hall-1', name: 'Main Hall', color: 'bg-blue-50 border-blue-200' },
-        { id: 'hall-2', name: 'Seminar Room A', color: 'bg-green-50 border-green-200' },
-        { id: 'hall-3', name: 'Seminar Room B', color: 'bg-purple-50 border-purple-200' }
-      ])
-      setError(null) // Clear any previous errors
+      setHalls(transformedHalls.length > 0 ? transformedHalls : [createMockData().mockHall])
+      setError(null)
     } catch (error) {
       console.error('Error loading halls:', error)
       setError('Failed to load halls. Please refresh the page.')
+      // Fallback to mock data
+      const { mockHall } = createMockData()
+      setHalls([mockHall])
+    }
+  }
+
+  // Load days from Supabase (or create mock)
+  const loadDays = async () => {
+    try {
+      // For now, we'll create mock days since we don't have a days table yet
+      const mockDays: Day[] = [
+        { id: 'day-1', name: 'Day 1', date: 'March 15, 2024' },
+        { id: 'day-2', name: 'Day 2', date: 'March 16, 2024' },
+        { id: 'day-3', name: 'Day 3', date: 'March 17, 2024' }
+      ]
+      setDays(mockDays)
+    } catch (error) {
+      console.error('Error loading days:', error)
+      const { mockDay } = createMockData()
+      setDays([mockDay])
     }
   }
 
   useEffect(() => {
-    // Initialize time slots
-    setTimeSlots(generateTimeSlots())
-    
     // Load data from Supabase
     const loadData = async () => {
-      await Promise.all([loadSessions(), loadHalls()])
+      await Promise.all([loadSessions(), loadHalls(), loadDays()])
       setLoading(false)
     }
     
     loadData()
   }, [])
-
-  // Populate time slots with sessions - Optimized for performance
-  useEffect(() => {
-    if (sessions.length > 0 && timeSlots.length > 0 && halls.length > 0) {
-      // Create a lookup map for O(1) access instead of O(n²)
-      const sessionMap = new Map<string, Session>()
-      sessions
-        .filter(s => s.day_name === selectedDay)
-        .forEach(session => {
-          const key = `${session.stage_name}-${session.start_time}`
-          sessionMap.set(key, session)
-        })
-
-      const updatedTimeSlots = timeSlots.map(slot => {
-        const slotSessions: Record<string, Session | null> = {}
-        
-        halls.forEach(hall => {
-          const key = `${hall.name}-${slot.start_time}`
-          slotSessions[hall.id] = sessionMap.get(key) || null
-        })
-        
-        return { ...slot, sessions: slotSessions }
-      })
-      
-      setTimeSlots(updatedTimeSlots)
-    }
-  }, [sessions, selectedDay, halls])
 
   const getSessionTypeLabel = (type: string) => {
     return SESSION_TYPES[type]?.name || type
@@ -252,6 +281,15 @@ export default function EditSessionsPage() {
       other: '📋'
     }
     return icons[type] || '📋'
+  }
+
+  // Find session for a specific hall and time slot
+  const findSession = (hallId: string, timeSlot: TimeSlot): Session | null => {
+    return sessions.find(session => 
+      session.day_name === selectedDay &&
+      session.stage_name === halls.find(h => h.id === hallId)?.name &&
+      session.start_time === timeSlot.start_time
+    ) || null
   }
 
   const handleEditSession = (session: Session) => {
@@ -350,7 +388,8 @@ export default function EditSessionsPage() {
             day_id: selectedDay === 'Day 1' ? 'day1' : selectedDay === 'Day 2' ? 'day2' : 'day3',
             stage_id: hall?.name === 'Main Hall' ? 'main-hall' :
                       hall?.name === 'Seminar Room A' ? 'seminar-a' :
-                      hall?.name === 'Seminar Room B' ? 'seminar-b' : 'workshop',
+                      hall?.name === 'Seminar Room B' ? 'seminar-b' : 
+                      hall?.name === 'Mock Hall' ? 'mock-hall' : 'workshop',
             start_time: timeSlot?.start_time || '09:00',
             end_time: formData.end_time || timeSlot?.end_time || '10:00',
             topic: formData.topic,
@@ -384,7 +423,6 @@ export default function EditSessionsPage() {
   }
 
   const handleDeleteSession = async (sessionId: string) => {
-    // Better UX: Use a proper confirmation dialog instead of browser confirm
     const session = sessions.find(s => s.id === sessionId)
     const confirmed = window.confirm(
       `Are you sure you want to delete "${session?.title || 'this session'}"? This action cannot be undone.`
@@ -402,7 +440,6 @@ export default function EditSessionsPage() {
           throw error
         }
 
-        // Reload sessions from database
         await loadSessions()
       } catch (error) {
         console.error('Error deleting session:', error)
@@ -420,35 +457,31 @@ export default function EditSessionsPage() {
   }
 
   const handleSaveHallName = async () => {
-    // Input validation
     if (!editingHallId || !editingHallName.trim()) {
       alert('Hall name cannot be empty')
       return
     }
     
-    // Check for duplicate names
     const existingHall = halls.find(h => h.name === editingHallName.trim() && h.id !== editingHallId)
     if (existingHall) {
       alert('A hall with this name already exists')
       return
     }
     
-    // Sanitize input to prevent XSS
     const sanitizedName = editingHallName.trim().replace(/[<>]/g, '')
     
     if (editingHallId && sanitizedName) {
       try {
-                  const { error } = await supabase
-            .from('stages')
-            .update({ name: sanitizedName })
-            .eq('id', editingHallId)
+        const { error } = await supabase
+          .from('stages')
+          .update({ name: sanitizedName })
+          .eq('id', editingHallId)
 
         if (error) {
           console.error('Error updating hall:', error)
           throw error
         }
 
-        // Reload halls from database
         await loadHalls()
         setEditingHallId(null)
         setEditingHallName('')
@@ -469,23 +502,21 @@ export default function EditSessionsPage() {
     setIsDeleteModalOpen(true)
   }
 
-  // Helper function to map hall names to stage_ids
   const getStageId = (hallName: string) => {
     switch (hallName) {
       case 'Main Hall': return 'main-hall'
       case 'Seminar Room A': return 'seminar-a'
       case 'Seminar Room B': return 'seminar-b'
+      case 'Mock Hall': return 'mock-hall'
       default: return 'workshop'
     }
   }
 
-  // Security: Use environment variable for password or implement proper auth
   const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '1234'
   
   const confirmDeleteHall = async () => {
     if (deletePassword === ADMIN_PASSWORD && hallToDelete) {
       try {
-        // Move sessions from deleted hall to first available hall
         const firstHall = halls.find(h => h.id !== hallToDelete.id)
         if (firstHall) {
           const { error } = await supabase
@@ -498,7 +529,6 @@ export default function EditSessionsPage() {
           }
         }
 
-        // Delete the hall
         const { error } = await supabase
           .from('stages')
           .delete()
@@ -509,7 +539,6 @@ export default function EditSessionsPage() {
           throw error
         }
 
-        // Reload data
         await Promise.all([loadSessions(), loadHalls()])
         setIsDeleteModalOpen(false)
         setHallToDelete(null)
@@ -524,20 +553,17 @@ export default function EditSessionsPage() {
   }
 
   const handleAddHall = async () => {
-    // Input validation
     if (!newHallName.trim()) {
       alert('Hall name cannot be empty')
       return
     }
     
-    // Check for duplicate names
     const existingHall = halls.find(h => h.name === newHallName.trim())
     if (existingHall) {
       alert('A hall with this name already exists')
       return
     }
     
-    // Sanitize input to prevent XSS
     const sanitizedName = newHallName.trim().replace(/[<>]/g, '')
     
     if (sanitizedName) {
@@ -554,7 +580,6 @@ export default function EditSessionsPage() {
           throw error
         }
 
-        // Reload halls from database
         await loadHalls()
         setShowAddHallModal(false)
         setNewHallName('')
@@ -583,7 +608,6 @@ export default function EditSessionsPage() {
           throw error
         }
 
-        // Reload halls from database
         await loadHalls()
       } catch (error) {
         console.error('Error adding hall:', error)
@@ -603,7 +627,6 @@ export default function EditSessionsPage() {
       try {
         // For now, we'll add it to the days list locally
         // In a real app, you'd save this to a days table in the database
-        // For now, we'll just close the modal and let the user know
         alert(`Day "${newDayName}" with date "${newDayDate}" would be added to the database. This feature needs backend implementation.`)
         
         setShowAddDayModal(false)
@@ -617,7 +640,6 @@ export default function EditSessionsPage() {
   }
 
   const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
-  const days = Array.from(new Set(sessions.map(s => s.day_name)))
 
   if (loading) {
     return (
@@ -672,23 +694,6 @@ export default function EditSessionsPage() {
               >
                 Add Hall
               </button>
-              <button
-                onClick={() => {
-                  if (halls.length === 0) {
-                    alert('Please add at least one hall before creating sessions')
-                    return
-                  }
-                  if (timeSlots.length === 0) {
-                    alert('No time slots available. Please refresh the page.')
-                    return
-                  }
-                  handleAddSession(halls[0]?.id || '', timeSlots[0]?.id || '')
-                }}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                disabled={halls.length === 0 || timeSlots.length === 0}
-              >
-                Add Session
-              </button>
             </div>
           </div>
         </div>
@@ -700,15 +705,15 @@ export default function EditSessionsPage() {
           <nav className="flex space-x-8">
             {days.map(day => (
               <button
-                key={day}
-                onClick={() => setSelectedDay(day)}
+                key={day.id}
+                onClick={() => setSelectedDay(day.name)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  selectedDay === day
+                  selectedDay === day.name
                     ? 'border-indigo-500 text-indigo-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                {day}
+                {day.name}
               </button>
             ))}
             <button
@@ -721,208 +726,191 @@ export default function EditSessionsPage() {
         </div>
       </div>
 
-      {/* Program Content - Same layout as public page */}
+      {/* Program Content - Grid Layout */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Day Header - Same as public page */}
+        {/* Day Header */}
         <div className="mb-8 text-center print:mb-4">
           <h2 className="text-2xl font-bold text-gray-900 print:text-xl">
             {selectedDay}
           </h2>
           <p className="mt-1 text-gray-600 print:text-sm">
-            {selectedDay === 'Day 1' && 'March 15, 2024'}
-            {selectedDay === 'Day 2' && 'March 16, 2024'}
-            {selectedDay === 'Day 3' && 'March 17, 2024'}
+            {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
           </p>
         </div>
 
-        {/* Schedule Grid - Same design as public page but with editing */}
-        {filteredSessions.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No sessions scheduled for this day.</p>
-            <button
-              onClick={() => {
-                if (halls.length === 0) {
-                  alert('Please add at least one hall before creating sessions')
-                  return
-                }
-                if (timeSlots.length === 0) {
-                  alert('No time slots available. Please refresh the page.')
-                  return
-                }
-                handleAddSession(halls[0]?.id || '', timeSlots[0]?.id || '')
-              }}
-              className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              disabled={halls.length === 0 || timeSlots.length === 0}
-            >
-              Add First Session
-            </button>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-gray-300">
-            {/* Grid Header - Same as public page */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 border-b border-gray-200 bg-gray-50">
-              <div className="p-4 font-medium text-gray-900 border-r border-gray-200">
-                Time
-              </div>
-              {halls.map((hall, index) => (
-                <div 
-                  key={hall.id} 
-                  className={`p-4 font-medium text-gray-900 border-r border-gray-200 relative group ${
-                    index < halls.length - 1 ? 'border-r border-gray-200' : ''
-                  }`}
-                >
-                  {editingHallId === hall.id ? (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={editingHallName}
-                        onChange={(e) => setEditingHallName(e.target.value)}
-                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            handleSaveHallName()
-                          } else if (e.key === 'Escape') {
-                            e.preventDefault()
-                            handleCancelEditHall()
-                          }
-                        }}
-                        autoFocus
-                        aria-label="Edit hall name"
-                        maxLength={50}
-                      />
-                      <button
-                        onClick={handleSaveHallName}
-                        className="text-green-600 hover:text-green-800 text-sm"
-                        aria-label="Save hall name"
-                        title="Save changes"
-                      >
-                        ✓
-                      </button>
-                      <button
-                        onClick={handleCancelEditHall}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                        aria-label="Cancel editing"
-                        title="Cancel changes"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <span 
-                        className="cursor-pointer hover:text-indigo-600"
-                        onClick={() => handleEditHallName(hall.id)}
-                      >
-                        {hall.name}
-                      </span>
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={() => handleDeleteHall(hall)}
-                          className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-sm transition-opacity"
-                        >
-                          ×
-                        </button>
-                        {index === halls.length - 1 && (
-                          <button
-                            onClick={handleQuickAddHall}
-                            className="opacity-0 group-hover:opacity-100 text-green-600 hover:text-green-800 text-sm transition-opacity"
-                          >
-                            +
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+        {/* Schedule Grid - True Grid Layout */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-gray-300">
+          {/* Grid Header */}
+          <div className="grid border-b border-gray-200 bg-gray-50" style={{ gridTemplateColumns: `100px repeat(${halls.length}, 1fr)` }}>
+            <div className="p-4 font-medium text-gray-900 border-r border-gray-200">
+              Time
             </div>
-
-            {/* Grid Content - Same as public page but with editing */}
-            <div className="divide-y divide-gray-200">
-              {timeSlots.map((timeSlot, timeIndex) => (
-                <div 
-                  key={timeSlot.id}
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 hover:bg-gray-50 transition-colors relative group"
-                >
-                  {/* Time Column - Same as public page but editable */}
-                  <div className="p-4 bg-gray-50 border-r border-gray-200 flex items-center justify-between">
-                    <div className="text-sm font-medium text-gray-900">
-                      {formatTime(timeSlot.start_time)}
+            {halls.map((hall, index) => (
+              <div 
+                key={hall.id} 
+                className="p-4 font-medium text-gray-900 border-r border-gray-200 relative group"
+              >
+                {editingHallId === hall.id ? (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={editingHallName}
+                      onChange={(e) => setEditingHallName(e.target.value)}
+                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleSaveHallName()
+                        } else if (e.key === 'Escape') {
+                          e.preventDefault()
+                          handleCancelEditHall()
+                        }
+                      }}
+                      autoFocus
+                      aria-label="Edit hall name"
+                      maxLength={50}
+                    />
+                    <button
+                      onClick={handleSaveHallName}
+                      className="text-green-600 hover:text-green-800 text-sm"
+                      aria-label="Save hall name"
+                      title="Save changes"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={handleCancelEditHall}
+                      className="text-red-600 hover:text-red-800 text-sm"
+                      aria-label="Cancel editing"
+                      title="Cancel changes"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span 
+                      className="cursor-pointer hover:text-indigo-600"
+                      onClick={() => handleEditHallName(hall.id)}
+                    >
+                      {hall.name}
+                    </span>
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => handleDeleteHall(hall)}
+                        className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-sm transition-opacity"
+                      >
+                        ×
+                      </button>
+                      {index === halls.length - 1 && (
+                        <button
+                          onClick={handleQuickAddHall}
+                          className="opacity-0 group-hover:opacity-100 text-green-600 hover:text-green-800 text-sm transition-opacity"
+                        >
+                          +
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  {/* Hall Columns - Same as public page but with editing */}
-                  {halls.map((hall, hallIndex) => {
-                    const session = timeSlot.sessions[hall.id]
-                    
-                    return (
-                      <div 
-                        key={hall.id}
-                        className={`p-4 ${
-                          hallIndex < halls.length - 1 ? 'border-r border-gray-200' : ''
-                        }`}
-                      >
-                        {session ? (
-                          <div className="space-y-2 group">
-                            {/* Session Type Badge - Same as public page */}
-                            <div className="flex items-center space-x-2">
-                              <span className="text-lg">{getSessionIcon(session.session_type)}</span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
-                                {getSessionTypeLabel(session.session_type)}
-                              </span>
-                            </div>
-
-                            {/* Session Title - Same as public page */}
-                            <h3 className="font-semibold text-gray-900 text-sm leading-tight">
-                              {session.title}
-                            </h3>
-
-                            {/* Session Details - Same as public page */}
-                            <div className="text-xs text-gray-600 space-y-1">
-                              <p>{formatTimeRange(session.start_time, session.end_time)}</p>
-                              {session.topic && <p>Topic: {session.topic}</p>}
-                              {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
-                              {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
-                              {session.panelist_names && session.panelist_names.length > 0 && (
-                                <p>Panelists: {session.panelist_names.join(', ')}</p>
-                              )}
-                            </div>
-
-                            {/* Edit Controls - Only visible on hover */}
-                            <div className="flex space-x-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => handleEditSession(session)}
-                                className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSession(session.id)}
-                                className="text-xs text-red-600 hover:text-red-900 font-medium"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div 
-                            className="text-gray-400 text-sm flex items-center justify-center h-20 border-2 border-dashed border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
-                            onClick={() => handleAddSession(hall.id, timeSlot.id)}
-                          >
-                            <span>+ Add Session</span>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            ))}
           </div>
-        )}
 
-        {/* Print Button - Same as public page */}
+          {/* Grid Content - Time slots as rows */}
+          <div className="divide-y divide-gray-200">
+            {timeSlots.map((timeSlot) => (
+              <div 
+                key={timeSlot.id}
+                className="grid hover:bg-gray-50 transition-colors relative group"
+                style={{ gridTemplateColumns: `100px repeat(${halls.length}, 1fr)` }}
+              >
+                {/* Time Column */}
+                <div className="p-4 bg-gray-50 border-r border-gray-200 flex items-center">
+                  <div className="text-sm font-medium text-gray-900">
+                    {formatTime(timeSlot.start_time)}
+                  </div>
+                </div>
+
+                {/* Hall Columns */}
+                {halls.map((hall, hallIndex) => {
+                  const session = findSession(hall.id, timeSlot)
+                  
+                  return (
+                    <div 
+                      key={hall.id}
+                      className={`p-4 border-r border-gray-200 ${
+                        hallIndex < halls.length - 1 ? 'border-r border-gray-200' : ''
+                      }`}
+                    >
+                      {session ? (
+                        <div 
+                          className="space-y-2 group cursor-pointer"
+                          onClick={() => handleEditSession(session)}
+                        >
+                          {/* Session Type Badge */}
+                          <div className="flex items-center space-x-2">
+                            <span className="text-lg">{getSessionIcon(session.session_type)}</span>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
+                              {getSessionTypeLabel(session.session_type)}
+                            </span>
+                          </div>
+
+                          {/* Session Title */}
+                          <h3 className="font-semibold text-gray-900 text-sm leading-tight">
+                            {session.title}
+                          </h3>
+
+                          {/* Session Details */}
+                          <div className="text-xs text-gray-600 space-y-1">
+                            <p>{formatTimeRange(session.start_time, session.end_time)}</p>
+                            {session.topic && <p>Topic: {session.topic}</p>}
+                            {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
+                            {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
+                            {session.panelist_names && session.panelist_names.length > 0 && (
+                              <p>Panelists: {session.panelist_names.join(', ')}</p>
+                            )}
+                          </div>
+
+                          {/* Edit Controls - Only visible on hover */}
+                          <div className="flex space-x-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEditSession(session)
+                              }}
+                              className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteSession(session.id)
+                              }}
+                              className="text-xs text-red-600 hover:text-red-900 font-medium"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div 
+                          className="text-gray-400 text-sm flex items-center justify-center h-20 border-2 border-dashed border-gray-200 rounded-lg hover:border-gray-300 hover:text-gray-500 transition-colors cursor-pointer"
+                          onClick={() => handleAddSession(hall.id, timeSlot.id)}
+                        >
+                          <span>+ Add Session</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Print Button */}
         <div className="mt-8 text-center print:hidden">
           <button
             onClick={() => window.print()}
@@ -951,7 +939,8 @@ export default function EditSessionsPage() {
                     editingSession.day_name === 'Day 2' ? 'day2' : 'day3',
             stage_id: editingSession.stage_name === 'Main Hall' ? 'main-hall' :
                       editingSession.stage_name === 'Seminar Room A' ? 'seminar-a' :
-                      editingSession.stage_name === 'Seminar Room B' ? 'seminar-b' : 'workshop',
+                      editingSession.stage_name === 'Seminar Room B' ? 'seminar-b' : 
+                      editingSession.stage_name === 'Mock Hall' ? 'mock-hall' : 'workshop',
             start_time: editingSession.start_time,
             end_time: editingSession.end_time,
             speaker_id: editingSession.speaker_name === 'Dr. Sarah Johnson' ? 'speaker1' :
