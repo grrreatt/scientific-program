@@ -789,133 +789,178 @@ export default function EditSessionsPage() {
         </div>
       </div>
 
-      {/* Program Content - New Table Layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Day Header */}
-        <div className="mb-8 text-center print:mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 print:text-xl">
-            {selectedDay}
-          </h2>
-          <p className="mt-1 text-gray-600 print:text-sm">
-            {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
-          </p>
+      {/* Program Content - Modern Card Layout */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header Controls */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          <div className="flex items-center justify-between">
+            {/* Date Selector */}
+            <div className="flex items-center space-x-4">
+              <button className="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
+                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Control Buttons */}
+            <div className="flex items-center space-x-2">
+              {/* Zoom Controls */}
+              <div className="flex items-center space-x-1">
+                <button className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">-</button>
+                <button className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">100%</button>
+                <button className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">+</button>
+              </div>
+
+              {/* Action Buttons */}
+              <button className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <button className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </button>
+              <button className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+
+              {/* Stage Filter */}
+              <button className="inline-flex items-center px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Stage
+                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Add Session Button */}
-        <div className="mb-6 flex justify-end">
-          <button
-            onClick={() => {
-              setSessionToAdd({ hallId: '', timeSlotId: '' })
-              setEditingSession(null)
-              setIsModalOpen(true)
-            }}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Session
-          </button>
-        </div>
-
-        {/* Sessions Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {/* Table Header */}
-          <div className="bg-gray-50 border-b border-gray-200">
-            <div className="grid gap-4 px-6 py-3" style={{ gridTemplateColumns: `120px repeat(${halls.length}, 1fr)` }}>
-              <div className="text-sm font-semibold text-gray-700">Time</div>
-              {halls.map((hall) => (
-                <div key={hall.id} className="text-sm font-semibold text-gray-700 text-center flex items-center justify-center space-x-2">
-                  <span>{hall.name}</span>
+        {/* Hall Columns Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {halls.map((hall) => (
+            <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              {/* Hall Header */}
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-lg font-semibold text-gray-900">{hall.name}</h3>
                   <button
                     onClick={() => handleDeleteHall(hall)}
                     className="p-1 text-gray-400 hover:text-red-600 rounded"
                     title="Delete hall"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
+                <button
+                  className="p-1 text-gray-400 hover:text-teal-600 rounded"
+                  title="Edit hall"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              </div>
 
-          {/* Table Body */}
-          <div className="divide-y divide-gray-200">
-            {timeSlots.map((slot) => (
-              <div key={slot.id} className="grid gap-4 px-6 py-4 hover:bg-gray-50" style={{ gridTemplateColumns: `120px repeat(${halls.length}, 1fr)` }}>
-                {/* Time - Editable */}
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="time"
-                    value={slot.start_time}
-                    onChange={(e) => handleSaveTimeSlot(slot.id, e.target.value, slot.end_time, slot.is_break, slot.break_title)}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                  <span className="text-sm text-gray-500">-</span>
-                  <input
-                    type="time"
-                    value={slot.end_time}
-                    onChange={(e) => handleSaveTimeSlot(slot.id, slot.start_time, e.target.value, slot.is_break, slot.break_title)}
-                    className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                
-                {/* Hall Columns */}
-                {halls.map((hall) => {
+              {/* Time Slots and Sessions */}
+              <div className="p-4 space-y-3">
+                {timeSlots.map((slot) => {
                   const sessionInThisSlot = filteredSessions.find(
                     session => session.stage_id === hall.id && session.time_slot_id === slot.id
                   );
                   
                   return (
-                    <div key={hall.id} className="text-center">
-                      {sessionInThisSlot ? (
-                        <div className="text-sm text-gray-900">
-                          <div className="font-medium">{sessionInThisSlot.title}</div>
-                          {sessionInThisSlot.description && (
-                            <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                              {sessionInThisSlot.description}
+                    <div key={slot.id} className="relative">
+                      {/* Time Indicator */}
+                      <div className="absolute left-0 top-0 w-16 text-xs text-gray-500 font-medium">
+                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                      </div>
+                      
+                      {/* Session Card or Add Button */}
+                      <div className="ml-20">
+                        {sessionInThisSlot ? (
+                          <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+                            {/* Session Header */}
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-medium text-gray-900 text-sm">{sessionInThisSlot.title}</h4>
+                              <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handleEditSession(sessionInThisSlot)}
+                                  className="p-1 text-gray-400 hover:text-teal-600 rounded"
+                                  title="Edit session"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSession(sessionInThisSlot.id)}
+                                  className="p-1 text-gray-400 hover:text-red-600 rounded"
+                                  title="Delete session"
+                                >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
-                          )}
-                          <div className="flex items-center justify-center space-x-2 mt-2">
-                            <button
-                              onClick={() => handleEditSession(sessionInThisSlot)}
-                              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                            >
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            
+                            {/* Session Details */}
+                            <div className="flex items-center space-x-2 text-xs text-gray-500">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteSession(sessionInThisSlot.id)}
-                              className="inline-flex items-center px-2 py-1 border border-red-300 rounded text-xs font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                            >
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                              Delete
-                            </button>
+                              <span>{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</span>
+                            </div>
+                            
+                            {/* Session Type Badge */}
+                            <div className="mt-2">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(sessionInThisSlot.session_type)}`}>
+                                {getSessionIcon(sessionInThisSlot.session_type)} {getSessionTypeLabel(sessionInThisSlot.session_type)}
+                              </span>
+                            </div>
+                            
+                            {/* Description */}
+                            {sessionInThisSlot.description && (
+                              <p className="text-xs text-gray-600 mt-2 line-clamp-2">
+                                {sessionInThisSlot.description}
+                              </p>
+                            )}
                           </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleAddSession(hall.id, slot.id)}
-                          className="inline-flex items-center px-3 py-2 border border-indigo-300 rounded text-sm font-medium text-indigo-700 bg-white hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                        >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          Add Session
-                        </button>
-                      )}
+                        ) : (
+                          <button
+                            onClick={() => handleAddSession(hall.id, slot.id)}
+                            className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-gray-400 hover:text-teal-600 hover:border-teal-400 hover:bg-teal-50 transition-all duration-200 group"
+                          >
+                            <div className="flex items-center justify-center space-x-2">
+                              <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              <span className="text-sm font-medium">Add Session</span>
+                            </div>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 
