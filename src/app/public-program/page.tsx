@@ -54,14 +54,14 @@ export default function PublicProgramPage() {
       if (error) {
         console.error('Error loading sessions:', error)
         // Fallback to mock data
-        setSessions([
-          {
-            id: '1',
+    setSessions([
+      {
+        id: '1',
             title: 'Mock Session',
-            session_type: 'lecture',
-            day_name: 'Day 1',
+        session_type: 'lecture',
+        day_name: 'Day 1',
             stage_name: 'Example Hall',
-            start_time: '09:00',
+        start_time: '09:00',
             end_time: '10:00',
             topic: 'Introduction to Mock Data',
             speaker_name: 'Dr. Mock Speaker'
@@ -118,9 +118,9 @@ export default function PublicProgramPage() {
           id: '1',
           title: 'Mock Session',
           session_type: 'lecture',
-          day_name: 'Day 1',
+        day_name: 'Day 1',
           stage_name: 'Example Hall',
-          start_time: '09:00',
+        start_time: '09:00',
           end_time: '10:00',
           topic: 'Introduction to Mock Data',
           speaker_name: 'Dr. Mock Speaker'
@@ -135,8 +135,8 @@ export default function PublicProgramPage() {
         {
           id: '1',
           title: 'Mock Session',
-          session_type: 'lecture',
-          day_name: 'Day 1',
+        session_type: 'lecture',
+        day_name: 'Day 1',
           stage_name: 'Example Hall',
           start_time: '09:00',
           end_time: '10:00',
@@ -243,7 +243,7 @@ export default function PublicProgramPage() {
     // Load data from Supabase
     const loadData = async () => {
       await Promise.all([loadSessions(), loadHalls(), loadDays()])
-      setLoading(false)
+    setLoading(false)
     }
     
     loadData()
@@ -367,7 +367,7 @@ export default function PublicProgramPage() {
               {/* Hall Header */}
               <div className="p-4 bg-gray-50 border-b border-gray-200">
                 <h3 className="font-medium text-gray-900">{hall.name}</h3>
-              </div>
+            </div>
 
               {/* Hall Content - Sessions */}
               <div className="p-4">
@@ -392,38 +392,38 @@ export default function PublicProgramPage() {
                           key={session.id}
                           className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
                         >
-                          {/* Session Type Badge */}
+                            {/* Session Type Badge */}
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="text-lg">{getSessionIcon(session.session_type)}</span>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
-                              {getSessionTypeLabel(session.session_type)}
-                            </span>
-                          </div>
+                              <span className="text-lg">{getSessionIcon(session.session_type)}</span>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
+                                {getSessionTypeLabel(session.session_type)}
+                              </span>
+                            </div>
 
-                          {/* Session Title */}
+                            {/* Session Title */}
                           <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-2">
-                            {session.title}
-                          </h3>
+                              {session.title}
+                            </h3>
 
-                          {/* Session Details */}
-                          <div className="text-xs text-gray-600 space-y-1">
-                            <p>{formatTimeRange(session.start_time, session.end_time)}</p>
-                            {session.topic && <p>Topic: {session.topic}</p>}
-                            {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
-                            {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
-                            {session.panelist_names && session.panelist_names.length > 0 && (
-                              <p>Panelists: {session.panelist_names.join(', ')}</p>
-                            )}
+                            {/* Session Details */}
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <p>{formatTimeRange(session.start_time, session.end_time)}</p>
+                              {session.topic && <p>Topic: {session.topic}</p>}
+                              {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
+                              {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
+                              {session.panelist_names && session.panelist_names.length > 0 && (
+                                <p>Panelists: {session.panelist_names.join(', ')}</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
                       ))}
-                    </div>
-                  )
+                      </div>
+                    )
                 })()}
               </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
         {/* Print Button */}
         <div className="mt-8 text-center print:hidden">

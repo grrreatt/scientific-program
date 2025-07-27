@@ -86,10 +86,10 @@ export default function EditSessionsPage() {
     const mockSession: Session = {
       id: 'mock-session-1',
       title: 'Mock Session',
-      session_type: 'lecture',
-      day_name: 'Day 1',
+        session_type: 'lecture',
+        day_name: 'Day 1',
       stage_name: 'Example Hall',
-      start_time: '09:00',
+        start_time: '09:00',
       end_time: '10:00',
       topic: 'Introduction to Mock Data',
       speaker_name: 'Dr. Mock Speaker',
@@ -149,13 +149,13 @@ export default function EditSessionsPage() {
         start_time: session.start_time,
         end_time: session.end_time,
         topic: session.topic,
-        speaker_name: session.data?.speaker_name,
-        moderator_name: session.data?.moderator_name,
-        panelist_names: session.data?.panelist_names,
+        speaker_name: session.people_data?.speaker_name,
+        moderator_name: session.people_data?.moderator_name,
+        panelist_names: session.people_data?.panelist_names,
         description: session.description,
         is_parallel_meal: session.is_parallel_meal,
         parallel_meal_type: session.parallel_meal_type,
-        discussion_leader_id: session.data?.discussion_leader_id
+        discussion_leader_id: session.people_data?.discussion_leader_id
       }))
 
       setSessions(transformedSessions.length > 0 ? transformedSessions : [createMockData().mockSession])
@@ -234,7 +234,7 @@ export default function EditSessionsPage() {
     // Load data from Supabase
     const loadData = async () => {
       await Promise.all([loadSessions(), loadHalls(), loadDays()])
-      setLoading(false)
+    setLoading(false)
     }
     
     loadData()
@@ -351,15 +351,74 @@ export default function EditSessionsPage() {
             description: formData.description,
             start_time: formData.start_time || editingSession.start_time,
             end_time: formData.end_time || editingSession.end_time,
-            data: {
+            people_data: {
+              speaker_id: formData.speaker_id,
               speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
                            formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
                            formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
                            formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
                            formData.speaker_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              moderator_name: formData.moderator_name,
-              panelist_names: formData.panelist_names
+              moderator_id: formData.moderator_id,
+              moderator_name: formData.moderator_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                             formData.moderator_id === 'speaker2' ? 'Dr. Michael Chen' :
+                             formData.moderator_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                             formData.moderator_id === 'speaker4' ? 'Prof. David Thompson' :
+                             formData.moderator_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+              panelist_ids: formData.panelist_ids,
+              panelist_names: formData.panelist_ids?.map((id: string) => 
+                id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                id === 'speaker2' ? 'Dr. Michael Chen' :
+                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                id === 'speaker4' ? 'Prof. David Thompson' :
+                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+              ).filter((name: string) => name),
+              chairperson_id: formData.chairperson_id,
+              chairperson_name: formData.chairperson_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                               formData.chairperson_id === 'speaker2' ? 'Dr. Michael Chen' :
+                               formData.chairperson_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                               formData.chairperson_id === 'speaker4' ? 'Prof. David Thompson' :
+                               formData.chairperson_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+              workshop_lead_ids: formData.workshop_lead_ids,
+              workshop_lead_names: formData.workshop_lead_ids?.map((id: string) => 
+                id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                id === 'speaker2' ? 'Dr. Michael Chen' :
+                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                id === 'speaker4' ? 'Prof. David Thompson' :
+                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+              ).filter((name: string) => name),
+              assistant_ids: formData.assistant_ids,
+              assistant_names: formData.assistant_ids?.map((id: string) => 
+                id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                id === 'speaker2' ? 'Dr. Michael Chen' :
+                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                id === 'speaker4' ? 'Prof. David Thompson' :
+                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+              ).filter((name: string) => name),
+              introducer_id: formData.introducer_id,
+              introducer_name: formData.introducer_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                              formData.introducer_id === 'speaker2' ? 'Dr. Michael Chen' :
+                              formData.introducer_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                              formData.introducer_id === 'speaker4' ? 'Prof. David Thompson' :
+                              formData.introducer_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+              presenter_ids: formData.presenter_ids,
+              presenter_names: formData.presenter_ids?.map((id: string) => 
+                id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                id === 'speaker2' ? 'Dr. Michael Chen' :
+                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                id === 'speaker4' ? 'Prof. David Thompson' :
+                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+              ).filter((name: string) => name),
+              discussion_leader_id: formData.discussion_leader_id,
+              discussion_leader_name: formData.discussion_leader_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                                    formData.discussion_leader_id === 'speaker2' ? 'Dr. Michael Chen' :
+                                    formData.discussion_leader_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                                    formData.discussion_leader_id === 'speaker4' ? 'Prof. David Thompson' :
+                                    formData.discussion_leader_id === 'speaker5' ? 'Dr. Lisa Wang' : ''
             },
+            capacity: formData.capacity ? parseInt(formData.capacity) : null,
+            is_parallel_meal: formData.is_parallel_meal,
+            parallel_meal_type: formData.parallel_meal_type,
+            meal_type: formData.meal_type,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingSession.id)
@@ -386,15 +445,74 @@ export default function EditSessionsPage() {
             end_time: formData.end_time || timeSlot?.end_time || '10:00',
             topic: formData.topic,
             description: formData.description,
-            data: {
+            people_data: {
+              speaker_id: formData.speaker_id,
               speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
                            formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
                            formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
                            formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
                            formData.speaker_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
-              moderator_name: formData.moderator_name,
-              panelist_names: formData.panelist_names
-            }
+              moderator_id: formData.moderator_id,
+              moderator_name: formData.moderator_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                             formData.moderator_id === 'speaker2' ? 'Dr. Michael Chen' :
+                             formData.moderator_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                             formData.moderator_id === 'speaker4' ? 'Prof. David Thompson' :
+                             formData.moderator_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+              panelist_ids: formData.panelist_ids,
+              panelist_names: formData.panelist_ids?.map((id: string) => 
+                id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                id === 'speaker2' ? 'Dr. Michael Chen' :
+                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                id === 'speaker4' ? 'Prof. David Thompson' :
+                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+              ).filter((name: string) => name),
+              chairperson_id: formData.chairperson_id,
+              chairperson_name: formData.chairperson_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                               formData.chairperson_id === 'speaker2' ? 'Dr. Michael Chen' :
+                               formData.chairperson_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                               formData.chairperson_id === 'speaker4' ? 'Prof. David Thompson' :
+                               formData.chairperson_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+              workshop_lead_ids: formData.workshop_lead_ids,
+              workshop_lead_names: formData.workshop_lead_ids?.map((id: string) => 
+                id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                id === 'speaker2' ? 'Dr. Michael Chen' :
+                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                id === 'speaker4' ? 'Prof. David Thompson' :
+                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+              ).filter((name: string) => name),
+              assistant_ids: formData.assistant_ids,
+              assistant_names: formData.assistant_ids?.map((id: string) => 
+                id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                id === 'speaker2' ? 'Dr. Michael Chen' :
+                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                id === 'speaker4' ? 'Prof. David Thompson' :
+                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+              ).filter((name: string) => name),
+              introducer_id: formData.introducer_id,
+              introducer_name: formData.introducer_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                              formData.introducer_id === 'speaker2' ? 'Dr. Michael Chen' :
+                              formData.introducer_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                              formData.introducer_id === 'speaker4' ? 'Prof. David Thompson' :
+                              formData.introducer_id === 'speaker5' ? 'Dr. Lisa Wang' : '',
+              presenter_ids: formData.presenter_ids,
+              presenter_names: formData.presenter_ids?.map((id: string) => 
+                id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                id === 'speaker2' ? 'Dr. Michael Chen' :
+                id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                id === 'speaker4' ? 'Prof. David Thompson' :
+                id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+              ).filter((name: string) => name),
+              discussion_leader_id: formData.discussion_leader_id,
+              discussion_leader_name: formData.discussion_leader_id === 'speaker1' ? 'Dr. Sarah Johnson' :
+                                    formData.discussion_leader_id === 'speaker2' ? 'Dr. Michael Chen' :
+                                    formData.discussion_leader_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
+                                    formData.discussion_leader_id === 'speaker4' ? 'Prof. David Thompson' :
+                                    formData.discussion_leader_id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+            },
+            capacity: formData.capacity ? parseInt(formData.capacity) : null,
+            is_parallel_meal: formData.is_parallel_meal,
+            parallel_meal_type: formData.parallel_meal_type,
+            meal_type: formData.meal_type
           })
 
         if (error) {
@@ -727,12 +845,12 @@ export default function EditSessionsPage() {
               >
                 Add Day
               </button>
-              <button
+            <button
                 onClick={handleQuickAddHall}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
+            >
                 Add Hall
-              </button>
+            </button>
             </div>
           </div>
         </div>
@@ -811,16 +929,16 @@ export default function EditSessionsPage() {
                     >
                       ✓
                     </button>
-                    <button
+            <button
                       onClick={handleCancelEditHall}
                       className="text-red-600 hover:text-red-800 text-sm"
                       aria-label="Cancel editing"
                       title="Cancel changes"
                     >
                       ✕
-                    </button>
-                  </div>
-                ) : (
+            </button>
+          </div>
+        ) : (
                   <div className="flex items-center justify-between">
                     <span 
                       className="cursor-pointer hover:text-indigo-600 font-medium text-gray-900"
@@ -848,7 +966,7 @@ export default function EditSessionsPage() {
                     </div>
                   </div>
                 )}
-              </div>
+                  </div>
 
               {/* Hall Content - Sessions */}
               <div className="p-4">
@@ -880,52 +998,52 @@ export default function EditSessionsPage() {
                           className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors cursor-pointer group"
                           onClick={() => handleEditSession(session)}
                         >
-                          {/* Session Type Badge */}
+                            {/* Session Type Badge */}
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="text-lg">{getSessionIcon(session.session_type)}</span>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
-                              {getSessionTypeLabel(session.session_type)}
-                            </span>
-                          </div>
+                              <span className="text-lg">{getSessionIcon(session.session_type)}</span>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
+                                {getSessionTypeLabel(session.session_type)}
+                              </span>
+                            </div>
 
-                          {/* Session Title */}
+                            {/* Session Title */}
                           <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-2">
-                            {session.title}
-                          </h3>
+                              {session.title}
+                            </h3>
 
-                          {/* Session Details */}
-                          <div className="text-xs text-gray-600 space-y-1">
-                            <p>{formatTimeRange(session.start_time, session.end_time)}</p>
-                            {session.topic && <p>Topic: {session.topic}</p>}
-                            {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
-                            {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
-                            {session.panelist_names && session.panelist_names.length > 0 && (
-                              <p>Panelists: {session.panelist_names.join(', ')}</p>
-                            )}
-                          </div>
+                            {/* Session Details */}
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <p>{formatTimeRange(session.start_time, session.end_time)}</p>
+                              {session.topic && <p>Topic: {session.topic}</p>}
+                              {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
+                              {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
+                              {session.panelist_names && session.panelist_names.length > 0 && (
+                                <p>Panelists: {session.panelist_names.join(', ')}</p>
+                              )}
+                            </div>
 
                           {/* Edit Controls - Only visible on hover */}
-                          <div className="flex space-x-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
+                            <div className="flex space-x-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleEditSession(session)
                               }}
-                              className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
-                            >
-                              Edit
-                            </button>
-                            <button
+                                className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
+                              >
+                                Edit
+                              </button>
+                              <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleDeleteSession(session.id)
                               }}
-                              className="text-xs text-red-600 hover:text-red-900 font-medium"
-                            >
-                              Delete
-                            </button>
+                                className="text-xs text-red-600 hover:text-red-900 font-medium"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
-                        </div>
                       ))}
                       
                       {/* Add Session Button */}
@@ -935,13 +1053,13 @@ export default function EditSessionsPage() {
                       >
                         + Add Session
                       </button>
-                    </div>
-                  )
+                      </div>
+                    )
                 })()}
               </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
         {/* Print Button */}
         <div className="mt-8 text-center print:hidden">
@@ -954,7 +1072,7 @@ export default function EditSessionsPage() {
             </svg>
             Print Program
           </button>
-        </div>
+          </div>
       </div>
 
       {/* Session Modal */}
