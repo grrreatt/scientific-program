@@ -271,14 +271,23 @@ export default function EditSessionsPage() {
         // Update existing session optimistically
         setSessions(prev => prev.map(s => 
           s.id === editingSession.id 
-            ? { ...s, ...insertData, optimistic: true }
+            ? { ...s, ...insertData, optimistic: true } as Session
             : s
         ))
       } else {
         // Add new session optimistically
-        const optimisticSession = {
+        const optimisticSession: Session = {
           id: `temp-${Date.now()}`,
-          ...insertData,
+          title: formData.title,
+          session_type: sessionType,
+          day_id: selectedDayData.id,
+          stage_id: sessionToAdd?.hallId || '',
+          time_slot_id: sessionToAdd?.timeSlotId || '',
+          topic: formData.topic,
+          description: formData.description,
+          is_parallel_meal: formData.is_parallel_meal,
+          parallel_meal_type: formData.parallel_meal_type,
+          data: formData.data || {},
           optimistic: true,
           day_name: selectedDay,
           stage_name: halls.find(h => h.id === sessionToAdd?.hallId)?.name || '',
