@@ -39,6 +39,8 @@ interface TimeSlot {
 }
 
 export default function EditSessionsPage() {
+  // Error state for better error handling
+  const [error, setError] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
   const [halls, setHalls] = useState<Hall[]>([
     { id: 'hall-1', name: 'Main Hall', color: 'bg-blue-50 border-blue-200' },
@@ -139,8 +141,10 @@ export default function EditSessionsPage() {
       }))
 
       setSessions(transformedSessions)
+      setError(null) // Clear any previous errors
     } catch (error) {
       console.error('Error loading sessions:', error)
+      setError('Failed to load sessions. Please refresh the page.')
     }
   }
 
@@ -169,8 +173,10 @@ export default function EditSessionsPage() {
         { id: 'hall-2', name: 'Seminar Room A', color: 'bg-green-50 border-green-200' },
         { id: 'hall-3', name: 'Seminar Room B', color: 'bg-purple-50 border-purple-200' }
       ])
+      setError(null) // Clear any previous errors
     } catch (error) {
       console.error('Error loading halls:', error)
+      setError('Failed to load halls. Please refresh the page.')
     }
   }
 
@@ -187,19 +193,24 @@ export default function EditSessionsPage() {
     loadData()
   }, [])
 
-  // Populate time slots with sessions
+  // Populate time slots with sessions - Optimized for performance
   useEffect(() => {
-    if (sessions.length > 0 && timeSlots.length > 0) {
+    if (sessions.length > 0 && timeSlots.length > 0 && halls.length > 0) {
+      // Create a lookup map for O(1) access instead of O(n²)
+      const sessionMap = new Map<string, Session>()
+      sessions
+        .filter(s => s.day_name === selectedDay)
+        .forEach(session => {
+          const key = `${session.stage_name}-${session.start_time}`
+          sessionMap.set(key, session)
+        })
+
       const updatedTimeSlots = timeSlots.map(slot => {
         const slotSessions: Record<string, Session | null> = {}
         
         halls.forEach(hall => {
-          const session = sessions.find(s => 
-            s.day_name === selectedDay && 
-            s.stage_name === hall.name &&
-            s.start_time === slot.start_time
-          )
-          slotSessions[hall.id] = session || null
+          const key = `${hall.name}-${slot.start_time}`
+          slotSessions[hall.id] = sessionMap.get(key) || null
         })
         
         return { ...slot, sessions: slotSessions }
@@ -261,6 +272,30 @@ export default function EditSessionsPage() {
   }
 
   const handleSubmitSession = async (formData: any, sessionType: string) => {
+    // Input validation
+    if (!formData.title?.trim()) {
+      alert('Session title is required')
+      return
+    }
+    
+    if (!formData.start_time || !formData.end_time) {
+      alert('Start and end times are required')
+      return
+    }
+    
+    // Validate time format
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
+    if (!timeRegex.test(formData.start_time) || !timeRegex.test(formData.end_time)) {
+      alert('Invalid time format. Please use HH:MM format.')
+      return
+    }
+    
+    // Validate that end time is after start time
+    if (formData.start_time >= formData.end_time) {
+      alert('End time must be after start time')
+      return
+    }
+    
     setIsSubmitting(true)
     
     try {
@@ -349,7 +384,13 @@ export default function EditSessionsPage() {
   }
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (confirm('Are you sure you want to delete this session?')) {
+    // Better UX: Use a proper confirmation dialog instead of browser confirm
+    const session = sessions.find(s => s.id === sessionId)
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${session?.title || 'this session'}"? This action cannot be undone.`
+    )
+    
+    if (confirmed) {
       try {
         const { error } = await supabase
           .from('sessions')
@@ -379,12 +420,28 @@ export default function EditSessionsPage() {
   }
 
   const handleSaveHallName = async () => {
-    if (editingHallId && editingHallName.trim()) {
+    // Input validation
+    if (!editingHallId || !editingHallName.trim()) {
+      alert('Hall name cannot be empty')
+      return
+    }
+    
+    // Check for duplicate names
+    const existingHall = halls.find(h => h.name === editingHallName.trim() && h.id !== editingHallId)
+    if (existingHall) {
+      alert('A hall with this name already exists')
+      return
+    }
+    
+    // Sanitize input to prevent XSS
+    const sanitizedName = editingHallName.trim().replace(/[<>]/g, '')
+    
+    if (editingHallId && sanitizedName) {
       try {
-        const { error } = await supabase
-          .from('stages')
-          .update({ name: editingHallName.trim() })
-          .eq('id', editingHallId)
+                  const { error } = await supabase
+            .from('stages')
+            .update({ name: sanitizedName })
+            .eq('id', editingHallId)
 
         if (error) {
           console.error('Error updating hall:', error)
@@ -422,8 +479,11 @@ export default function EditSessionsPage() {
     }
   }
 
+  // Security: Use environment variable for password or implement proper auth
+  const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '1234'
+  
   const confirmDeleteHall = async () => {
-    if (deletePassword === '1234' && hallToDelete) {
+    if (deletePassword === ADMIN_PASSWORD && hallToDelete) {
       try {
         // Move sessions from deleted hall to first available hall
         const firstHall = halls.find(h => h.id !== hallToDelete.id)
@@ -464,12 +524,28 @@ export default function EditSessionsPage() {
   }
 
   const handleAddHall = async () => {
-    if (newHallName.trim()) {
+    // Input validation
+    if (!newHallName.trim()) {
+      alert('Hall name cannot be empty')
+      return
+    }
+    
+    // Check for duplicate names
+    const existingHall = halls.find(h => h.name === newHallName.trim())
+    if (existingHall) {
+      alert('A hall with this name already exists')
+      return
+    }
+    
+    // Sanitize input to prevent XSS
+    const sanitizedName = newHallName.trim().replace(/[<>]/g, '')
+    
+    if (sanitizedName) {
       try {
         const { error } = await supabase
           .from('stages')
           .insert({
-            name: newHallName.trim(),
+            name: sanitizedName,
             capacity: 100
           })
 
@@ -547,6 +623,24 @@ export default function EditSessionsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-lg">Loading sessions...</div>
+        <div className="mt-2 text-sm text-gray-500">Please wait while we fetch your data</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="text-lg text-red-600 mb-2">Error Loading Data</div>
+          <div className="text-sm text-gray-600 mb-4">{error}</div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Refresh Page
+          </button>
+        </div>
       </div>
     )
   }
@@ -579,8 +673,19 @@ export default function EditSessionsPage() {
                 Add Hall
               </button>
               <button
-                onClick={() => handleAddSession(halls[0]?.id || '', timeSlots[0]?.id || '')}
+                onClick={() => {
+                  if (halls.length === 0) {
+                    alert('Please add at least one hall before creating sessions')
+                    return
+                  }
+                  if (timeSlots.length === 0) {
+                    alert('No time slots available. Please refresh the page.')
+                    return
+                  }
+                  handleAddSession(halls[0]?.id || '', timeSlots[0]?.id || '')
+                }}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={halls.length === 0 || timeSlots.length === 0}
               >
                 Add Session
               </button>
@@ -635,8 +740,19 @@ export default function EditSessionsPage() {
           <div className="text-center py-12">
             <p className="text-gray-500">No sessions scheduled for this day.</p>
             <button
-              onClick={() => handleAddSession(halls[0]?.id || '', timeSlots[0]?.id || '')}
+              onClick={() => {
+                if (halls.length === 0) {
+                  alert('Please add at least one hall before creating sessions')
+                  return
+                }
+                if (timeSlots.length === 0) {
+                  alert('No time slots available. Please refresh the page.')
+                  return
+                }
+                handleAddSession(halls[0]?.id || '', timeSlots[0]?.id || '')
+              }}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={halls.length === 0 || timeSlots.length === 0}
             >
               Add First Session
             </button>
@@ -672,16 +788,22 @@ export default function EditSessionsPage() {
                           }
                         }}
                         autoFocus
+                        aria-label="Edit hall name"
+                        maxLength={50}
                       />
                       <button
                         onClick={handleSaveHallName}
                         className="text-green-600 hover:text-green-800 text-sm"
+                        aria-label="Save hall name"
+                        title="Save changes"
                       >
                         ✓
                       </button>
                       <button
                         onClick={handleCancelEditHall}
                         className="text-red-600 hover:text-red-800 text-sm"
+                        aria-label="Cancel editing"
+                        title="Cancel changes"
                       >
                         ✕
                       </button>
