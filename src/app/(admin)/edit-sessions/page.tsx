@@ -419,6 +419,12 @@ export default function EditSessionsPage() {
             is_parallel_meal: formData.is_parallel_meal,
             parallel_meal_type: formData.parallel_meal_type,
             meal_type: formData.meal_type,
+            symposium_data: sessionType === 'symposium' ? {
+              subtalks: formData.symposium_subtalks || []
+            } : {},
+            custom_data: sessionType === 'other' ? {
+              custom_fields: formData.custom_data || {}
+            } : {},
             updated_at: new Date().toISOString()
           })
           .eq('id', editingSession.id)
@@ -512,7 +518,13 @@ export default function EditSessionsPage() {
             capacity: formData.capacity ? parseInt(formData.capacity) : null,
             is_parallel_meal: formData.is_parallel_meal,
             parallel_meal_type: formData.parallel_meal_type,
-            meal_type: formData.meal_type
+            meal_type: formData.meal_type,
+            symposium_data: sessionType === 'symposium' ? {
+              subtalks: formData.symposium_subtalks || []
+            } : {},
+            custom_data: sessionType === 'other' ? {
+              custom_fields: formData.custom_data || {}
+            } : {}
           })
 
         if (error) {

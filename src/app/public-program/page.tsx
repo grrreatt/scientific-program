@@ -104,13 +104,13 @@ export default function PublicProgramPage() {
         start_time: session.start_time,
         end_time: session.end_time,
         topic: session.topic,
-        speaker_name: session.data?.speaker_name,
-        moderator_name: session.data?.moderator_name,
-        panelist_names: session.data?.panelist_names,
+        speaker_name: session.people_data?.speaker_name,
+        moderator_name: session.people_data?.moderator_name,
+        panelist_names: session.people_data?.panelist_names,
         description: session.description,
         is_parallel_meal: session.is_parallel_meal,
         parallel_meal_type: session.parallel_meal_type,
-        discussion_leader_id: session.data?.discussion_leader_id
+        discussion_leader_id: session.people_data?.discussion_leader_id
       }))
 
       setSessions(transformedSessions.length > 0 ? transformedSessions : [
