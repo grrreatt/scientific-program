@@ -299,19 +299,33 @@ ALTER TABLE symposium_subtalks ENABLE ROW LEVEL SECURITY;
 -- STEP 6: CREATE SECURITY POLICIES
 -- ========================================
 
--- Public read access
+-- Allow public read access to all tables
 CREATE POLICY "Allow public read access to stages" ON stages FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to sessions" ON sessions FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to days" ON days FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to people" ON people FOR SELECT USING (true);
 CREATE POLICY "Allow public read access to symposium_subtalks" ON symposium_subtalks FOR SELECT USING (true);
 
--- Authenticated user management
-CREATE POLICY "Allow authenticated users to manage stages" ON stages FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow authenticated users to manage sessions" ON sessions FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow authenticated users to manage days" ON days FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow authenticated users to manage people" ON people FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow authenticated users to manage symposium_subtalks" ON symposium_subtalks FOR ALL USING (auth.role() = 'authenticated');
+-- Allow public insert/update/delete access for the application
+CREATE POLICY "Allow public insert to stages" ON stages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to stages" ON stages FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete from stages" ON stages FOR DELETE USING (true);
+
+CREATE POLICY "Allow public insert to sessions" ON sessions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to sessions" ON sessions FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete from sessions" ON sessions FOR DELETE USING (true);
+
+CREATE POLICY "Allow public insert to days" ON days FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to days" ON days FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete from days" ON days FOR DELETE USING (true);
+
+CREATE POLICY "Allow public insert to people" ON people FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to people" ON people FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete from people" ON people FOR DELETE USING (true);
+
+CREATE POLICY "Allow public insert to symposium_subtalks" ON symposium_subtalks FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update to symposium_subtalks" ON symposium_subtalks FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete from symposium_subtalks" ON symposium_subtalks FOR DELETE USING (true);
 
 -- ========================================
 -- STEP 7: CREATE AUTO-UPDATE TRIGGERS

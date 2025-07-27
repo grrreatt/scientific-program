@@ -81,6 +81,7 @@ export function SessionForm({
   })
 
   const handleInputChange = (field: string, value: any) => {
+    console.log(`🔄 Input change: ${field} = ${value}`)
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -88,6 +89,7 @@ export function SessionForm({
   }
 
   const handleArrayChange = (field: string, index: number, value: string) => {
+    console.log(`🔄 Array change: ${field}[${index}] = ${value}`)
     setFormData(prev => ({
       ...prev,
       [field]: (prev[field as keyof typeof prev] as string[]).map((item: string, i: number) => 
@@ -97,17 +99,40 @@ export function SessionForm({
   }
 
   const addArrayItem = (field: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: [...(prev[field as keyof typeof prev] as string[]), '']
-    }))
+    console.log(`➕ Adding array item to: ${field}`)
+    if (field === 'symposium_subtalks') {
+      setFormData(prev => ({
+        ...prev,
+        symposium_subtalks: [...(prev.symposium_subtalks || []), {
+          title: '',
+          speaker_name: '',
+          start_time: '',
+          end_time: '',
+          topic: '',
+          description: ''
+        }]
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: [...(prev[field as keyof typeof prev] as string[]), '']
+      }))
+    }
   }
 
   const removeArrayItem = (field: string, index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: (prev[field as keyof typeof prev] as string[]).filter((_: string, i: number) => i !== index)
-    }))
+    console.log(`➖ Removing array item from: ${field}[${index}]`)
+    if (field === 'symposium_subtalks') {
+      setFormData(prev => ({
+        ...prev,
+        symposium_subtalks: (prev.symposium_subtalks || []).filter((_: any, i: number) => i !== index)
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: (prev[field as keyof typeof prev] as string[]).filter((_: string, i: number) => i !== index)
+      }))
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
