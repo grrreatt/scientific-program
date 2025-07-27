@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS days (
 -- 3. Create people table (for speakers, moderators, etc.)
 CREATE TABLE IF NOT EXISTS people (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
     title TEXT,
     organization TEXT,
     email TEXT,
@@ -74,8 +74,7 @@ INSERT INTO people (name, title, organization) VALUES
     ('Dr. Lisa Wang', 'Principal Investigator', 'Biotech Lab'),
     ('Dr. James Wilson', 'Clinical Director', 'Medical Center'),
     ('Prof. Maria Garcia', 'Department Head', 'University Hospital'),
-    ('Dr. Robert Brown', 'Research Fellow', 'Institute of Medicine')
-ON CONFLICT (name) DO NOTHING;
+    ('Dr. Robert Brown', 'Research Fellow', 'Institute of Medicine');
 
 -- 6. Insert default halls
 INSERT INTO stages (name, capacity) VALUES
@@ -85,15 +84,13 @@ INSERT INTO stages (name, capacity) VALUES
     ('Main Hall', 150),
     ('Seminar Room A', 50),
     ('Seminar Room B', 50),
-    ('Workshop Room', 30)
-ON CONFLICT (name) DO NOTHING;
+    ('Workshop Room', 30);
 
 -- 7. Insert default days
 INSERT INTO days (name, date) VALUES
     ('Day 1', 'March 15, 2024'),
     ('Day 2', 'March 16, 2024'),
-    ('Day 3', 'March 17, 2024')
-ON CONFLICT (name) DO NOTHING;
+    ('Day 3', 'March 17, 2024');
 
 -- 8. Insert sample sessions with complete data structure
 INSERT INTO sessions (
@@ -180,8 +177,7 @@ INSERT INTO sessions (
         NULL,
         FALSE,
         'lunch'
-    )
-ON CONFLICT DO NOTHING;
+    );
 
 -- 9. Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_sessions_day_id ON sessions(day_id);
