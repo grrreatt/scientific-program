@@ -185,7 +185,7 @@ export default function EditSessionsPage() {
       const { data, error } = await supabase
         .from('stages')
         .select('*')
-        .order('name', { ascending: true })
+        // .order('name', { ascending: true }) // Remove alphabetical ordering
 
       if (error) {
         console.error('❌ Error loading halls:', error)
@@ -385,12 +385,15 @@ export default function EditSessionsPage() {
         title: formData.title,
         session_type: sessionType,
         day_id: selectedDay === 'Day 1' ? 'day1' : selectedDay === 'Day 2' ? 'day2' : selectedDay === 'Day 3' ? 'day3' : formData.day_id,
-        stage_id: hall?.name === 'Main Hall' ? 'main-hall' :
-                  hall?.name === 'Seminar Room A' ? 'seminar-a' :
-                  hall?.name === 'Seminar Room B' ? 'seminar-b' : 
-                  hall?.name === 'Example Hall' ? 'example-hall' :
-                  hall?.name === 'Hall A' ? 'hall-a' :
-                  hall?.name === 'Hall B' ? 'hall-b' : hall?.id || 'workshop',
+        stage_id: hall
+          ? (hall.name === 'Main Hall' ? 'main-hall'
+            : hall.name === 'Seminar Room A' ? 'seminar-a'
+            : hall.name === 'Seminar Room B' ? 'seminar-b'
+            : hall.name === 'Example Hall' ? 'example-hall'
+            : hall.name === 'Hall A' ? 'hall-a'
+            : hall.name === 'Hall B' ? 'hall-b'
+            : hall.id) // fallback to hall.id for custom halls
+          : (() => { alert('Error: Hall not found!'); throw new Error('Hall not found'); })(),
         start_time: formData.start_time,
         end_time: formData.end_time,
         topic: formData.topic,
@@ -881,7 +884,7 @@ export default function EditSessionsPage() {
         </div>
 
         {/* Halls Layout - No Time Column */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 overflow-x-auto">
           {halls.map((hall, index) => (
             <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               {/* Hall Header */}
@@ -978,55 +981,41 @@ export default function EditSessionsPage() {
                       {hallSessions.map((session) => (
                         <div 
                           key={session.id}
-                          className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors cursor-pointer group"
+                          className="mb-6 p-6 bg-white border border-gray-200 rounded-xl shadow hover:shadow-md transition-shadow cursor-pointer group flex flex-col"
                           onClick={() => handleEditSession(session)}
                         >
-                            {/* Session Type Badge */}
-                          <div className="flex items-center space-x-2 mb-2">
-                              <span className="text-lg">{getSessionIcon(session.session_type)}</span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
-                                {getSessionTypeLabel(session.session_type)}
-                              </span>
-                            </div>
-
-                            {/* Session Title */}
-                          <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-2">
-                              {session.title}
-                            </h3>
-
-                            {/* Session Details */}
-                            <div className="text-xs text-gray-600 space-y-1">
-                              <p>{formatTimeRange(session.start_time, session.end_time)}</p>
-                              {session.topic && <p>Topic: {session.topic}</p>}
-                              {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
-                              {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
-                              {session.panelist_names && session.panelist_names.length > 0 && (
-                                <p>Panelists: {session.panelist_names.join(', ')}</p>
-                              )}
-                            </div>
-
-                          {/* Edit Controls - Only visible on hover */}
-                            <div className="flex space-x-2 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleEditSession(session)
-                              }}
-                                className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
-                              >
-                                Edit
-                              </button>
-                              <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDeleteSession(session.id)
-                              }}
-                                className="text-xs text-red-600 hover:text-red-900 font-medium"
-                              >
-                                Delete
-                              </button>
-                            </div>
+                          {/* Time at the top */}
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold text-indigo-600">
+                              {formatTimeRange(session.start_time, session.end_time)}
+                            </span>
                           </div>
+                          {/* Session Title */}
+                          <h3 className="text-lg font-bold text-gray-900 mb-1">
+                            {session.title}
+                          </h3>
+                          {/* Session Details */}
+                          <div className="text-sm text-gray-700 space-y-1">
+                            {session.topic && <div><span className="font-medium">Topic:</span> {session.topic}</div>}
+                            {session.speaker_name && <div><span className="font-medium">Speaker:</span> {session.speaker_name}</div>}
+                            {session.moderator_name && <div><span className="font-medium">Moderator:</span> {session.moderator_name}</div>}
+                            {session.panelist_names && session.panelist_names.length > 0 && (
+                              <div><span className="font-medium">Panelists:</span> {session.panelist_names.join(', ')}</div>
+                            )}
+                            {session.description && <div className="text-gray-500 mt-1">{session.description}</div>}
+                          </div>
+                          {/* Edit/Delete Controls on hover */}
+                          <div className="flex space-x-2 pt-3 opacity-0 group-hover:opacity-100 transition-opacity self-end">
+                            <button
+                              onClick={e => { e.stopPropagation(); handleEditSession(session); }}
+                              className="text-xs text-indigo-600 hover:text-indigo-900 font-medium"
+                            >Edit</button>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleDeleteSession(session.id); }}
+                              className="text-xs text-red-600 hover:text-red-900 font-medium"
+                            >Delete</button>
+                          </div>
+                        </div>
                       ))}
                       
                       {/* Add Session Button */}
