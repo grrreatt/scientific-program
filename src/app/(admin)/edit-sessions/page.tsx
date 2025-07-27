@@ -409,41 +409,67 @@ export default function EditSessionsPage() {
   const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '1234'
   
   const confirmDeleteHall = async () => {
-    if (deletePassword === ADMIN_PASSWORD && hallToDelete) {
-      try {
-        // Move sessions to first available hall
-        const firstHall = halls.find(h => h.id !== hallToDelete.id)
-        if (firstHall) {
-          const { error } = await supabase
-            .from('sessions')
-            .update({ stage_id: firstHall.id })
-            .eq('stage_id', hallToDelete.id)
-
-          if (error) {
-            console.error('❌ Error moving sessions:', error)
-          }
-        }
-
+    console.log('🔧 confirmDeleteHall called')
+    console.log('🔧 deletePassword:', deletePassword)
+    console.log('🔧 ADMIN_PASSWORD:', ADMIN_PASSWORD)
+    console.log('🔧 hallToDelete:', hallToDelete)
+    
+    if (!deletePassword) {
+      alert('Please enter a password.')
+      return
+    }
+    
+    if (!hallToDelete) {
+      alert('No hall selected for deletion.')
+      return
+    }
+    
+    if (deletePassword !== ADMIN_PASSWORD) {
+      alert(`Incorrect password. Expected: ${ADMIN_PASSWORD}, Got: ${deletePassword}`)
+      return
+    }
+    
+    try {
+      console.log('🔧 Starting hall deletion process...')
+      
+      // Move sessions to first available hall
+      const firstHall = halls.find(h => h.id !== hallToDelete.id)
+      if (firstHall) {
+        console.log('🔧 Moving sessions to hall:', firstHall.name)
         const { error } = await supabase
-          .from('stages')
-          .delete()
-          .eq('id', hallToDelete.id)
+          .from('sessions')
+          .update({ stage_id: firstHall.id })
+          .eq('stage_id', hallToDelete.id)
 
         if (error) {
-          console.error('❌ Error deleting hall:', error)
-          throw error
+          console.error('❌ Error moving sessions:', error)
+          alert(`Error moving sessions: ${error.message}`)
+          return
         }
-
-        await Promise.all([loadSessions(), loadHalls()])
-        setIsDeleteModalOpen(false)
-        setHallToDelete(null)
-        setDeletePassword('')
-      } catch (error) {
-        console.error('❌ Error deleting hall:', error)
-        alert('Error deleting hall. Please try again.')
+        console.log('✅ Sessions moved successfully')
       }
-    } else {
-      alert('Incorrect password. Please try again.')
+
+      console.log('🔧 Deleting hall:', hallToDelete.name)
+      const { error } = await supabase
+        .from('stages')
+        .delete()
+        .eq('id', hallToDelete.id)
+
+      if (error) {
+        console.error('❌ Error deleting hall:', error)
+        alert(`Error deleting hall: ${error.message}`)
+        return
+      }
+
+      console.log('✅ Hall deleted successfully')
+      await Promise.all([loadSessions(), loadHalls()])
+      setIsDeleteModalOpen(false)
+      setHallToDelete(null)
+      setDeletePassword('')
+      alert('Hall deleted successfully!')
+    } catch (error) {
+      console.error('❌ Error deleting hall:', error)
+      alert(`Error deleting hall: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -801,8 +827,17 @@ export default function EditSessionsPage() {
             <div className="grid gap-4 px-6 py-3" style={{ gridTemplateColumns: `120px repeat(${halls.length}, 1fr)` }}>
               <div className="text-sm font-semibold text-gray-700">Time</div>
               {halls.map((hall) => (
-                <div key={hall.id} className="text-sm font-semibold text-gray-700 text-center">
-                  {hall.name}
+                <div key={hall.id} className="text-sm font-semibold text-gray-700 text-center flex items-center justify-center space-x-2">
+                  <span>{hall.name}</span>
+                  <button
+                    onClick={() => handleDeleteHall(hall)}
+                    className="p-1 text-gray-400 hover:text-red-600 rounded"
+                    title="Delete hall"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>
@@ -943,12 +978,16 @@ export default function EditSessionsPage() {
             <input
               type="password"
               value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
+              onChange={(e) => {
+                console.log('Password input changed:', e.target.value)
+                setDeletePassword(e.target.value)
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Enter password"
+              placeholder="Enter password (default: 1234)"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
+                  console.log('Enter pressed, password:', deletePassword)
                   confirmDeleteHall()
                 } else if (e.key === 'Escape') {
                   setIsDeleteModalOpen(false)
@@ -997,11 +1036,15 @@ export default function EditSessionsPage() {
             <input
               type="text"
               value={newHallName}
-              onChange={(e) => setNewHallName(e.target.value)}
+              onChange={(e) => {
+                console.log('Hall name input changed:', e.target.value)
+                setNewHallName(e.target.value)
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
               placeholder="Enter hall name (e.g., I, II, III)"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
+                  console.log('Enter pressed, hall name:', newHallName)
                   handleAddHall()
                 } else if (e.key === 'Escape') {
                   setShowAddHallModal(false)
