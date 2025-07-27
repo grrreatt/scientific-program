@@ -23,7 +23,6 @@ export default function EditSessionsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [hallToDelete, setHallToDelete] = useState<Hall | null>(null)
-  const [deletePassword, setDeletePassword] = useState('')
   const [showAddHallModal, setShowAddHallModal] = useState(false)
   const [newHallName, setNewHallName] = useState('')
   const [sessionToAdd, setSessionToAdd] = useState<{ hallId: string; timeSlotId: string } | null>(null)
@@ -33,6 +32,10 @@ export default function EditSessionsPage() {
   const [editingTimeSlot, setEditingTimeSlot] = useState<DayTimeSlot | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [zoomLevel, setZoomLevel] = useState(100)
+  const [selectedHallFilter, setSelectedHallFilter] = useState<string>('all')
+  const [showStageDropdown, setShowStageDropdown] = useState(false)
+  const [showDateDropdown, setShowDateDropdown] = useState(false)
 
 
   // Load sessions using the new view
@@ -232,6 +235,22 @@ export default function EditSessionsPage() {
     loadTimeSlots()
   }, [selectedDay, days])
 
+  // Handle clicking outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.dropdown-container')) {
+        setShowStageDropdown(false)
+        setShowDateDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
   const getSessionTypeLabel = (type: string) => {
     return SESSION_TYPES[type]?.name || type
   }
@@ -404,26 +423,55 @@ export default function EditSessionsPage() {
     setIsDeleteModalOpen(true)
   }
 
-  const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || '1234'
-  
-  const confirmDeleteHall = async () => {
-    console.log('🔧 confirmDeleteHall called')
-    console.log('🔧 deletePassword:', deletePassword)
-    console.log('🔧 ADMIN_PASSWORD:', ADMIN_PASSWORD)
-    console.log('🔧 hallToDelete:', hallToDelete)
+  const handleDeleteDay = async (day: Day) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${day.name}"? This will also delete all sessions scheduled for this day.`
+    )
     
-    if (!deletePassword) {
-      alert('Please enter a password.')
-      return
+    if (confirmed) {
+      try {
+        // First delete all sessions for this day
+        const { error: sessionsError } = await supabase
+          .from('sessions')
+          .delete()
+          .eq('day_id', day.id)
+
+        if (sessionsError) {
+          console.error('❌ Error deleting sessions:', sessionsError)
+          alert('Error deleting sessions for this day.')
+          return
+        }
+
+        // Then delete the day
+        const { error: dayError } = await supabase
+          .from('conference_days')
+          .delete()
+          .eq('id', day.id)
+
+        if (dayError) {
+          console.error('❌ Error deleting day:', dayError)
+          alert('Error deleting day.')
+          return
+        }
+
+        await loadDays()
+        if (selectedDay === day.name) {
+          const remainingDays = days.filter(d => d.id !== day.id)
+          if (remainingDays.length > 0) {
+            setSelectedDay(remainingDays[0].name)
+          }
+        }
+        alert('Day deleted successfully!')
+      } catch (error) {
+        console.error('❌ Error deleting day:', error)
+        alert('Error deleting day. Please try again.')
+      }
     }
-    
+  }
+
+  const confirmDeleteHall = async () => {
     if (!hallToDelete) {
       alert('No hall selected for deletion.')
-      return
-    }
-    
-    if (deletePassword !== ADMIN_PASSWORD) {
-      alert(`Incorrect password. Expected: ${ADMIN_PASSWORD}, Got: ${deletePassword}`)
       return
     }
     
@@ -463,7 +511,6 @@ export default function EditSessionsPage() {
       await Promise.all([loadSessions(), loadHalls()])
       setIsDeleteModalOpen(false)
       setHallToDelete(null)
-      setDeletePassword('')
       alert('Hall deleted successfully!')
     } catch (error) {
       console.error('❌ Error deleting hall:', error)
@@ -796,171 +843,301 @@ export default function EditSessionsPage() {
           <div className="flex items-center justify-between">
             {/* Date Selector */}
             <div className="flex items-center space-x-4">
-              <button className="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
-                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+              <div className="relative dropdown-container">
+                <button 
+                  onClick={() => setShowDateDropdown(!showDateDropdown)}
+                  className="inline-flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Date Dropdown */}
+                {showDateDropdown && (
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="py-1">
+                      {days.map(day => (
+                        <button
+                          key={day.id}
+                          onClick={() => {
+                            setSelectedDay(day.name)
+                            setShowDateDropdown(false)
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center justify-between"
+                        >
+                          <span>{day.name} - {day.date}</span>
+                          {days.length > 1 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDeleteDay(day)
+                              }}
+                              className="p-1 text-red-400 hover:text-red-600"
+                              title="Delete day"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </button>
+                      ))}
+                      <div className="border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            setShowDateDropdown(false)
+                            handleAddDay()
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-teal-600 hover:bg-teal-50"
+                        >
+                          + Add New Day
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Control Buttons */}
             <div className="flex items-center space-x-2">
               {/* Zoom Controls */}
               <div className="flex items-center space-x-1">
-                <button className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">-</button>
-                <button className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">100%</button>
-                <button className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">+</button>
+                <button 
+                  onClick={() => setZoomLevel(Math.max(50, zoomLevel - 25))}
+                  className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700"
+                >
+                  -
+                </button>
+                <button className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">
+                  {zoomLevel}%
+                </button>
+                <button 
+                  onClick={() => setZoomLevel(Math.min(200, zoomLevel + 25))}
+                  className="px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700"
+                >
+                  +
+                </button>
               </div>
 
               {/* Action Buttons */}
-              <button className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700">
+              <button 
+                onClick={() => {
+                  loadSessions()
+                  loadHalls()
+                  loadDays()
+                  loadTimeSlots()
+                }}
+                className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700"
+                title="Refresh data"
+              >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
-              <button className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700">
+              <button className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700" title="Toggle visibility">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               </button>
-              <button className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700">
+              <button className="p-2 bg-teal-600 text-white rounded hover:bg-teal-700" title="Time settings">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </button>
 
               {/* Stage Filter */}
-              <button className="inline-flex items-center px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700">
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                Stage
-                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+              <div className="relative dropdown-container">
+                <button 
+                  onClick={() => setShowStageDropdown(!showStageDropdown)}
+                  className="inline-flex items-center px-3 py-2 bg-teal-600 text-white rounded text-sm font-medium hover:bg-teal-700"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  {selectedHallFilter === 'all' ? 'All Stages' : halls.find(h => h.id === selectedHallFilter)?.name || 'Stage'}
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {/* Stage Dropdown */}
+                {showStageDropdown && (
+                  <div className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setSelectedHallFilter('all')
+                          setShowStageDropdown(false)
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                      >
+                        All Stages
+                      </button>
+                      {halls.map(hall => (
+                        <button
+                          key={hall.id}
+                          onClick={() => {
+                            setSelectedHallFilter(hall.id)
+                            setShowStageDropdown(false)
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center justify-between"
+                        >
+                          <span>{hall.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteHall(hall)
+                            }}
+                            className="p-1 text-red-400 hover:text-red-600"
+                            title="Delete hall"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </button>
+                      ))}
+                      <div className="border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            setShowStageDropdown(false)
+                            handleQuickAddHall()
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-teal-600 hover:bg-teal-50"
+                        >
+                          + Add New Stage
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Hall Columns Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {halls.map((hall) => (
-            <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              {/* Hall Header */}
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <h3 className="text-lg font-semibold text-gray-900">{hall.name}</h3>
+        <div className="overflow-x-auto" style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top left' }}>
+          <div className="flex space-x-6" style={{ minWidth: `${Math.max(halls.length * 320, 100)}px` }}>
+            {(selectedHallFilter === 'all' ? halls : halls.filter(h => h.id === selectedHallFilter)).map((hall) => (
+              <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-shrink-0" style={{ width: '300px' }}>
+                {/* Hall Header */}
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-lg font-semibold text-gray-900">{hall.name}</h3>
+                    <button
+                      onClick={() => handleDeleteHall(hall)}
+                      className="p-1 text-gray-400 hover:text-red-600 rounded"
+                      title="Delete hall"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                   <button
-                    onClick={() => handleDeleteHall(hall)}
-                    className="p-1 text-gray-400 hover:text-red-600 rounded"
-                    title="Delete hall"
+                    className="p-1 text-gray-400 hover:text-teal-600 rounded"
+                    title="Edit hall"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
                 </div>
-                <button
-                  className="p-1 text-gray-400 hover:text-teal-600 rounded"
-                  title="Edit hall"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-              </div>
 
-              {/* Time Slots and Sessions */}
-              <div className="p-4 space-y-3">
-                {timeSlots.map((slot) => {
-                  const sessionInThisSlot = filteredSessions.find(
-                    session => session.stage_id === hall.id && session.time_slot_id === slot.id
-                  );
-                  
-                  return (
-                    <div key={slot.id} className="relative">
-                      {/* Time Indicator */}
-                      <div className="absolute left-0 top-0 w-16 text-xs text-gray-500 font-medium">
-                        {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
-                      </div>
-                      
-                      {/* Session Card or Add Button */}
-                      <div className="ml-20">
-                        {sessionInThisSlot ? (
-                          <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-                            {/* Session Header */}
-                            <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-medium text-gray-900 text-sm">{sessionInThisSlot.title}</h4>
-                              <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => handleEditSession(sessionInThisSlot)}
-                                  className="p-1 text-gray-400 hover:text-teal-600 rounded"
-                                  title="Edit session"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteSession(sessionInThisSlot.id)}
-                                  className="p-1 text-gray-400 hover:text-red-600 rounded"
-                                  title="Delete session"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
+                {/* Time Slots and Sessions */}
+                <div className="p-4 space-y-3">
+                  {timeSlots.map((slot) => {
+                    const sessionInThisSlot = filteredSessions.find(
+                      session => session.stage_id === hall.id && session.time_slot_id === slot.id
+                    );
+                    
+                    return (
+                      <div key={slot.id} className="relative">
+                        {/* Time Indicator */}
+                        <div className="absolute left-0 top-0 w-16 text-xs text-gray-500 font-medium">
+                          {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+                        </div>
+                        
+                        {/* Session Card or Add Button */}
+                        <div className="ml-20">
+                          {sessionInThisSlot ? (
+                            <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+                              {/* Session Header */}
+                              <div className="flex items-start justify-between mb-2">
+                                <h4 className="font-medium text-gray-900 text-sm">{sessionInThisSlot.title}</h4>
+                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={() => handleEditSession(sessionInThisSlot)}
+                                    className="p-1 text-gray-400 hover:text-teal-600 rounded"
+                                    title="Edit session"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteSession(sessionInThisSlot.id)}
+                                    className="p-1 text-gray-400 hover:text-red-600 rounded"
+                                    title="Delete session"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
+                              
+                              {/* Session Details */}
+                              <div className="flex items-center space-x-2 text-xs text-gray-500">
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</span>
+                              </div>
+                              
+                              {/* Session Type Badge */}
+                              <div className="mt-2">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(sessionInThisSlot.session_type)}`}>
+                                  {getSessionIcon(sessionInThisSlot.session_type)} {getSessionTypeLabel(sessionInThisSlot.session_type)}
+                                </span>
+                              </div>
+                              
+                              {/* Description */}
+                              {sessionInThisSlot.description && (
+                                <p className="text-xs text-gray-600 mt-2 line-clamp-2">
+                                  {sessionInThisSlot.description}
+                                </p>
+                              )}
                             </div>
-                            
-                            {/* Session Details */}
-                            <div className="flex items-center space-x-2 text-xs text-gray-500">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <span>{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</span>
-                            </div>
-                            
-                            {/* Session Type Badge */}
-                            <div className="mt-2">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(sessionInThisSlot.session_type)}`}>
-                                {getSessionIcon(sessionInThisSlot.session_type)} {getSessionTypeLabel(sessionInThisSlot.session_type)}
-                              </span>
-                            </div>
-                            
-                            {/* Description */}
-                            {sessionInThisSlot.description && (
-                              <p className="text-xs text-gray-600 mt-2 line-clamp-2">
-                                {sessionInThisSlot.description}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleAddSession(hall.id, slot.id)}
-                            className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-gray-400 hover:text-teal-600 hover:border-teal-400 hover:bg-teal-50 transition-all duration-200 group"
-                          >
-                            <div className="flex items-center justify-center space-x-2">
-                              <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                              </svg>
-                              <span className="text-sm font-medium">Add Session</span>
-                            </div>
-                          </button>
-                        )}
+                          ) : (
+                            <button
+                              onClick={() => handleAddSession(hall.id, slot.id)}
+                              className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-gray-400 hover:text-teal-600 hover:border-teal-400 hover:bg-teal-50 transition-all duration-200 group"
+                            >
+                              <div className="flex items-center justify-center space-x-2">
+                                <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                <span className="text-sm font-medium">Add Session</span>
+                              </div>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1004,7 +1181,6 @@ export default function EditSessionsPage() {
         onClose={() => {
           setIsDeleteModalOpen(false)
           setHallToDelete(null)
-          setDeletePassword('')
         }}
         title="Delete Hall"
         maxWidth="max-w-md"
@@ -1012,40 +1188,13 @@ export default function EditSessionsPage() {
         <div className="space-y-4">
           <p className="text-gray-600">
             Are you sure you want to delete <strong>{hallToDelete?.name}</strong>? 
-            This action requires a password and will move all sessions to another hall.
+            This action will move all sessions to another hall.
           </p>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              value={deletePassword}
-              onChange={(e) => {
-                console.log('Password input changed:', e.target.value)
-                setDeletePassword(e.target.value)
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="Enter password (default: 1234)"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  console.log('Enter pressed, password:', deletePassword)
-                  confirmDeleteHall()
-                } else if (e.key === 'Escape') {
-                  setIsDeleteModalOpen(false)
-                  setHallToDelete(null)
-                  setDeletePassword('')
-                }
-              }}
-            />
-          </div>
           <div className="flex justify-end space-x-3">
             <button
               onClick={() => {
                 setIsDeleteModalOpen(false)
                 setHallToDelete(null)
-                setDeletePassword('')
               }}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
