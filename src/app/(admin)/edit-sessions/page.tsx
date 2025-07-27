@@ -305,8 +305,7 @@ export default function EditSessionsPage() {
         topic: formData.topic,
         description: formData.description,
         is_parallel_meal: formData.is_parallel_meal,
-        parallel_meal_type: formData.parallel_meal_type,
-        data: formData.data || {}
+        parallel_meal_type: formData.parallel_meal_type
       }
 
       console.log('📤 Insert/Update payload:', insertData)
@@ -332,7 +331,6 @@ export default function EditSessionsPage() {
           description: formData.description,
           is_parallel_meal: formData.is_parallel_meal,
           parallel_meal_type: formData.parallel_meal_type,
-          data: formData.data || {},
           optimistic: true,
           day_name: selectedDay,
           stage_name: halls.find(h => h.id === sessionToAdd?.hallId)?.name || '',
