@@ -35,13 +35,9 @@ class RealtimeService {
   }
 
   private getConnectionStatus(): 'connected' | 'disconnected' | 'connecting' {
-    const connectedChannels = Array.from(this.channels.values()).filter(channel => 
-      channel.subscribe().state === 'SUBSCRIBED'
-    )
-    
-    if (connectedChannels.length === 0) return 'disconnected'
-    if (connectedChannels.length < this.channels.size) return 'connecting'
-    return 'connected'
+    // For now, return the stored connection status
+    // We'll track this through the subscription callbacks
+    return this.connectionStatus
   }
 
   public getConnectionStatusPublic() {
@@ -66,7 +62,7 @@ class RealtimeService {
     // Monitor connection changes
     if (config.onConnectionChange) {
       setInterval(() => {
-        config.onConnectionChange(this.connectionStatus)
+        config.onConnectionChange?.(this.connectionStatus)
       }, 2000)
     }
   }
@@ -83,15 +79,18 @@ class RealtimeService {
           this.handleOptimisticUpdate('sessions', payload)
           
           // Call callback
-          if (onChange) {
-            onChange(payload)
-          }
+          onChange?.(payload)
         }
       )
       .subscribe((status) => {
         console.log('📡 Sessions subscription status:', status)
         if (status === 'SUBSCRIBED') {
           this.channels.set('sessions', channel)
+          this.connectionStatus = 'connected'
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.connectionStatus = 'disconnected'
+        } else {
+          this.connectionStatus = 'connecting'
         }
       })
   }
