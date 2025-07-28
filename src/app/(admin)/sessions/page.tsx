@@ -90,7 +90,8 @@ export default function SessionsPage() {
     loadAllData()
   }, [])
 
-  const formatTime = (time: string) => {
+  const formatTime = (time: string | undefined) => {
+    if (!time) return 'TBD'
     const [hours, minutes] = time.split(':').map(Number)
     const period = hours >= 12 ? 'pm' : 'am'
     const displayHours = hours % 12 || 12
