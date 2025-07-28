@@ -31,6 +31,9 @@ export default function EditSessionsPage() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
+  // Time slot editing state
+  const [editingTimeSlot, setEditingTimeSlot] = useState<DayTimeSlot | null>(null)
+
   // Load all data from database
   const loadAllData = async () => {
     setLoading(true)
@@ -205,22 +208,22 @@ export default function EditSessionsPage() {
 
   const getSessionTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      lecture: 'bg-blue-100 text-blue-800',
-      panel: 'bg-green-100 text-green-800',
-      workshop: 'bg-purple-100 text-purple-800',
-      symposium: 'bg-orange-100 text-orange-800',
-      oration: 'bg-red-100 text-red-800',
-      guest_lecture: 'bg-indigo-100 text-indigo-800',
-      discussion: 'bg-teal-100 text-teal-800',
-      break: 'bg-gray-100 text-gray-800',
-      other: 'bg-yellow-100 text-yellow-800'
+      lecture: 'bg-blue-100 text-blue-800 border-blue-200',
+      panel: 'bg-green-100 text-green-800 border-green-200',
+      workshop: 'bg-purple-100 text-purple-800 border-purple-200',
+      symposium: 'bg-orange-100 text-orange-800 border-orange-200',
+      oration: 'bg-red-100 text-red-800 border-red-200',
+      guest_lecture: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      discussion: 'bg-teal-100 text-teal-800 border-teal-200',
+      break: 'bg-gray-100 text-gray-800 border-gray-200',
+      other: 'bg-yellow-100 text-yellow-800 border-yellow-200'
     }
-    return colors[type] || 'bg-gray-100 text-gray-800'
+    return colors[type] || 'bg-gray-100 text-gray-800 border-gray-200'
   }
 
   const getSessionIcon = (type: string) => {
     const icons: Record<string, string> = {
-      lecture: '🎤',
+      lecture: '🩺',
       panel: '👥',
       workshop: '🔧',
       symposium: '🎓',
@@ -330,6 +333,46 @@ export default function EditSessionsPage() {
     }
   }
 
+  // Time slot editing functions
+  const handleEditTimeSlot = (timeSlot: DayTimeSlot) => {
+    setEditingTimeSlot(timeSlot)
+  }
+
+  const handleSaveTimeSlot = async (timeSlotId: string, startTime: string, endTime: string) => {
+    try {
+      const { error } = await supabase
+        .from('day_time_slots')
+        .update({
+          start_time: startTime,
+          end_time: endTime
+        })
+        .eq('id', timeSlotId)
+
+      if (error) {
+        console.error('❌ Error updating time slot:', error)
+        alert('Error updating time slot. Please try again.')
+        return
+      }
+
+      await loadTimeSlots()
+      setEditingTimeSlot(null)
+      console.log('✅ Time slot updated successfully')
+      
+    } catch (error) {
+      console.error('❌ Error updating time slot:', error)
+      alert('Error updating time slot. Please try again.')
+    }
+  }
+
+  // Get sessions for a specific time slot and hall
+  const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
+    return sessions.find(session => 
+      session.time_slot_id === timeSlotId && 
+      session.stage_id === hallId &&
+      session.day_name === selectedDay
+    )
+  }
+
   // Filter sessions for selected day
   const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
 
@@ -366,15 +409,15 @@ export default function EditSessionsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="text-center flex-1">
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
                 Conference Program Editor
               </h1>
               <p className="text-sm text-gray-600">
-                Manage sessions, time slots, and conference structure
+                {selectedDay} Schedule - {halls.length} Halls • {timeSlots.length} Time Slots
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -386,14 +429,14 @@ export default function EditSessionsPage() {
 
       {/* Day Navigation */}
       {days.length > 0 && (
-        <div className="bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex space-x-8 py-4">
+        <div className="bg-white border-b sticky top-16 z-10">
+          <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex space-x-8 py-4 overflow-x-auto">
               {days.map((day) => (
                 <button
                   key={day.id}
                   onClick={() => setSelectedDay(day.name)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                     selectedDay === day.name
                       ? 'bg-indigo-100 text-indigo-700'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -407,105 +450,168 @@ export default function EditSessionsPage() {
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {selectedDay ? (
-          <div>
-            {/* Day Header */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                {selectedDay} Schedule
-              </h2>
-              <p className="text-sm text-gray-600">
-                {filteredSessions.length} sessions • {halls.length} halls • {timeSlots.length} time slots
-              </p>
+      {/* Scrollable Grid Layout */}
+      <div className="overflow-auto">
+        <div className="min-w-max">
+          {/* Header Row - Hall Names */}
+          <div className="bg-white border-b sticky top-32 z-10">
+            <div className="flex">
+              {/* Time Column Header */}
+              <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
+                🕘 Time
+              </div>
+              
+              {/* Hall Column Headers */}
+              {halls.map((hall) => (
+                <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
+                  🏛️ {hall.name}
+                  {hall.capacity && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Capacity: {hall.capacity}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+          </div>
 
-            {/* Sessions Grid */}
-            <div className="grid gap-6">
-              {filteredSessions.length > 0 ? (
-                filteredSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <span className="text-2xl">{getSessionIcon(session.session_type)}</span>
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {session.title}
-                          </h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(session.session_type)}`}>
-                            {getSessionTypeLabel(session.session_type)}
-                          </span>
-                        </div>
-                        
-                        {session.topic && (
-                          <p className="text-sm text-gray-600 mb-2">
-                            Topic: {session.topic}
-                          </p>
-                        )}
-                        
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <span>📍 {session.stage_name}</span>
-                          <span>🕐 {formatTimeRange(session.start_time || '', session.end_time || '')}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex space-x-2">
+          {/* Time Slot Rows */}
+          {timeSlots.map((timeSlot, index) => (
+            <div key={timeSlot.id} className="bg-white border-b">
+              <div className="flex">
+                {/* Time Column */}
+                <div className="w-32 bg-gray-50 border-r border-gray-200 p-3">
+                  {editingTimeSlot?.id === timeSlot.id ? (
+                    <div className="space-y-2">
+                      <input
+                        type="time"
+                        value={timeSlot.start_time}
+                        onChange={(e) => {
+                          const newTimeSlots = [...timeSlots]
+                          newTimeSlots[index] = { ...timeSlot, start_time: e.target.value }
+                          setTimeSlots(newTimeSlots)
+                        }}
+                        className="w-full text-sm border rounded px-2 py-1"
+                      />
+                      <input
+                        type="time"
+                        value={timeSlot.end_time}
+                        onChange={(e) => {
+                          const newTimeSlots = [...timeSlots]
+                          newTimeSlots[index] = { ...timeSlot, end_time: e.target.value }
+                          setTimeSlots(newTimeSlots)
+                        }}
+                        className="w-full text-sm border rounded px-2 py-1"
+                      />
+                      <div className="flex space-x-1">
                         <button
-                          onClick={() => handleEditSession(session)}
-                          className="px-3 py-1 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                          onClick={() => handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, timeSlot.end_time)}
+                          className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
                         >
-                          Edit
+                          Save
                         </button>
                         <button
-                          onClick={() => handleDeleteSession(session.id)}
-                          className="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                          onClick={() => setEditingTimeSlot(null)}
+                          className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
                         >
-                          Delete
+                          Cancel
                         </button>
                       </div>
                     </div>
-                    
-                    {session.description && (
-                      <p className="text-sm text-gray-600 border-t pt-4">
-                        {session.description}
-                      </p>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <div className="text-gray-400 text-6xl mb-4">📅</div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No sessions scheduled
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Get started by adding sessions to {selectedDay}
-                  </p>
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                  >
-                    Add First Session
-                  </button>
+                  ) : (
+                    <div className="text-sm">
+                      <div className="font-medium">{timeSlot.start_time}</div>
+                      <div className="text-gray-500">{timeSlot.end_time}</div>
+                      <button
+                        onClick={() => handleEditTimeSlot(timeSlot)}
+                        className="text-xs text-indigo-600 hover:text-indigo-800 mt-1"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+                
+                {/* Hall Columns */}
+                {halls.map((hall) => {
+                  const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
+                  
+                  return (
+                    <div key={hall.id} className="w-80 border-r border-gray-200 p-3">
+                      {session ? (
+                        <div className="bg-white border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                          {/* Session Card */}
+                          <div className="space-y-2">
+                            {/* Title */}
+                            <div className="font-semibold text-sm text-gray-900 flex items-center">
+                              <span className="mr-2">{getSessionIcon(session.session_type)}</span>
+                              {session.title}
+                            </div>
+                            
+                            {/* Speaker */}
+                            {session.topic && (
+                              <div className="text-xs text-gray-600 flex items-center">
+                                <span className="mr-1">🎤</span>
+                                {session.topic}
+                              </div>
+                            )}
+                            
+                            {/* Location */}
+                            <div className="text-xs text-gray-600 flex items-center">
+                              <span className="mr-1">📍</span>
+                              {session.stage_name}
+                            </div>
+                            
+                            {/* Format/Type */}
+                            <div className="text-xs flex items-center">
+                              <span className="mr-1">🧪</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(session.session_type)}`}>
+                                {getSessionTypeLabel(session.session_type)}
+                              </span>
+                            </div>
+                            
+                            {/* Tags */}
+                            {session.description && (
+                              <div className="text-xs text-gray-600 flex items-center">
+                                <span className="mr-1">🏷️</span>
+                                {session.description.substring(0, 50)}{session.description.length > 50 ? '...' : ''}
+                              </div>
+                            )}
+                            
+                            {/* Action Buttons */}
+                            <div className="flex space-x-1 pt-2">
+                              <button
+                                onClick={() => handleEditSession(session)}
+                                className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSession(session.id)}
+                                className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-full flex items-center justify-center">
+                          <button
+                            onClick={() => handleAddSession(hall.id, timeSlot.id)}
+                            className="text-gray-400 hover:text-gray-600 text-sm border-2 border-dashed border-gray-300 rounded-lg p-4 w-full h-20 flex items-center justify-center hover:border-gray-400 transition-colors"
+                          >
+                            + Add Session
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <div className="text-gray-400 text-6xl mb-4">📅</div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No conference days available
-            </h3>
-            <p className="text-sm text-gray-600">
-              Please add conference days to get started
-            </p>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
 
       {/* Session Modal */}
