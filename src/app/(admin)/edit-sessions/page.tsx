@@ -33,6 +33,10 @@ export default function EditSessionsPage() {
 
   // Time slot editing state
   const [editingTimeSlot, setEditingTimeSlot] = useState<DayTimeSlot | null>(null)
+  
+  // Add hall state
+  const [showAddHallModal, setShowAddHallModal] = useState(false)
+  const [newHallName, setNewHallName] = useState('')
 
   // Load all data from database
   const loadAllData = async () => {
@@ -395,6 +399,78 @@ export default function EditSessionsPage() {
     }
   }
 
+  const handleAddHall = async () => {
+    if (!newHallName.trim()) {
+      alert('Please enter a hall name')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('stages')
+        .insert({
+          name: newHallName.trim(),
+          capacity: null
+        })
+
+      if (error) {
+        console.error('❌ Error adding hall:', error)
+        alert('Error adding hall. Please try again.')
+        return
+      }
+
+      setNewHallName('')
+      setShowAddHallModal(false)
+      await loadAllData()
+      console.log('✅ Hall added successfully')
+      
+    } catch (error) {
+      console.error('❌ Error adding hall:', error)
+      alert('Error adding hall. Please try again.')
+    }
+  }
+
+  const handleDeleteHall = async (hall: Hall) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${hall.name}"? This will also delete all sessions scheduled in this hall.`
+    )
+    
+    if (confirmed) {
+      try {
+        // First delete all sessions in this hall
+        const { error: sessionsError } = await supabase
+          .from('sessions')
+          .delete()
+          .eq('stage_id', hall.id)
+
+        if (sessionsError) {
+          console.error('❌ Error deleting sessions:', sessionsError)
+          alert('Error deleting sessions in this hall.')
+          return
+        }
+
+        // Then delete the hall
+        const { error: hallError } = await supabase
+          .from('stages')
+          .delete()
+          .eq('id', hall.id)
+
+        if (hallError) {
+          console.error('❌ Error deleting hall:', hallError)
+          alert('Error deleting hall.')
+          return
+        }
+
+        await loadAllData()
+        console.log('✅ Hall deleted successfully')
+        
+      } catch (error) {
+        console.error('❌ Error deleting hall:', error)
+        alert('Error deleting hall. Please try again.')
+      }
+    }
+  }
+
   // Time slot editing functions
   const handleEditTimeSlot = (timeSlot: DayTimeSlot) => {
     setEditingTimeSlot(timeSlot)
@@ -526,14 +602,28 @@ export default function EditSessionsPage() {
               {/* Hall Column Headers */}
               {halls.map((hall) => (
                 <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
-                  🏛️ {hall.name}
-                  {hall.capacity && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      Capacity: {hall.capacity}
-                    </div>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <span>🏛️ {hall.name}</span>
+                    <button
+                      onClick={() => handleDeleteHall(hall)}
+                      className="text-red-600 hover:text-red-800 text-xs p-1"
+                      title="Delete Hall"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               ))}
+              
+              {/* Add Hall Column */}
+              <div className="w-80 bg-gray-50 border-r border-gray-200 p-3">
+                <button
+                  onClick={() => setShowAddHallModal(true)}
+                  className="w-full h-full flex items-center justify-center text-indigo-600 hover:text-indigo-800 text-sm font-medium border-2 border-dashed border-indigo-300 rounded-lg hover:border-indigo-400 transition-colors"
+                >
+                  + Add Hall
+                </button>
+              </div>
             </div>
           </div>
 
@@ -670,6 +760,15 @@ export default function EditSessionsPage() {
                     </div>
                   )
                 })}
+                
+                {/* Add Hall Column */}
+                <div className="w-80 border-r border-gray-200 p-3">
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-gray-400 text-sm text-center">
+                      Add Hall to<br />add sessions here
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -708,6 +807,52 @@ export default function EditSessionsPage() {
           halls={halls}
           timeSlots={timeSlots}
         />
+      </Modal>
+
+      {/* Add Hall Modal */}
+      <Modal
+        isOpen={showAddHallModal}
+        onClose={() => setShowAddHallModal(false)}
+        title="Add New Hall"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="hallName" className="block text-sm font-medium text-gray-700 mb-2">
+              Hall Name
+            </label>
+            <input
+              type="text"
+              id="hallName"
+              value={newHallName}
+              onChange={(e) => setNewHallName(e.target.value)}
+              placeholder="Enter hall name (e.g., Main Hall, Seminar Room A)"
+              className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddHall()
+                }
+              }}
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowAddHallModal(false)}
+              className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAddHall}
+              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Add Hall
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )
