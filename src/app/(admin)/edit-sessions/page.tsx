@@ -43,10 +43,19 @@ export default function EditSessionsPage() {
   const [showAddDayModal, setShowAddDayModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [newDayName, setNewDayName] = useState('')
   const [selectedHallForSession, setSelectedHallForSession] = useState<string>('')
   const [selectedTimeSlotForSession, setSelectedTimeSlotForSession] = useState<string>('')
   const [speakers, setSpeakers] = useState<Array<{ id: string; name: string; email?: string; title?: string; organization?: string }>>([])
 
+  // Delete confirmation state
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<{ type: 'day' | 'hall', item: any } | null>(null)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Session[]>([])
+  
   // Load all data from database
   const loadAllData = async () => {
     setLoading(true)
@@ -451,7 +460,7 @@ export default function EditSessionsPage() {
   }
 
   const handleAddDay = async (date: Date) => {
-    const dayName = `Day ${days.length + 1}`
+    const dayName = newDayName.trim() || `Day ${days.length + 1}`
     const dateString = date.toISOString().split('T')[0]
     
     try {
@@ -491,6 +500,7 @@ export default function EditSessionsPage() {
 
       setShowAddDayModal(false)
       setSelectedDate(null)
+      setNewDayName('')
       await loadAllData()
       console.log('✅ Day added successfully with halls')
       
@@ -635,52 +645,100 @@ export default function EditSessionsPage() {
   }
 
   const handleDeleteHall = async (hall: Hall) => {
-    const selectedDayData = days.find(day => day.name === selectedDay)
-    if (!selectedDayData) {
-      alert('Please select a day first')
-      return
-    }
-
-    const confirmed = window.confirm(
-      `Are you sure you want to remove "${hall.name}" from ${selectedDay}? This will also delete all sessions scheduled in this hall for this day.`
-    )
-    
-    if (confirmed) {
-      try {
-        // First delete all sessions in this hall for this specific day
+    try {
+      console.log('🗑️ Deleting hall:', hall.name)
+      
+      // First, delete all sessions in this hall for the selected day
+      const dayId = days.find(d => d.name === selectedDay)?.id
+      if (dayId) {
         const { error: sessionsError } = await supabase
           .from('sessions')
           .delete()
+          .eq('day_id', dayId)
           .eq('stage_id', hall.id)
-          .eq('day_id', selectedDayData.id)
 
         if (sessionsError) {
           console.error('❌ Error deleting sessions:', sessionsError)
-          alert('Error deleting sessions in this hall.')
+          alert('Error deleting sessions in this hall')
           return
         }
-
-        // Then remove the hall from this specific day
-        const { error: dayHallError } = await supabase
-          .from('day_halls')
-          .delete()
-          .eq('day_id', selectedDayData.id)
-          .eq('hall_id', hall.id)
-
-        if (dayHallError) {
-          console.error('❌ Error removing hall from day:', dayHallError)
-          alert('Error removing hall from day.')
-          return
-        }
-
-        await loadAllData()
-        console.log('✅ Hall removed from day successfully')
-        
-      } catch (error) {
-        console.error('❌ Error removing hall from day:', error)
-        alert('Error removing hall from day. Please try again.')
       }
+
+      // Then delete the hall-day association
+      const { error: dayHallError } = await supabase
+        .from('halls_with_days')
+        .delete()
+        .eq('hall_id', hall.id)
+        .eq('day_date', selectedDay)
+
+      if (dayHallError) {
+        console.error('❌ Error deleting hall-day association:', dayHallError)
+        alert('Error removing hall from day')
+        return
+      }
+
+      console.log('✅ Hall deleted successfully')
+      
+      // Reload data to reflect changes
+      await loadAllData()
+      
+    } catch (error) {
+      console.error('❌ Error deleting hall:', error)
+      alert('Error deleting hall')
     }
+  }
+
+  const handleDeleteConfirmation = (type: 'day' | 'hall', item: any) => {
+    setItemToDelete({ type, item })
+    setShowDeleteConfirmation(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return
+
+    try {
+      if (itemToDelete.type === 'day') {
+        await handleDeleteDay(itemToDelete.item)
+      } else if (itemToDelete.type === 'hall') {
+        await handleDeleteHall(itemToDelete.item)
+      }
+      
+      setShowDeleteConfirmation(false)
+      setItemToDelete(null)
+    } catch (error) {
+      console.error('❌ Error in delete confirmation:', error)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirmation(false)
+    setItemToDelete(null)
+  }
+
+  // Search functionality
+  const performSearch = (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    const results = sessions.filter(session => {
+      const searchLower = query.toLowerCase()
+      return (
+        session.title?.toLowerCase().includes(searchLower) ||
+        session.topic?.toLowerCase().includes(searchLower) ||
+        session.stage_name?.toLowerCase().includes(searchLower) ||
+        session.session_type?.toLowerCase().includes(searchLower) ||
+        session.description?.toLowerCase().includes(searchLower)
+      )
+    })
+    setSearchResults(results)
+  }
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value
+    setSearchQuery(query)
+    performSearch(query)
   }
 
   // Time slot editing functions
@@ -868,8 +926,22 @@ export default function EditSessionsPage() {
       }))
   }
 
-  // Filter sessions for selected day
-  const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
+  // Filter sessions for selected day and search
+  const filteredSessions = sessions.filter(session => {
+    const matchesDay = session.day_name === selectedDay
+    if (!matchesDay) return false
+    
+    if (!searchQuery.trim()) return true
+    
+    const searchLower = searchQuery.toLowerCase()
+    return (
+      session.title?.toLowerCase().includes(searchLower) ||
+      session.topic?.toLowerCase().includes(searchLower) ||
+      session.stage_name?.toLowerCase().includes(searchLower) ||
+      session.session_type?.toLowerCase().includes(searchLower) ||
+      session.description?.toLowerCase().includes(searchLower)
+    )
+  })
 
   // Loading state
   if (loading) {
@@ -916,6 +988,21 @@ export default function EditSessionsPage() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search sessions..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
               <RealtimeStatus />
             </div>
           </div>
@@ -942,12 +1029,12 @@ export default function EditSessionsPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        handleDeleteDay(day)
+                        handleDeleteConfirmation('day', day)
                       }}
-                      className="text-red-400 hover:text-red-600"
+                      className="text-red-500 hover:text-red-700 text-lg font-bold"
                       title="Delete day"
                     >
-                      🗑️
+                      ❌
                     </button>
                   )}
                 </button>
@@ -962,16 +1049,25 @@ export default function EditSessionsPage() {
               <span>📅</span>
               <span>Add Day</span>
             </button>
+
+            {/* Add Hall Button */}
+            <button
+              onClick={() => setShowAddHallModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+            >
+              <span>🏛️</span>
+              <span>Add Hall</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Scrollable Grid Layout */}
       {getHallsForSelectedDay().length > 0 ? (
-        <div className="overflow-auto">
+        <div className="h-[calc(100vh-200px)] overflow-auto">
           <div className="min-w-max">
             {/* Header Row - Hall Names */}
-            <div className="bg-white border-b sticky top-32 z-40">
+            <div className="bg-white border-b sticky top-0 z-40">
               <div className="flex">
                 {/* Time Column Header - Sticky */}
                 <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50">
@@ -984,34 +1080,24 @@ export default function EditSessionsPage() {
                     <div className="flex items-center justify-between">
                       <span>🏛️ {hall.name}</span>
                       <button
-                        onClick={() => handleDeleteHall(hall)}
-                        className="text-red-600 hover:text-red-800 text-xs p-1"
+                        onClick={() => handleDeleteConfirmation('hall', hall)}
+                        className="text-red-500 hover:text-red-700 text-lg font-bold"
                         title="Remove Hall from Day"
                       >
-                        🗑️
+                        ❌
                       </button>
                     </div>
                   </div>
                 ))}
-                
-                {/* Add Hall Column */}
-                <div className="w-80 bg-gray-50 border-r border-gray-200 p-3">
-                  <button
-                    onClick={() => setShowAddHallModal(true)}
-                    className="w-full h-full flex items-center justify-center text-indigo-600 hover:text-indigo-800 text-sm font-medium border-2 border-dashed border-indigo-300 rounded-lg hover:border-indigo-400 transition-colors"
-                  >
-                    + Add Hall
-                  </button>
-                </div>
               </div>
             </div>
 
             {/* Time Slot Rows */}
             {timeSlots.map((timeSlot, index) => (
-            <div key={timeSlot.id} className="bg-white border-b">
+            <div key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
               <div className="flex">
                 {/* Time Column - Sticky */}
-                <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 sticky left-0 z-30">
+                <div className="w-32 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
                   {editingTimeSlot?.id === timeSlot.id ? (
                     <div className="space-y-2">
                       <input
@@ -1094,9 +1180,9 @@ export default function EditSessionsPage() {
                     </div>
                   ) : (
                     <div className="text-sm">
-                      <div className="font-medium">{timeSlot.start_time}</div>
+                      <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
                       <div className="text-gray-500">{timeSlot.end_time}</div>
-                      <div className="flex space-x-1 mt-1">
+                      <div className="flex space-x-1 mt-2">
                         <button
                           onClick={() => handleEditTimeSlot(timeSlot)}
                           className="text-xs text-indigo-600 hover:text-indigo-800"
@@ -1128,11 +1214,11 @@ export default function EditSessionsPage() {
                   const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
                   
                   return (
-                    <div key={hall.id} className="w-80 border-r border-gray-200 p-3">
+                    <div key={hall.id} className="w-80 border-r border-gray-200 p-4">
                       {session ? (
-                        <div className="bg-white border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                           {/* Session Card */}
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             {/* Title */}
                             <div className="font-semibold text-sm text-gray-900 flex items-center">
                               <span className="mr-2">{getSessionIcon(session.session_type)}</span>
@@ -1170,16 +1256,16 @@ export default function EditSessionsPage() {
                             )}
                             
                             {/* Action Buttons */}
-                            <div className="flex space-x-1 pt-2">
+                            <div className="flex space-x-2 pt-2">
                               <button
                                 onClick={() => handleEditSession(session)}
-                                className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
+                                className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteSession(session.id)}
-                                className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                                className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
                               >
                                 Delete
                               </button>
@@ -1190,7 +1276,7 @@ export default function EditSessionsPage() {
                         <div className="h-full flex items-center justify-center">
                           <button
                             onClick={() => handleAddSession(hall.id, timeSlot.id)}
-                            className="text-gray-400 hover:text-gray-600 text-sm border-2 border-dashed border-gray-300 rounded-lg p-4 w-full h-20 flex items-center justify-center hover:border-gray-400 transition-colors"
+                            className="text-gray-400 hover:text-gray-600 text-sm border-2 border-dashed border-gray-300 rounded-lg p-6 w-full h-24 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
                           >
                             + Add Session
                           </button>
@@ -1199,15 +1285,6 @@ export default function EditSessionsPage() {
                     </div>
                   )
                 })}
-                
-                {/* Add Hall Column */}
-                <div className="w-80 border-r border-gray-200 p-3">
-                  <div className="h-full flex items-center justify-center">
-                    <div className="text-gray-400 text-sm text-center">
-                      Add Hall to<br />add sessions here
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           ))}
@@ -1280,7 +1357,7 @@ export default function EditSessionsPage() {
               id="hallName"
               value={newHallName}
               onChange={(e) => setNewHallName(e.target.value)}
-              placeholder="Enter hall name (e.g., Main Hall, Seminar Room A)"
+              placeholder="e.g., Hall A - Auditorium"
               className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
@@ -1313,10 +1390,28 @@ export default function EditSessionsPage() {
       <Modal
         isOpen={showAddDayModal}
         onClose={() => setShowAddDayModal(false)}
-        title="Select day"
+        title="Add New Day"
         maxWidth="max-w-sm"
       >
         <div className="space-y-4">
+          {/* Day Name Input */}
+          <div className="space-y-2">
+            <label htmlFor="dayName" className="block text-sm font-medium text-gray-700">
+              Day Name
+            </label>
+            <input
+              type="text"
+              id="dayName"
+              value={newDayName}
+              onChange={(e) => setNewDayName(e.target.value)}
+              placeholder="e.g., Day 4 - IAP-ID"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <p className="text-xs text-gray-500">
+              Leave empty to use default name (Day {days.length + 1})
+            </p>
+          </div>
+
           {/* Calendar Header */}
           <div className="bg-teal-600 text-white p-3 rounded-t-lg">
             <div className="flex items-center justify-between">
@@ -1397,7 +1492,10 @@ export default function EditSessionsPage() {
           {/* Footer */}
           <div className="flex justify-end pt-4 border-t">
             <button
-              onClick={() => setShowAddDayModal(false)}
+              onClick={() => {
+                setShowAddDayModal(false)
+                setNewDayName('')
+              }}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
             >
               Close
@@ -1405,6 +1503,36 @@ export default function EditSessionsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && itemToDelete && (
+        <Modal
+          isOpen={showDeleteConfirmation}
+          onClose={handleCancelDelete}
+          title={`Confirm Delete`}
+          maxWidth="max-w-md"
+        >
+          <div className="text-center py-6">
+            <p className="text-lg text-gray-800 mb-4">
+              Are you sure you want to delete this {itemToDelete.type}? This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleCancelDelete}
+                className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 } 

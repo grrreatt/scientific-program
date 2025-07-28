@@ -60,28 +60,10 @@ export default function AdminLayout({
                   Dashboard
                 </Link>
                 <Link
-                  href="/sessions"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Sessions
-                </Link>
-                <Link
                   href="/edit-sessions"
                   className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                 >
                   Edit Sessions
-                </Link>
-                <Link
-                  href="/participants"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Participants
-                </Link>
-                <Link
-                  href="/stages"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Stages
                 </Link>
                 <Link
                   href="/public-program"

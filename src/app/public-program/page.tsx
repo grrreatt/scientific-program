@@ -47,6 +47,9 @@ export default function PublicProgramPage() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Load sessions from Supabase using the sessions_with_times view
   const loadSessions = async () => {
     try {
@@ -256,12 +259,12 @@ export default function PublicProgramPage() {
 
   const getSessionIcon = (type: string) => {
     const icons: Record<string, string> = {
-      lecture: '🎤',
+      lecture: '🎓',
       panel: '👥',
+      symposium: '🏛️',
       workshop: '🔧',
-      symposium: '🎓',
-      oration: '🏆',
-      guest_lecture: '👨‍🏫',
+      oration: '🎤',
+      guest_lecture: '🌟',
       discussion: '💬',
       break: '☕',
       other: '📋'
@@ -269,7 +272,28 @@ export default function PublicProgramPage() {
     return icons[type] || '📋'
   }
 
-  const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
+  // Search functionality
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+  }
+
+  const filteredSessions = sessions.filter(session => {
+    const matchesDay = session.day_name === selectedDay
+    if (!matchesDay) return false
+    
+    if (!searchQuery.trim()) return true
+    
+    const searchLower = searchQuery.toLowerCase()
+    return (
+      session.title?.toLowerCase().includes(searchLower) ||
+      session.topic?.toLowerCase().includes(searchLower) ||
+      session.stage_name?.toLowerCase().includes(searchLower) ||
+      session.session_type?.toLowerCase().includes(searchLower) ||
+      session.description?.toLowerCase().includes(searchLower) ||
+      session.speaker_name?.toLowerCase().includes(searchLower) ||
+      session.moderator_name?.toLowerCase().includes(searchLower)
+    )
+  })
 
   if (loading) {
     return (
@@ -355,6 +379,21 @@ export default function PublicProgramPage() {
               </p>
             </div>
             <div className="flex items-center space-x-3">
+              {/* Search Bar */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search sessions..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
               <RealtimeStatus />
               <button
                 onClick={() => window.print()}

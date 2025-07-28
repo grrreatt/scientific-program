@@ -25,6 +25,15 @@ export default function DashboardPage() {
     upcoming_sessions: 0
   })
 
+  // People management state
+  const [showAddPersonModal, setShowAddPersonModal] = useState(false)
+  const [personType, setPersonType] = useState<'speaker' | 'moderator' | 'chairperson'>('speaker')
+  const [newPerson, setNewPerson] = useState({
+    name: '',
+    designation: '',
+    email: ''
+  })
+
   const loadStats = async () => {
     try {
       console.log('🔄 Loading dashboard stats...')
@@ -96,6 +105,39 @@ export default function DashboardPage() {
   useEffect(() => {
     loadStats()
   }, [])
+
+  const handleAddPerson = async () => {
+    try {
+      const { error } = await supabase
+        .from('speakers')
+        .insert({
+          name: newPerson.name,
+          title: newPerson.designation,
+          email: newPerson.email,
+          role_type: personType
+        })
+
+      if (error) {
+        console.error('❌ Error adding person:', error)
+        alert('Error adding person. Please try again.')
+        return
+      }
+
+      setShowAddPersonModal(false)
+      setNewPerson({ name: '', designation: '', email: '' })
+      await loadStats()
+      console.log('✅ Person added successfully')
+      
+    } catch (error) {
+      console.error('❌ Error adding person:', error)
+      alert('Error adding person. Please try again.')
+    }
+  }
+
+  const openAddPersonModal = (type: 'speaker' | 'moderator' | 'chairperson') => {
+    setPersonType(type)
+    setShowAddPersonModal(true)
+  }
 
   return (
     <div className="space-y-6">
@@ -185,6 +227,67 @@ export default function DashboardPage() {
                 </dl>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* People Management */}
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+            People Management
+          </h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <button
+              onClick={() => openAddPersonModal('speaker')}
+              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+            >
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">Add Speaker</p>
+                <p className="text-sm text-gray-500">Register a new speaker</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => openAddPersonModal('moderator')}
+              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-green-500"
+            >
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">Add Moderator</p>
+                <p className="text-sm text-gray-500">Register a new moderator</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => openAddPersonModal('chairperson')}
+              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-purple-500"
+            >
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900">Add Chairperson</p>
+                <p className="text-sm text-gray-500">Register a new chairperson</p>
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -337,6 +440,77 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Person Modal */}
+      {showAddPersonModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Add {personType.charAt(0).toUpperCase() + personType.slice(1)}
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={newPerson.name}
+                    onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Enter full name"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="designation" className="block text-sm font-medium text-gray-700">
+                    Designation/Title
+                  </label>
+                  <input
+                    type="text"
+                    id="designation"
+                    value={newPerson.designation}
+                    onChange={(e) => setNewPerson({ ...newPerson, designation: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="e.g., Professor, CEO, Director"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    value={newPerson.email}
+                    onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Enter email address"
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowAddPersonModal(false)
+                      setNewPerson({ name: '', designation: '', email: '' })
+                    }}
+                    className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddPerson}
+                    className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                  >
+                    Add {personType.charAt(0).toUpperCase() + personType.slice(1)}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
