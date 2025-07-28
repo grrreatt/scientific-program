@@ -329,19 +329,20 @@ WHERE name IN ('Main Hall', 'Seminar Room A', 'Seminar Room B');
 INSERT INTO day_time_slots (day_id, start_time, end_time, slot_order, is_break, break_title)
 SELECT 
   cd.id,
-  (TIME '08:00' + (INTERVAL '30 minutes' * generate_series(0, 23))),
-  (TIME '08:30' + (INTERVAL '30 minutes' * generate_series(0, 23))),
-  generate_series(0, 23),
+  (TIME '08:00' + (INTERVAL '30 minutes' * slot_num)),
+  (TIME '08:30' + (INTERVAL '30 minutes' * slot_num)),
+  slot_num,
   CASE 
-    WHEN generate_series(0, 23) IN (8, 20) THEN TRUE  -- 12:00-12:30 and 18:00-18:30 are breaks
+    WHEN slot_num IN (8, 20) THEN TRUE  -- 12:00-12:30 and 18:00-18:30 are breaks
     ELSE FALSE
   END,
   CASE 
-    WHEN generate_series(0, 23) = 8 THEN 'Lunch Break'
-    WHEN generate_series(0, 23) = 20 THEN 'Dinner Break'
+    WHEN slot_num = 8 THEN 'Lunch Break'
+    WHEN slot_num = 20 THEN 'Dinner Break'
     ELSE NULL
   END
-FROM conference_days cd;
+FROM conference_days cd
+CROSS JOIN generate_series(0, 23) AS slot_num;
 
 -- Insert sample sessions
 -- Day 1 Sessions
