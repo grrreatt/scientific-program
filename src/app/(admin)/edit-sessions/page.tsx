@@ -356,10 +356,7 @@ export default function EditSessionsPage() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <RealtimeStatus 
-                status={connectionStatus} 
-                lastUpdate={lastUpdate}
-              />
+              <RealtimeStatus />
             </div>
           </div>
         </div>
@@ -430,7 +427,7 @@ export default function EditSessionsPage() {
                         
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <span>📍 {session.stage_name}</span>
-                          <span>🕐 {formatTimeRange(session.start_time, session.end_time)}</span>
+                          <span>🕐 {formatTimeRange(session.start_time || '', session.end_time || '')}</span>
                         </div>
                       </div>
                       
