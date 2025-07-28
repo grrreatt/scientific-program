@@ -122,39 +122,38 @@ export default function EditSessionsPage() {
 
   // Initialize realtime connection
   useEffect(() => {
-    const initRealtime = async () => {
+    const initRealtime = () => {
       try {
-        await realtimeService.connect()
-        setConnectionStatus('connected')
+        console.log('🚀 Initializing realtime connections...')
         
-        // Subscribe to sessions changes
-        realtimeService.subscribeToTable('sessions', () => {
-          console.log('🔄 Sessions updated via realtime')
-          loadAllData()
-          setLastUpdate(new Date())
+        realtimeService.subscribeToAll({
+          onSessionChange: () => {
+            console.log('🔄 Sessions updated via realtime')
+            loadAllData()
+            setLastUpdate(new Date())
+          },
+          onHallChange: () => {
+            console.log('🔄 Halls updated via realtime')
+            loadAllData()
+            setLastUpdate(new Date())
+          },
+          onDayChange: () => {
+            console.log('🔄 Days updated via realtime')
+            loadAllData()
+            setLastUpdate(new Date())
+          },
+          onTimeSlotChange: () => {
+            console.log('🔄 Time slots updated via realtime')
+            loadTimeSlots()
+            setLastUpdate(new Date())
+          },
+          onConnectionChange: (status) => {
+            console.log('🔗 Connection status changed:', status)
+            setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
+          }
         })
 
-        // Subscribe to time slots changes
-        realtimeService.subscribeToTable('day_time_slots', () => {
-          console.log('🔄 Time slots updated via realtime')
-          loadTimeSlots()
-          setLastUpdate(new Date())
-        })
-
-        // Subscribe to halls changes
-        realtimeService.subscribeToTable('stages', () => {
-          console.log('🔄 Halls updated via realtime')
-          loadAllData()
-          setLastUpdate(new Date())
-        })
-
-        // Subscribe to days changes
-        realtimeService.subscribeToTable('conference_days', () => {
-          console.log('🔄 Days updated via realtime')
-          loadAllData()
-          setLastUpdate(new Date())
-        })
-
+        setConnectionStatus('connecting')
       } catch (error) {
         console.error('❌ Error initializing realtime:', error)
         setConnectionStatus('disconnected')
@@ -164,7 +163,7 @@ export default function EditSessionsPage() {
     initRealtime()
 
     return () => {
-      realtimeService.disconnect()
+      realtimeService.unsubscribeFromAll()
     }
   }, [])
 
