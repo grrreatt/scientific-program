@@ -904,7 +904,7 @@ export default function EditSessionsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+      <div className="bg-white shadow-sm border-b sticky top-0 z-50">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="text-center flex-1">
@@ -923,7 +923,7 @@ export default function EditSessionsPage() {
       </div>
 
       {/* Day Navigation */}
-      <div className="bg-white border-b sticky top-16 z-20">
+      <div className="bg-white border-b sticky top-20 z-40">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex space-x-8 overflow-x-auto">
@@ -971,10 +971,10 @@ export default function EditSessionsPage() {
         <div className="overflow-auto">
           <div className="min-w-max">
             {/* Header Row - Hall Names */}
-            <div className="bg-white border-b sticky top-24 z-30">
+            <div className="bg-white border-b sticky top-32 z-40">
               <div className="flex">
-                {/* Time Column Header */}
-                <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
+                {/* Time Column Header - Sticky */}
+                <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50">
                   🕘 Time
                 </div>
                 
@@ -1010,8 +1010,8 @@ export default function EditSessionsPage() {
             {timeSlots.map((timeSlot, index) => (
             <div key={timeSlot.id} className="bg-white border-b">
               <div className="flex">
-                {/* Time Column */}
-                <div className="w-32 bg-gray-50 border-r border-gray-200 p-3">
+                {/* Time Column - Sticky */}
+                <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 sticky left-0 z-30">
                   {editingTimeSlot?.id === timeSlot.id ? (
                     <div className="space-y-2">
                       <input
