@@ -72,11 +72,16 @@ export default function EditSessionsPage() {
 
       setHalls(hallsData || [])
 
-      // Load sessions
+      // Load sessions with a simpler query first
       const { data: sessionsData, error: sessionsError } = await supabase
-        .from('sessions_with_times')
-        .select('*')
-        .order('start_time', { ascending: true })
+        .from('sessions')
+        .select(`
+          *,
+          conference_days!inner(name),
+          stages!inner(name),
+          day_time_slots!left(start_time, end_time, is_break, break_title)
+        `)
+        .order('created_at', { ascending: true })
 
       if (sessionsError) {
         console.error('❌ Error loading sessions:', sessionsError)
@@ -84,8 +89,25 @@ export default function EditSessionsPage() {
         return
       }
 
-      setSessions(sessionsData || [])
+      // Transform the data to match the expected format
+      const transformedSessions = sessionsData?.map(session => ({
+        ...session,
+        day_name: session.conference_days?.name,
+        stage_name: session.stages?.name,
+        start_time: session.day_time_slots?.start_time || session.start_time,
+        end_time: session.day_time_slots?.end_time || session.end_time,
+        is_break: session.day_time_slots?.is_break || false,
+        break_title: session.day_time_slots?.break_title
+      })) || []
+
+      setSessions(transformedSessions)
       console.log('✅ All data loaded successfully')
+      console.log('📊 Data summary:', {
+        days: daysData?.length || 0,
+        halls: hallsData?.length || 0,
+        sessions: sessionsData?.length || 0,
+        transformedSessions: transformedSessions.length
+      })
 
     } catch (error) {
       console.error('❌ Exception loading data:', error)
