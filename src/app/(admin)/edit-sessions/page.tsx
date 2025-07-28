@@ -43,6 +43,9 @@ export default function EditSessionsPage() {
   const [showAddDayModal, setShowAddDayModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [selectedHallForSession, setSelectedHallForSession] = useState<string>('')
+  const [selectedTimeSlotForSession, setSelectedTimeSlotForSession] = useState<string>('')
+  const [speakers, setSpeakers] = useState<Array<{ id: string; name: string; email?: string; title?: string; organization?: string }>>([])
 
   // Load all data from database
   const loadAllData = async () => {
@@ -84,6 +87,20 @@ export default function EditSessionsPage() {
       }
 
       setHalls(hallsData || [])
+
+      // Load speakers
+      const { data: speakersData, error: speakersError } = await supabase
+        .from('speakers')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (speakersError) {
+        console.error('❌ Error loading speakers:', speakersError)
+        setError('Failed to load speakers')
+        return
+      }
+
+      setSpeakers(speakersData || [])
 
       // Load day-specific halls
       const { data: dayHallsData, error: dayHallsError } = await supabase
@@ -331,8 +348,16 @@ export default function EditSessionsPage() {
 
   const handleAddSession = (hallId: string, timeSlotId: string) => {
     const selectedDayData = days.find(day => day.name === selectedDay)
-    const dayHalls = getHallsForSelectedDay()
+    const selectedHall = getHallsForSelectedDay().find(hall => hall.id === hallId)
+    const selectedTimeSlot = timeSlots.find(slot => slot.id === timeSlotId)
     
+    if (!selectedDayData || !selectedHall || !selectedTimeSlot) {
+      alert('Selected day, hall, or time slot not found!')
+      return
+    }
+    
+    setSelectedHallForSession(hallId)
+    setSelectedTimeSlotForSession(timeSlotId)
     setEditingSession(null)
     setIsModalOpen(true)
   }
@@ -340,6 +365,8 @@ export default function EditSessionsPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setEditingSession(null)
+    setSelectedHallForSession('')
+    setSelectedTimeSlotForSession('')
   }
 
   const handleSubmitSession = async (formData: any, sessionType: string) => {
@@ -663,23 +690,104 @@ export default function EditSessionsPage() {
 
   const handleSaveTimeSlot = async (timeSlotId: string, startTime: string, endTime: string) => {
     try {
-      const { error } = await supabase
-        .from('day_time_slots')
-        .update({
-          start_time: startTime,
-          end_time: endTime
-        })
-        .eq('id', timeSlotId)
-
-      if (error) {
-        console.error('❌ Error updating time slot:', error)
-        alert('Error updating time slot. Please try again.')
+      // Find the current time slot index
+      const currentIndex = timeSlots.findIndex(slot => slot.id === timeSlotId)
+      if (currentIndex === -1) {
+        alert('Time slot not found!')
         return
+      }
+
+      // Prepare updates for current and potentially next time slot
+      const updates = []
+      
+      // Update current time slot
+      updates.push(
+        supabase
+          .from('day_time_slots')
+          .update({
+            start_time: startTime,
+            end_time: endTime
+          })
+          .eq('id', timeSlotId)
+      )
+
+      // If there's a next time slot and its start time was auto-updated, save it too
+      if (currentIndex < timeSlots.length - 1) {
+        const nextTimeSlot = timeSlots[currentIndex + 1]
+        if (nextTimeSlot.start_time === endTime) {
+          updates.push(
+            supabase
+              .from('day_time_slots')
+              .update({
+                start_time: endTime
+              })
+              .eq('id', nextTimeSlot.id)
+          )
+        }
+      }
+
+      // If there's a previous time slot and its end time was auto-updated, save it too
+      if (currentIndex > 0) {
+        const prevTimeSlot = timeSlots[currentIndex - 1]
+        if (prevTimeSlot.end_time === startTime) {
+          updates.push(
+            supabase
+              .from('day_time_slots')
+              .update({
+                end_time: startTime
+              })
+              .eq('id', prevTimeSlot.id)
+          )
+        }
+      }
+
+      // Execute all updates
+      const results = await Promise.all(updates)
+      
+      // Check for errors
+      for (const result of results) {
+        if (result.error) {
+          console.error('❌ Error updating time slot:', result.error)
+          alert('Error updating time slot. Please try again.')
+          return
+        }
+      }
+
+      // Check if we need to create a new time slot after the current one
+      const selectedDayData = days.find(d => d.name === selectedDay)
+      if (selectedDayData && currentIndex === timeSlots.length - 1) {
+        // This is the last time slot, check if we should create a new one
+        const endTimeObj = new Date(`2000-01-01T${endTime}`)
+        const maxEndTime = new Date(`2000-01-01T20:30`) // 8:30 PM
+        
+        if (endTimeObj < maxEndTime) {
+          // Create a new time slot starting from the current end time
+          const newEndTime = new Date(endTimeObj.getTime() + 30 * 60000) // Add 30 minutes
+          const newEndTimeStr = newEndTime.toTimeString().slice(0, 5)
+          
+          const { error: createError } = await supabase
+            .from('day_time_slots')
+            .insert({
+              day_id: selectedDayData.id,
+              slot_order: timeSlots.length + 1,
+              start_time: endTime,
+              end_time: newEndTimeStr,
+              is_break: false,
+              break_title: null
+            })
+
+          if (createError) {
+            console.error('❌ Error creating new time slot:', createError)
+            // Don't fail the whole operation, just log the error
+          } else {
+            console.log('✅ New time slot created automatically')
+          }
+        }
       }
 
       await loadTimeSlots()
       setEditingTimeSlot(null)
-      console.log('✅ Time slot updated successfully')
+      console.log('✅ Time slot(s) updated successfully')
       
     } catch (error) {
       console.error('❌ Error updating time slot:', error)
@@ -736,6 +844,13 @@ export default function EditSessionsPage() {
       }
       return newMonth
     })
+  }
+
+  // Helper function to calculate default end time (30 minutes after start time)
+  const calculateDefaultEndTime = (startTime: string) => {
+    const startTimeObj = new Date(`2000-01-01T${startTime}`)
+    const endTimeObj = new Date(startTimeObj.getTime() + 30 * 60000) // Add 30 minutes
+    return endTimeObj.toTimeString().slice(0, 5)
   }
 
   // Get halls for selected day
@@ -808,7 +923,7 @@ export default function EditSessionsPage() {
       </div>
 
       {/* Day Navigation */}
-      <div className="bg-white border-b sticky top-16 z-10">
+      <div className="bg-white border-b sticky top-16 z-20">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex space-x-8 overflow-x-auto">
@@ -852,46 +967,47 @@ export default function EditSessionsPage() {
       </div>
 
       {/* Scrollable Grid Layout */}
-      <div className="overflow-auto">
-        <div className="min-w-max">
-          {/* Header Row - Hall Names */}
-          <div className="bg-white border-b sticky top-32 z-10">
-            <div className="flex">
-              {/* Time Column Header */}
-              <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
-                🕘 Time
-              </div>
-              
-              {/* Hall Column Headers */}
-              {getHallsForSelectedDay().map((hall) => (
-                <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
-                  <div className="flex items-center justify-between">
-                    <span>🏛️ {hall.name}</span>
-                    <button
-                      onClick={() => handleDeleteHall(hall)}
-                      className="text-red-600 hover:text-red-800 text-xs p-1"
-                      title="Remove Hall from Day"
-                    >
-                      🗑️
-                    </button>
-                  </div>
+      {getHallsForSelectedDay().length > 0 ? (
+        <div className="overflow-auto">
+          <div className="min-w-max">
+            {/* Header Row - Hall Names */}
+            <div className="bg-white border-b sticky top-24 z-30">
+              <div className="flex">
+                {/* Time Column Header */}
+                <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
+                  🕘 Time
                 </div>
-              ))}
-              
-              {/* Add Hall Column */}
-              <div className="w-80 bg-gray-50 border-r border-gray-200 p-3">
-                <button
-                  onClick={() => setShowAddHallModal(true)}
-                  className="w-full h-full flex items-center justify-center text-indigo-600 hover:text-indigo-800 text-sm font-medium border-2 border-dashed border-indigo-300 rounded-lg hover:border-indigo-400 transition-colors"
-                >
-                  + Add Hall
-                </button>
+                
+                {/* Hall Column Headers */}
+                {getHallsForSelectedDay().map((hall) => (
+                  <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
+                    <div className="flex items-center justify-between">
+                      <span>🏛️ {hall.name}</span>
+                      <button
+                        onClick={() => handleDeleteHall(hall)}
+                        className="text-red-600 hover:text-red-800 text-xs p-1"
+                        title="Remove Hall from Day"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* Add Hall Column */}
+                <div className="w-80 bg-gray-50 border-r border-gray-200 p-3">
+                  <button
+                    onClick={() => setShowAddHallModal(true)}
+                    className="w-full h-full flex items-center justify-center text-indigo-600 hover:text-indigo-800 text-sm font-medium border-2 border-dashed border-indigo-300 rounded-lg hover:border-indigo-400 transition-colors"
+                  >
+                    + Add Hall
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Time Slot Rows */}
-          {timeSlots.map((timeSlot, index) => (
+            {/* Time Slot Rows */}
+            {timeSlots.map((timeSlot, index) => (
             <div key={timeSlot.id} className="bg-white border-b">
               <div className="flex">
                 {/* Time Column */}
@@ -903,21 +1019,64 @@ export default function EditSessionsPage() {
                         value={timeSlot.start_time}
                         onChange={(e) => {
                           const newTimeSlots = [...timeSlots]
-                          newTimeSlots[index] = { ...timeSlot, start_time: e.target.value }
+                          const newStartTime = e.target.value
+                          const newEndTime = calculateDefaultEndTime(newStartTime)
+                          
+                          newTimeSlots[index] = { 
+                            ...timeSlot, 
+                            start_time: newStartTime,
+                            end_time: newEndTime
+                          }
+                          
+                          // Auto-update previous time slot's end time if it exists
+                          if (index > 0) {
+                            newTimeSlots[index - 1] = { 
+                              ...newTimeSlots[index - 1], 
+                              end_time: newStartTime 
+                            }
+                          }
+                          
                           setTimeSlots(newTimeSlots)
                         }}
                         className="w-full text-sm border rounded px-2 py-1"
                       />
+                      {index > 0 && (
+                        <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                          🔗 Previous slot will end at this time
+                        </div>
+                      )}
+                      <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                          ⏰ End time auto-calculated (+30 min)
+                        </div>
                       <input
                         type="time"
                         value={timeSlot.end_time}
                         onChange={(e) => {
                           const newTimeSlots = [...timeSlots]
                           newTimeSlots[index] = { ...timeSlot, end_time: e.target.value }
+                          
+                          // Auto-update next time slot's start time if it exists
+                          if (index < timeSlots.length - 1) {
+                            newTimeSlots[index + 1] = { 
+                              ...newTimeSlots[index + 1], 
+                              start_time: e.target.value 
+                            }
+                          }
+                          
                           setTimeSlots(newTimeSlots)
                         }}
                         className="w-full text-sm border rounded px-2 py-1"
                       />
+                      {index < timeSlots.length - 1 && (
+                        <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                          ⚡ Next slot will start at this time
+                        </div>
+                      )}
+                      {index === timeSlots.length - 1 && (
+                        <div className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                          ➕ New slot will be created after this
+                        </div>
+                      )}
                       <div className="flex space-x-1">
                         <button
                           onClick={() => handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, timeSlot.end_time)}
@@ -937,12 +1096,29 @@ export default function EditSessionsPage() {
                     <div className="text-sm">
                       <div className="font-medium">{timeSlot.start_time}</div>
                       <div className="text-gray-500">{timeSlot.end_time}</div>
-                      <button
-                        onClick={() => handleEditTimeSlot(timeSlot)}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 mt-1"
-                      >
-                        Edit
-                      </button>
+                      <div className="flex space-x-1 mt-1">
+                        <button
+                          onClick={() => handleEditTimeSlot(timeSlot)}
+                          className="text-xs text-indigo-600 hover:text-indigo-800"
+                        >
+                          Edit
+                        </button>
+                        {index < timeSlots.length - 1 && (
+                          <button
+                            onClick={() => {
+                              const newTimeSlots = [...timeSlots]
+                              const nextSlot = newTimeSlots[index + 1]
+                              newTimeSlots[index] = { ...timeSlot, end_time: nextSlot.start_time }
+                              setTimeSlots(newTimeSlots)
+                              handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, nextSlot.start_time)
+                            }}
+                            className="text-xs text-green-600 hover:text-green-800"
+                            title="Quick adjust to next slot start time"
+                          >
+                            Quick
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1037,12 +1213,25 @@ export default function EditSessionsPage() {
           ))}
         </div>
       </div>
+      ) : (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="text-gray-500 text-lg mb-4">No halls added for this day yet</div>
+            <button
+              onClick={() => setShowAddHallModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              Add First Hall
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Session Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={editingSession ? 'Edit Session' : 'Add New Session'}
+        title={editingSession ? 'Edit Session' : `Add New Session - ${halls.find(h => h.id === selectedHallForSession)?.name || 'Unknown Hall'}`}
         maxWidth="max-w-2xl"
       >
         <SessionForm
@@ -1059,8 +1248,8 @@ export default function EditSessionsPage() {
             parallel_meal_type: editingSession.parallel_meal_type || ''
           } : {
             day_id: days.find(d => d.name === selectedDay)?.id || '',
-            stage_id: getHallsForSelectedDay()[0]?.id || '',
-            time_slot_id: timeSlots[0]?.id || ''
+            stage_id: selectedHallForSession || getHallsForSelectedDay()[0]?.id || '',
+            time_slot_id: selectedTimeSlotForSession || timeSlots[0]?.id || ''
           }}
           sessionType={editingSession?.session_type || 'lecture'}
           onSubmit={handleSubmitSession}
@@ -1069,6 +1258,8 @@ export default function EditSessionsPage() {
           days={days}
           halls={getHallsForSelectedDay()}
           timeSlots={timeSlots}
+          isAddingNewSession={!editingSession}
+          speakers={speakers}
         />
       </Modal>
 

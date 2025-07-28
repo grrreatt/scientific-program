@@ -1,10 +1,1 @@
-{
-  "/_not-found": "app/_not-found.js",
-  "/page": "app/page.js",
-  "/login/page": "app/login/page.js",
-  "/api/export/route": "app/api/export/route.js",
-  "/public-program/page": "app/public-program/page.js",
-  "/(admin)/dashboard/page": "app/(admin)/dashboard/page.js",
-  "/(admin)/sessions/page": "app/(admin)/sessions/page.js",
-  "/(admin)/edit-sessions/page": "app/(admin)/edit-sessions/page.js"
-}
+{}

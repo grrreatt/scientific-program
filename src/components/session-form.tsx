@@ -48,6 +48,8 @@ interface SessionFormProps {
   days?: Array<{ id: string; name: string; date: string }>
   halls?: Array<{ id: string; name: string; capacity?: number }>
   timeSlots?: Array<{ id: string; start_time: string; end_time: string; is_break: boolean; break_title?: string }>
+  isAddingNewSession?: boolean
+  speakers?: Array<{ id: string; name: string; email?: string; title?: string; organization?: string }>
 }
 
 export function SessionForm({ 
@@ -58,7 +60,9 @@ export function SessionForm({
   isSubmitting = false,
   days = [],
   halls = [],
-  timeSlots = []
+  timeSlots = [],
+  isAddingNewSession = false,
+  speakers = []
 }: SessionFormProps) {
   const [currentSessionType, setCurrentSessionType] = useState(sessionType)
   const [formData, setFormData] = useState<SessionFormData>({
@@ -152,6 +156,11 @@ export function SessionForm({
     const optionalFields = sessionConfig.fields.optional
     
     for (const field of requiredFields) {
+      // Skip validation for pre-selected fields when adding new session
+      if (isAddingNewSession && (field === 'day_id' || field === 'stage_id' || field === 'time_slot_id')) {
+        continue
+      }
+      
       if (!formData[field as keyof typeof formData]) {
         alert(`Please fill in the required field: ${field}`)
         return
@@ -193,15 +202,31 @@ export function SessionForm({
                 {slot.start_time} - {slot.end_time} {slot.is_break ? `(${slot.break_title || 'Break'})` : ''}
               </option>
             ))}
-            {fieldName === 'speaker_id' && (
-              <>
-                <option value="speaker1">Dr. Sarah Johnson</option>
-                <option value="speaker2">Dr. Michael Chen</option>
-                <option value="speaker3">Dr. Emily Rodriguez</option>
-                <option value="speaker4">Prof. David Thompson</option>
-                <option value="speaker5">Dr. Lisa Wang</option>
-              </>
-            )}
+            {fieldName === 'speaker_id' && speakers.map(speaker => (
+              <option key={speaker.id} value={speaker.id}>
+                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
+              </option>
+            ))}
+            {fieldName === 'chairperson_id' && speakers.map(speaker => (
+              <option key={speaker.id} value={speaker.id}>
+                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
+              </option>
+            ))}
+            {fieldName === 'moderator_id' && speakers.map(speaker => (
+              <option key={speaker.id} value={speaker.id}>
+                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
+              </option>
+            ))}
+            {fieldName === 'discussion_leader_id' && speakers.map(speaker => (
+              <option key={speaker.id} value={speaker.id}>
+                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
+              </option>
+            ))}
+            {fieldName === 'introducer_id' && speakers.map(speaker => (
+              <option key={speaker.id} value={speaker.id}>
+                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
+              </option>
+            ))}
             {fieldName === 'meal_type' && (
               <>
                 {MEAL_TYPES.map(meal => (
@@ -286,11 +311,11 @@ export function SessionForm({
               className="flex-1 block pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
             >
               <option value="">Select speaker</option>
-              <option value="speaker1">Dr. Sarah Johnson</option>
-              <option value="speaker2">Dr. Michael Chen</option>
-              <option value="speaker3">Dr. Emily Rodriguez</option>
-              <option value="speaker4">Prof. David Thompson</option>
-              <option value="speaker5">Dr. Lisa Wang</option>
+              {speakers.map(speaker => (
+                <option key={speaker.id} value={speaker.id}>
+                  {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
+                </option>
+              ))}
             </select>
             {values.length > 1 && (
               <button
@@ -552,14 +577,36 @@ export function SessionForm({
       {/* Dynamic Form Fields */}
       <div className="space-y-4">
         <h3 className="text-sm font-medium text-gray-900">Session Details</h3>
+        
+        {/* Show pre-selected hall and time slot when adding new session */}
+        {isAddingNewSession && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <h4 className="text-sm font-medium text-blue-900 mb-2">Session Location & Time</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-blue-700 font-medium">Hall:</span>
+                <span className="ml-2 text-blue-600">
+                  {halls.find(h => h.id === formData.stage_id)?.name || 'Unknown Hall'}
+                </span>
+              </div>
+              <div>
+                <span className="text-blue-700 font-medium">Time:</span>
+                <span className="ml-2 text-blue-600">
+                  {timeSlots.find(t => t.id === formData.time_slot_id)?.start_time} - {timeSlots.find(t => t.id === formData.time_slot_id)?.end_time}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 gap-4">
           {/* Required Fields */}
           {requiredFields.map(field => {
             if (field === 'title') return renderField(field, 'Session Title', 'text', true)
             if (field === 'topic') return renderField(field, 'Topic', 'text', true)
-            if (field === 'day_id') return renderField(field, 'Day', 'select', true)
-            if (field === 'stage_id') return renderField(field, 'Stage/Hall', 'select', true)
-            if (field === 'time_slot_id') return renderField(field, 'Time Slot', 'select', true)
+            if (field === 'day_id' && !isAddingNewSession) return renderField(field, 'Day', 'select', true)
+            if (field === 'stage_id' && !isAddingNewSession) return renderField(field, 'Stage/Hall', 'select', true)
+            if (field === 'time_slot_id' && !isAddingNewSession) return renderField(field, 'Time Slot', 'select', true)
             if (field === 'speaker_id') return renderField(field, 'Speaker', 'select', true)
             if (field === 'moderator_id') return renderField(field, 'Moderator', 'select', true)
             if (field === 'discussion_leader_id') return renderField(field, 'Discussion Leader', 'select', true)
