@@ -47,20 +47,20 @@ DROP VIEW IF EXISTS sessions_with_times;
 CREATE VIEW sessions_with_times AS
 SELECT 
   s.*,
-  dts.start_time,
-  dts.end_time,
-  dts.is_break,
+  COALESCE(dts.start_time, s.start_time) as start_time,
+  COALESCE(dts.end_time, s.end_time) as end_time,
+  COALESCE(dts.is_break, FALSE) as is_break,
   dts.break_title,
   cd.name as day_name,
   cd.date as day_date,
   st.name as stage_name,
   dh.hall_order
 FROM sessions s
-JOIN day_time_slots dts ON s.time_slot_id = dts.id
-JOIN conference_days cd ON s.day_id = cd.id
-JOIN stages st ON s.stage_id = st.id
+LEFT JOIN day_time_slots dts ON s.time_slot_id = dts.id
+LEFT JOIN conference_days cd ON s.day_id = cd.id
+LEFT JOIN stages st ON s.stage_id = st.id
 LEFT JOIN day_halls dh ON (s.day_id = dh.day_id AND s.stage_id = dh.hall_id)
-ORDER BY cd.date, dts.slot_order, dh.hall_order;
+ORDER BY cd.date, COALESCE(dts.slot_order, 0), COALESCE(dh.hall_order, 0);
 
 -- Add RLS policies for the new table
 ALTER TABLE day_halls ENABLE ROW LEVEL SECURITY;
