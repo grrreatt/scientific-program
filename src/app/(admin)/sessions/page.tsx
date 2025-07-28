@@ -4,64 +4,90 @@ import { useState, useEffect } from 'react'
 import { SESSION_TYPES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
 import { SessionForm } from '@/components/session-form'
-
-interface Session {
-  id: string
-  title: string
-  session_type: string
-  day_name: string
-  stage_name: string
-  start_time: string
-  end_time: string
-  topic?: string
-  speaker_name?: string
-}
+import { supabase } from '@/lib/supabase/client'
+import { Session, Day, Hall, DayTimeSlot } from '@/types'
 
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([])
+  const [days, setDays] = useState<Day[]>([])
+  const [halls, setHalls] = useState<Hall[]>([])
+  const [timeSlots, setTimeSlots] = useState<DayTimeSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    // Mock data for demo
-    setSessions([
-      {
-        id: '1',
-        title: 'Opening Keynote: Future of Medical Technology',
-        session_type: 'lecture',
-        day_name: 'Day 1',
-        stage_name: 'Main Hall',
-        start_time: '09:00',
-        end_time: '10:30',
-        topic: 'Medical Technology Trends',
-        speaker_name: 'Dr. Sarah Johnson'
-      },
-      {
-        id: '2',
-        title: 'Panel: AI in Healthcare',
-        session_type: 'panel',
-        day_name: 'Day 1',
-        stage_name: 'Main Hall',
-        start_time: '14:00',
-        end_time: '15:30',
-        topic: 'Artificial Intelligence Applications',
-        speaker_name: 'Dr. Michael Chen (Moderator)'
-      },
-      {
-        id: '3',
-        title: 'Workshop: Advanced Surgical Techniques',
-        session_type: 'workshop',
-        day_name: 'Day 2',
-        stage_name: 'Workshop Room',
-        start_time: '10:00',
-        end_time: '12:00',
-        topic: 'Surgical Innovation',
-        speaker_name: 'Dr. Emily Rodriguez'
+  // Load all data from database
+  const loadAllData = async () => {
+    setLoading(true)
+    
+    try {
+      console.log('🔄 Loading all data from Supabase...')
+      
+      // Load days
+      const { data: daysData, error: daysError } = await supabase
+        .from('conference_days')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (daysError) {
+        console.error('❌ Error loading days:', daysError)
+        return
       }
-    ])
-    setLoading(false)
+
+      setDays(daysData || [])
+      
+      // Load halls
+      const { data: hallsData, error: hallsError } = await supabase
+        .from('stages')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (hallsError) {
+        console.error('❌ Error loading halls:', hallsError)
+        return
+      }
+
+      setHalls(hallsData || [])
+
+      // Load time slots
+      const { data: timeSlotsData, error: timeSlotsError } = await supabase
+        .from('day_time_slots')
+        .select('*')
+        .order('slot_order', { ascending: true })
+
+      if (timeSlotsError) {
+        console.error('❌ Error loading time slots:', timeSlotsError)
+        return
+      }
+
+      setTimeSlots(timeSlotsData || [])
+
+      // Load sessions using the sessions_with_times view
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from('sessions_with_times')
+        .select('*')
+        .order('day_date', { ascending: true })
+        .order('slot_order', { ascending: true })
+
+      if (sessionsError) {
+        console.error('❌ Error loading sessions:', sessionsError)
+        setSessions([])
+      } else {
+        setSessions(sessionsData || [])
+      }
+
+      console.log('✅ All data loaded successfully')
+      
+    } catch (error) {
+      console.error('❌ Exception loading data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAllData()
   }, [])
 
   const formatTime = (time: string) => {
@@ -109,41 +135,75 @@ export default function SessionsPage() {
     setIsSubmitting(true)
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
       if (editingSession) {
         // Update existing session
-        setSessions(prev => prev.map(session => 
-          session.id === editingSession.id 
-            ? { ...session, ...formData, session_type: sessionType }
-            : session
-        ))
+        const { error: updateError } = await supabase
+          .from('sessions')
+          .update({
+            title: formData.title,
+            session_type: sessionType,
+            day_id: formData.day_id,
+            stage_id: formData.stage_id,
+            time_slot_id: formData.time_slot_id,
+            topic: formData.topic,
+            description: formData.description,
+            is_parallel_meal: formData.is_parallel_meal,
+            parallel_meal_type: formData.parallel_meal_type
+          })
+          .eq('id', editingSession.id)
+
+        if (updateError) {
+          console.error('❌ Error updating session:', updateError)
+          alert('Error updating session. Please try again.')
+          return
+        }
       } else {
         // Create new session
-        const newSession: Session = {
-          id: Date.now().toString(),
-          title: formData.title,
-          session_type: sessionType,
-          day_name: formData.day_id === 'day1' ? 'Day 1' : formData.day_id === 'day2' ? 'Day 2' : 'Day 3',
-          stage_name: formData.stage_id === 'main-hall' ? 'Main Hall' : 
-                     formData.stage_id === 'seminar-a' ? 'Seminar Room A' :
-                     formData.stage_id === 'seminar-b' ? 'Seminar Room B' : 'Workshop Room',
-          start_time: formData.start_time,
-          end_time: formData.end_time,
-          topic: formData.topic,
-          speaker_name: formData.speaker_id === 'speaker1' ? 'Dr. Sarah Johnson' :
-                       formData.speaker_id === 'speaker2' ? 'Dr. Michael Chen' :
-                       formData.speaker_id === 'speaker3' ? 'Dr. Emily Rodriguez' :
-                       formData.speaker_id === 'speaker4' ? 'Prof. David Thompson' :
-                       formData.speaker_id === 'speaker5' ? 'Dr. Lisa Wang' : ''
+        const { data: newSession, error: sessionError } = await supabase
+          .from('sessions')
+          .insert({
+            title: formData.title,
+            session_type: sessionType,
+            day_id: formData.day_id,
+            stage_id: formData.stage_id,
+            time_slot_id: formData.time_slot_id,
+            topic: formData.topic,
+            description: formData.description,
+            is_parallel_meal: formData.is_parallel_meal,
+            parallel_meal_type: formData.parallel_meal_type
+          })
+          .select()
+          .single()
+
+        if (sessionError) {
+          console.error('❌ Error creating session:', sessionError)
+          alert('Error creating session. Please try again.')
+          return
         }
-        setSessions(prev => [...prev, newSession])
+
+        // Add session participants if speaker_id is provided
+        if (formData.speaker_id) {
+          const { error: participantError } = await supabase
+            .from('session_participants')
+            .insert({
+              session_id: newSession.id,
+              speaker_id: formData.speaker_id,
+              role: 'speaker'
+            })
+
+          if (participantError) {
+            console.error('❌ Error adding speaker:', participantError)
+          }
+        }
       }
-      
+
+      // Reload data to get the updated sessions
+      await loadAllData()
       handleCloseModal()
+      console.log('✅ Session saved successfully')
+      
     } catch (error) {
-      console.error('Error saving session:', error)
+      console.error('❌ Error saving session:', error)
       alert('Error saving session. Please try again.')
     } finally {
       setIsSubmitting(false)
@@ -261,9 +321,9 @@ export default function SessionsPage() {
                           <p>Topic: {session.topic}</p>
                         </div>
                       )}
-                      {session.speaker_name && (
+                      {session.description && (
                         <div className="mt-1 text-sm text-gray-500">
-                          <p>Speaker: {session.speaker_name}</p>
+                          <p>Description: {session.description}</p>
                         </div>
                       )}
                     </div>
@@ -331,23 +391,20 @@ export default function SessionsPage() {
           initialData={editingSession ? {
             title: editingSession.title,
             topic: editingSession.topic || '',
-            day_id: editingSession.day_name === 'Day 1' ? 'day1' : 
-                    editingSession.day_name === 'Day 2' ? 'day2' : 'day3',
-            stage_id: editingSession.stage_name === 'Main Hall' ? 'main-hall' :
-                      editingSession.stage_name === 'Seminar Room A' ? 'seminar-a' :
-                      editingSession.stage_name === 'Seminar Room B' ? 'seminar-b' : 'workshop',
-            start_time: editingSession.start_time,
-            end_time: editingSession.end_time,
-            speaker_id: editingSession.speaker_name === 'Dr. Sarah Johnson' ? 'speaker1' :
-                       editingSession.speaker_name === 'Dr. Michael Chen' ? 'speaker2' :
-                       editingSession.speaker_name === 'Dr. Emily Rodriguez' ? 'speaker3' :
-                       editingSession.speaker_name === 'Prof. David Thompson' ? 'speaker4' :
-                       editingSession.speaker_name === 'Dr. Lisa Wang' ? 'speaker5' : ''
+            day_id: editingSession.day_id,
+            stage_id: editingSession.stage_id,
+            time_slot_id: editingSession.time_slot_id,
+            description: editingSession.description || '',
+            is_parallel_meal: editingSession.is_parallel_meal || false,
+            parallel_meal_type: editingSession.parallel_meal_type || ''
           } : {}}
           sessionType={editingSession?.session_type || 'lecture'}
           onSubmit={handleSubmitSession}
           onCancel={handleCloseModal}
           isSubmitting={isSubmitting}
+          days={days}
+          halls={halls}
+          timeSlots={timeSlots}
         />
       </Modal>
     </div>
