@@ -75,41 +75,41 @@ export default function EditSessionsPage() {
 
       setHalls(hallsData || [])
 
-      // Load sessions with a simpler query first
+      // Load sessions with a more robust query
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
         .select(`
           *,
-          conference_days!inner(name),
-          stages!inner(name),
-          day_time_slots!left(start_time, end_time, is_break, break_title)
+          conference_days(name),
+          stages(name),
+          day_time_slots(start_time, end_time, is_break, break_title)
         `)
         .order('created_at', { ascending: true })
 
       if (sessionsError) {
         console.error('❌ Error loading sessions:', sessionsError)
-        setError('Failed to load sessions')
-        return
+        // Don't fail completely, just set empty sessions
+        setSessions([])
+      } else {
+        // Transform the data to match the expected format
+        const transformedSessions = sessionsData?.map(session => ({
+          ...session,
+          day_name: session.conference_days?.name || 'Unknown Day',
+          stage_name: session.stages?.name || 'Unknown Hall',
+          start_time: session.day_time_slots?.start_time || session.start_time || '',
+          end_time: session.day_time_slots?.end_time || session.end_time || '',
+          is_break: session.day_time_slots?.is_break || false,
+          break_title: session.day_time_slots?.break_title
+        })) || []
+
+        setSessions(transformedSessions)
       }
-
-      // Transform the data to match the expected format
-      const transformedSessions = sessionsData?.map(session => ({
-        ...session,
-        day_name: session.conference_days?.name,
-        stage_name: session.stages?.name,
-        start_time: session.day_time_slots?.start_time || session.start_time,
-        end_time: session.day_time_slots?.end_time || session.end_time,
-        is_break: session.day_time_slots?.is_break || false,
-        break_title: session.day_time_slots?.break_title
-      })) || []
-
-      setSessions(transformedSessions)
       console.log('✅ All data loaded successfully')
       console.log('📊 Data summary:', {
         days: daysData?.length || 0,
         halls: hallsData?.length || 0,
         sessions: sessionsData?.length || 0,
-        transformedSessions: transformedSessions.length
+        sessionsCount: sessions.length
       })
 
     } catch (error) {
@@ -136,12 +136,74 @@ export default function EditSessionsPage() {
 
       if (error) {
         console.error('❌ Error loading time slots:', error)
+        // Try to create default time slots
+        await createDefaultTimeSlots(selectedDayData.id)
         return
       }
 
-      setTimeSlots(data || [])
+      if (data && data.length > 0) {
+        setTimeSlots(data)
+      } else {
+        // Create default time slots if none exist
+        await createDefaultTimeSlots(selectedDayData.id)
+      }
     } catch (error) {
       console.error('❌ Exception loading time slots:', error)
+      // Try to create default time slots
+      const selectedDayData = days.find(d => d.name === selectedDay)
+      if (selectedDayData) {
+        await createDefaultTimeSlots(selectedDayData.id)
+      }
+    }
+  }
+
+  // Create default time slots for a day
+  const createDefaultTimeSlots = async (dayId: string) => {
+    try {
+      console.log('🔄 Creating default time slots for day:', dayId)
+      
+      const slots = []
+      let currentTime = new Date()
+      currentTime.setHours(8, 0, 0, 0) // Start at 8:00 AM
+      
+      const endTime = new Date()
+      endTime.setHours(20, 30, 0, 0) // End at 8:30 PM
+      
+      let slotOrder = 1
+      
+      while (currentTime <= endTime) {
+        const startTime = currentTime.toTimeString().slice(0, 5)
+        
+        // Add 30 minutes
+        currentTime.setMinutes(currentTime.getMinutes() + 30)
+        const endTimeStr = currentTime.toTimeString().slice(0, 5)
+        
+        slots.push({
+          day_id: dayId,
+          slot_order: slotOrder,
+          start_time: startTime,
+          end_time: endTimeStr,
+          is_break: false,
+          break_title: null
+        })
+        
+        slotOrder++
+      }
+
+      const { data, error } = await supabase
+        .from('day_time_slots')
+        .insert(slots)
+        .select()
+
+      if (error) {
+        console.error('❌ Error creating default time slots:', error)
+        return
+      }
+
+      console.log('✅ Default time slots created successfully:', data?.length || 0, 'slots')
+      setTimeSlots(data || [])
+    } catch (error) {
+      console.error('❌ Exception creating default time slots:', error)
     }
   }
 
