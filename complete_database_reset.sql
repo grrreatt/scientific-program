@@ -469,7 +469,7 @@ SELECT
   dts.start_time,
   dts.end_time,
   sp.name as speaker_name,
-  sp.role
+  spp.role
 FROM sessions s
 JOIN conference_days cd ON s.day_id = cd.id
 JOIN stages st ON s.stage_id = st.id
