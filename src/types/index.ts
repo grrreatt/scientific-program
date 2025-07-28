@@ -74,6 +74,19 @@ export interface Hall {
   created_at?: string
 }
 
+export interface DayHall {
+  id: string
+  day_id: string
+  hall_id: string
+  hall_order: number
+  created_at?: string
+  // Joined fields
+  day_name?: string
+  day_date?: string
+  hall_name?: string
+  hall_capacity?: number
+}
+
 export interface Day {
   id: string
   name: string

@@ -6,7 +6,7 @@ import { SESSION_TYPES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
 import { SessionForm } from '@/components/session-form'
 import { supabase } from '@/lib/supabase/client'
-import { Session, DayTimeSlot, Hall, Day } from '@/types'
+import { Session, DayTimeSlot, Hall, Day, DayHall } from '@/types'
 import realtimeService from '@/lib/supabase/realtime'
 import { RealtimeStatus } from '@/components/ui/realtime-status'
 
@@ -15,6 +15,7 @@ export default function EditSessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [timeSlots, setTimeSlots] = useState<DayTimeSlot[]>([])
   const [halls, setHalls] = useState<Hall[]>([])
+  const [dayHalls, setDayHalls] = useState<DayHall[]>([])
   const [days, setDays] = useState<Day[]>([])
   
   // UI state
@@ -83,6 +84,21 @@ export default function EditSessionsPage() {
       }
 
       setHalls(hallsData || [])
+
+      // Load day-specific halls
+      const { data: dayHallsData, error: dayHallsError } = await supabase
+        .from('halls_with_days')
+        .select('*')
+        .order('day_date', { ascending: true })
+        .order('hall_order', { ascending: true })
+
+      if (dayHallsError) {
+        console.error('❌ Error loading day halls:', dayHallsError)
+        setError('Failed to load day halls')
+        return
+      }
+
+      setDayHalls(dayHallsData || [])
 
       // Load sessions with a more robust query
       const { data: sessionsData, error: sessionsError } = await supabase
@@ -314,6 +330,9 @@ export default function EditSessionsPage() {
   }
 
   const handleAddSession = (hallId: string, timeSlotId: string) => {
+    const selectedDayData = days.find(day => day.name === selectedDay)
+    const dayHalls = getHallsForSelectedDay()
+    
     setEditingSession(null)
     setIsModalOpen(true)
   }
@@ -409,23 +428,44 @@ export default function EditSessionsPage() {
     const dateString = date.toISOString().split('T')[0]
     
     try {
-      const { error } = await supabase
+      // First, create the day
+      const { data: newDay, error: dayError } = await supabase
         .from('conference_days')
         .insert({
           name: dayName,
           date: dateString
         })
+        .select('id')
+        .single()
 
-      if (error) {
-        console.error('❌ Error adding day:', error)
+      if (dayError) {
+        console.error('❌ Error adding day:', dayError)
         alert('Error adding day. Please try again.')
         return
+      }
+
+      // Then, add all existing halls to this new day
+      if (halls.length > 0) {
+        const dayHallInserts = halls.map((hall, index) => ({
+          day_id: newDay.id,
+          hall_id: hall.id,
+          hall_order: index
+        }))
+
+        const { error: dayHallsError } = await supabase
+          .from('day_halls')
+          .insert(dayHallInserts)
+
+        if (dayHallsError) {
+          console.error('❌ Error adding halls to new day:', dayHallsError)
+          // Don't fail completely, the day was created successfully
+        }
       }
 
       setShowAddDayModal(false)
       setSelectedDate(null)
       await loadAllData()
-      console.log('✅ Day added successfully')
+      console.log('✅ Day added successfully with halls')
       
     } catch (error) {
       console.error('❌ Error adding day:', error)
@@ -498,24 +538,68 @@ export default function EditSessionsPage() {
       return
     }
 
+    const selectedDayData = days.find(day => day.name === selectedDay)
+    if (!selectedDayData) {
+      alert('Please select a day first')
+      return
+    }
+
     try {
-      const { error } = await supabase
+      // First, create the hall if it doesn't exist
+      const { data: existingHall, error: checkError } = await supabase
         .from('stages')
+        .select('id')
+        .eq('name', newHallName.trim())
+        .single()
+
+      let hallId: string
+
+      if (checkError && checkError.code === 'PGRST116') {
+        // Hall doesn't exist, create it
+        const { data: newHall, error: createError } = await supabase
+          .from('stages')
+          .insert({ name: newHallName.trim(), capacity: null })
+          .select('id')
+          .single()
+
+        if (createError) {
+          console.error('❌ Error creating hall:', createError)
+          alert('Error creating hall. Please try again.')
+          return
+        }
+
+        hallId = newHall.id
+      } else if (checkError) {
+        console.error('❌ Error checking hall:', checkError)
+        alert('Error checking hall. Please try again.')
+        return
+      } else {
+        hallId = existingHall.id
+      }
+
+      // Get the next hall order for this day
+      const dayHallsForSelectedDay = dayHalls.filter(dh => dh.day_id === selectedDayData.id)
+      const nextOrder = dayHallsForSelectedDay.length
+
+      // Add the hall to this specific day
+      const { error: dayHallError } = await supabase
+        .from('day_halls')
         .insert({
-          name: newHallName.trim(),
-          capacity: null
+          day_id: selectedDayData.id,
+          hall_id: hallId,
+          hall_order: nextOrder
         })
 
-      if (error) {
-        console.error('❌ Error adding hall:', error)
-        alert('Error adding hall. Please try again.')
+      if (dayHallError) {
+        console.error('❌ Error adding hall to day:', dayHallError)
+        alert('Error adding hall to day. Please try again.')
         return
       }
 
       setNewHallName('')
       setShowAddHallModal(false)
       await loadAllData()
-      console.log('✅ Hall added successfully')
+      console.log('✅ Hall added to day successfully')
       
     } catch (error) {
       console.error('❌ Error adding hall:', error)
@@ -524,17 +608,24 @@ export default function EditSessionsPage() {
   }
 
   const handleDeleteHall = async (hall: Hall) => {
+    const selectedDayData = days.find(day => day.name === selectedDay)
+    if (!selectedDayData) {
+      alert('Please select a day first')
+      return
+    }
+
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${hall.name}"? This will also delete all sessions scheduled in this hall.`
+      `Are you sure you want to remove "${hall.name}" from ${selectedDay}? This will also delete all sessions scheduled in this hall for this day.`
     )
     
     if (confirmed) {
       try {
-        // First delete all sessions in this hall
+        // First delete all sessions in this hall for this specific day
         const { error: sessionsError } = await supabase
           .from('sessions')
           .delete()
           .eq('stage_id', hall.id)
+          .eq('day_id', selectedDayData.id)
 
         if (sessionsError) {
           console.error('❌ Error deleting sessions:', sessionsError)
@@ -542,24 +633,25 @@ export default function EditSessionsPage() {
           return
         }
 
-        // Then delete the hall
-        const { error: hallError } = await supabase
-          .from('stages')
+        // Then remove the hall from this specific day
+        const { error: dayHallError } = await supabase
+          .from('day_halls')
           .delete()
-          .eq('id', hall.id)
+          .eq('day_id', selectedDayData.id)
+          .eq('hall_id', hall.id)
 
-        if (hallError) {
-          console.error('❌ Error deleting hall:', hallError)
-          alert('Error deleting hall.')
+        if (dayHallError) {
+          console.error('❌ Error removing hall from day:', dayHallError)
+          alert('Error removing hall from day.')
           return
         }
 
         await loadAllData()
-        console.log('✅ Hall deleted successfully')
+        console.log('✅ Hall removed from day successfully')
         
       } catch (error) {
-        console.error('❌ Error deleting hall:', error)
-        alert('Error deleting hall. Please try again.')
+        console.error('❌ Error removing hall from day:', error)
+        alert('Error removing hall from day. Please try again.')
       }
     }
   }
@@ -644,6 +736,21 @@ export default function EditSessionsPage() {
       }
       return newMonth
     })
+  }
+
+  // Get halls for selected day
+  const getHallsForSelectedDay = () => {
+    const selectedDayData = days.find(day => day.name === selectedDay)
+    if (!selectedDayData) return []
+    
+    return dayHalls
+      .filter(dayHall => dayHall.day_id === selectedDayData.id)
+      .sort((a, b) => a.hall_order - b.hall_order)
+      .map(dayHall => ({
+        id: dayHall.hall_id,
+        name: dayHall.hall_name || 'Unknown Hall',
+        capacity: dayHall.hall_capacity
+      }))
   }
 
   // Filter sessions for selected day
@@ -756,14 +863,14 @@ export default function EditSessionsPage() {
               </div>
               
               {/* Hall Column Headers */}
-              {halls.map((hall) => (
+              {getHallsForSelectedDay().map((hall) => (
                 <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
                   <div className="flex items-center justify-between">
                     <span>🏛️ {hall.name}</span>
                     <button
                       onClick={() => handleDeleteHall(hall)}
                       className="text-red-600 hover:text-red-800 text-xs p-1"
-                      title="Delete Hall"
+                      title="Remove Hall from Day"
                     >
                       🗑️
                     </button>
@@ -841,7 +948,7 @@ export default function EditSessionsPage() {
                 </div>
                 
                 {/* Hall Columns */}
-                {halls.map((hall) => {
+                {getHallsForSelectedDay().map((hall) => {
                   const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
                   
                   return (
@@ -952,7 +1059,7 @@ export default function EditSessionsPage() {
             parallel_meal_type: editingSession.parallel_meal_type || ''
           } : {
             day_id: days.find(d => d.name === selectedDay)?.id || '',
-            stage_id: halls[0]?.id || '',
+            stage_id: getHallsForSelectedDay()[0]?.id || '',
             time_slot_id: timeSlots[0]?.id || ''
           }}
           sessionType={editingSession?.session_type || 'lecture'}
@@ -960,7 +1067,7 @@ export default function EditSessionsPage() {
           onCancel={handleCloseModal}
           isSubmitting={isSubmitting}
           days={days}
-          halls={halls}
+          halls={getHallsForSelectedDay()}
           timeSlots={timeSlots}
         />
       </Modal>
