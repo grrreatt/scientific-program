@@ -1,6 +1,38 @@
 -- Migration to restructure halls to be day-specific
 -- This allows each day to have its own set of halls
 
+-- First, ensure all UUID columns are properly typed
+-- This fixes any potential type mismatches in existing data
+DO $$
+BEGIN
+  -- Ensure sessions.day_id is UUID
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sessions' AND column_name = 'day_id' 
+    AND data_type != 'uuid'
+  ) THEN
+    ALTER TABLE sessions ALTER COLUMN day_id TYPE UUID USING day_id::uuid;
+  END IF;
+  
+  -- Ensure sessions.stage_id is UUID
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sessions' AND column_name = 'stage_id' 
+    AND data_type != 'uuid'
+  ) THEN
+    ALTER TABLE sessions ALTER COLUMN stage_id TYPE UUID USING stage_id::uuid;
+  END IF;
+  
+  -- Ensure sessions.time_slot_id is UUID
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'sessions' AND column_name = 'time_slot_id' 
+    AND data_type != 'uuid'
+  ) THEN
+    ALTER TABLE sessions ALTER COLUMN time_slot_id TYPE UUID USING time_slot_id::uuid;
+  END IF;
+END $$;
+
 -- Create day_halls table to link halls to specific days
 CREATE TABLE day_halls (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
