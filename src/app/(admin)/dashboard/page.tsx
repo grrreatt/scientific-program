@@ -2,15 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-
-interface DashboardStats {
-  total_sessions: number
-  total_speakers: number
-  total_days: number
-  total_stages: number
-  sessions_by_type: Record<string, number>
-  upcoming_sessions: number
-}
+import { supabase } from '@/lib/supabase/client'
+import { DashboardStats } from '@/types'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -18,27 +11,90 @@ export default function DashboardPage() {
     total_speakers: 0,
     total_days: 0,
     total_stages: 0,
-    sessions_by_type: {},
+    sessions_by_type: {
+      lecture: 0,
+      panel: 0,
+      symposium: 0,
+      workshop: 0,
+      oration: 0,
+      guest_lecture: 0,
+      discussion: 0,
+      break: 0,
+      other: 0
+    },
     upcoming_sessions: 0
   })
 
+  const loadStats = async () => {
+    try {
+      console.log('🔄 Loading dashboard stats...')
+      
+      // Load total sessions
+      const { count: sessionsCount } = await supabase
+        .from('sessions')
+        .select('*', { count: 'exact', head: true })
+
+      // Load total speakers
+      const { count: speakersCount } = await supabase
+        .from('speakers')
+        .select('*', { count: 'exact', head: true })
+
+      // Load total days
+      const { count: daysCount } = await supabase
+        .from('conference_days')
+        .select('*', { count: 'exact', head: true })
+
+      // Load total stages
+      const { count: stagesCount } = await supabase
+        .from('stages')
+        .select('*', { count: 'exact', head: true })
+
+      // Load sessions by type
+      const { data: sessionsByType } = await supabase
+        .from('sessions')
+        .select('session_type')
+
+      const sessionsByTypeCount: Record<string, number> = {
+        lecture: 0,
+        panel: 0,
+        symposium: 0,
+        workshop: 0,
+        oration: 0,
+        guest_lecture: 0,
+        discussion: 0,
+        break: 0,
+        other: 0
+      }
+
+      sessionsByType?.forEach(session => {
+        sessionsByTypeCount[session.session_type] = (sessionsByTypeCount[session.session_type] || 0) + 1
+      })
+
+      // Load upcoming sessions (sessions in the future)
+      const today = new Date().toISOString().split('T')[0]
+      const { count: upcomingCount } = await supabase
+        .from('sessions_with_times')
+        .select('*', { count: 'exact', head: true })
+        .gte('day_date', today)
+
+      setStats({
+        total_sessions: sessionsCount || 0,
+        total_speakers: speakersCount || 0,
+        total_days: daysCount || 0,
+        total_stages: stagesCount || 0,
+        sessions_by_type: sessionsByTypeCount,
+        upcoming_sessions: upcomingCount || 0
+      })
+
+      console.log('✅ Dashboard stats loaded successfully')
+      
+    } catch (error) {
+      console.error('❌ Error loading dashboard stats:', error)
+    }
+  }
+
   useEffect(() => {
-    // In a real app, fetch from API
-    // For demo, use mock data
-    setStats({
-      total_sessions: 12,
-      total_speakers: 8,
-      total_days: 3,
-      total_stages: 4,
-      sessions_by_type: {
-        lecture: 4,
-        panel: 2,
-        workshop: 3,
-        symposium: 1,
-        break: 2
-      },
-      upcoming_sessions: 5
-    })
+    loadStats()
   }, [])
 
   return (

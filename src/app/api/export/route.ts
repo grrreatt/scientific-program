@@ -4,13 +4,11 @@ import { calculateDuration } from '@/lib/utils'
 
 export async function GET() {
   try {
-    // Fetch all sessions with related data
+    // Fetch all sessions with related data using the sessions_with_times view
     const { data: sessions, error: sessionsError } = await supabase
-      .from('sessions')
+      .from('sessions_with_times')
       .select(`
         *,
-        conference_days(name),
-        stages(name),
         session_participants(
           role,
           speakers(name, email, organization)
@@ -25,8 +23,8 @@ export async function GET() {
     const csvRows: any[] = []
     
     sessions?.forEach(session => {
-      const dayName = session.conference_days?.name || 'Unknown Day'
-      const stageName = session.stages?.name || 'Unknown Stage'
+      const dayName = session.day_name || 'Unknown Day'
+      const stageName = session.stage_name || 'Unknown Stage'
       const duration = calculateDuration(session.start_time, session.end_time)
       
       // Handle participants
