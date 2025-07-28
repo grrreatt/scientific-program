@@ -45,6 +45,9 @@ interface SessionFormProps {
   onSubmit: (data: SessionFormData, sessionType: string) => void
   onCancel: () => void
   isSubmitting?: boolean
+  days?: Array<{ id: string; name: string; date: string }>
+  halls?: Array<{ id: string; name: string; capacity?: number }>
+  timeSlots?: Array<{ id: string; start_time: string; end_time: string; is_break: boolean; break_title?: string }>
 }
 
 export function SessionForm({ 
@@ -52,7 +55,10 @@ export function SessionForm({
   sessionType = 'lecture', 
   onSubmit, 
   onCancel, 
-  isSubmitting = false
+  isSubmitting = false,
+  days = [],
+  halls = [],
+  timeSlots = []
 }: SessionFormProps) {
   const [currentSessionType, setCurrentSessionType] = useState(sessionType)
   const [formData, setFormData] = useState<SessionFormData>({
@@ -172,21 +178,21 @@ export function SessionForm({
             className="w-full block pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
           >
             <option value="">Select {label}</option>
-            {fieldName === 'day_id' && (
-              <>
-                <option value="day1">Day 1</option>
-                <option value="day2">Day 2</option>
-                <option value="day3">Day 3</option>
-              </>
-            )}
-            {fieldName === 'stage_id' && (
-              <>
-                <option value="main-hall">Main Hall</option>
-                <option value="seminar-a">Seminar Room A</option>
-                <option value="seminar-b">Seminar Room B</option>
-                <option value="workshop">Workshop Room</option>
-              </>
-            )}
+            {fieldName === 'day_id' && days.map(day => (
+              <option key={day.id} value={day.id}>
+                {day.name} - {day.date}
+              </option>
+            ))}
+            {fieldName === 'stage_id' && halls.map(hall => (
+              <option key={hall.id} value={hall.id}>
+                {hall.name} {hall.capacity ? `(${hall.capacity} capacity)` : ''}
+              </option>
+            ))}
+            {fieldName === 'time_slot_id' && timeSlots.map(slot => (
+              <option key={slot.id} value={slot.id}>
+                {slot.start_time} - {slot.end_time} {slot.is_break ? `(${slot.break_title || 'Break'})` : ''}
+              </option>
+            ))}
             {fieldName === 'speaker_id' && (
               <>
                 <option value="speaker1">Dr. Sarah Johnson</option>
@@ -553,24 +559,7 @@ export function SessionForm({
             if (field === 'topic') return renderField(field, 'Topic', 'text', true)
             if (field === 'day_id') return renderField(field, 'Day', 'select', true)
             if (field === 'stage_id') return renderField(field, 'Stage/Hall', 'select', true)
-            if (field === 'start_time') return (
-              <TimePicker
-                key={field}
-                value={formData.start_time}
-                onChange={(time) => handleInputChange(field, time)}
-                label="Start Time"
-                required={true}
-              />
-            )
-            if (field === 'end_time') return (
-              <TimePicker
-                key={field}
-                value={formData.end_time}
-                onChange={(time) => handleInputChange(field, time)}
-                label="End Time"
-                required={true}
-              />
-            )
+            if (field === 'time_slot_id') return renderField(field, 'Time Slot', 'select', true)
             if (field === 'speaker_id') return renderField(field, 'Speaker', 'select', true)
             if (field === 'moderator_id') return renderField(field, 'Moderator', 'select', true)
             if (field === 'discussion_leader_id') return renderField(field, 'Discussion Leader', 'select', true)

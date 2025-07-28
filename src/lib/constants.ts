@@ -5,7 +5,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'lecture',
     name: 'Lecture / Talk',
     fields: {
-      required: ['title', 'topic', 'speaker_id', 'start_time', 'end_time'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'speaker_id'],
       optional: ['chairperson_id', 'description', 'is_parallel_meal'],
       roles: ['speaker', 'chairperson']
     }
@@ -14,7 +14,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'panel',
     name: 'Panel Discussion',
     fields: {
-      required: ['title', 'topic', 'moderator_id', 'panelist_ids', 'start_time', 'end_time'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'moderator_id', 'panelist_ids'],
       optional: ['description', 'is_parallel_meal'],
       roles: ['moderator', 'panelist']
     }
@@ -23,7 +23,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'symposium',
     name: 'Symposium',
     fields: {
-      required: ['title', 'topic', 'moderator_id', 'symposium_subtalks', 'start_time', 'end_time'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'moderator_id', 'symposium_subtalks'],
       optional: ['description'],
       roles: ['moderator', 'speaker']
     }
@@ -32,7 +32,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'workshop',
     name: 'Workshop',
     fields: {
-      required: ['title', 'topic', 'workshop_lead_ids', 'start_time', 'end_time'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'workshop_lead_ids'],
       optional: ['assistant_ids', 'capacity', 'description'],
       roles: ['workshop_lead', 'assistant']
     }
@@ -41,7 +41,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'oration',
     name: 'Oration / Keynote / Plenary',
     fields: {
-      required: ['title', 'topic', 'speaker_id', 'start_time', 'end_time'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'speaker_id'],
       optional: ['introducer_id', 'description'],
       roles: ['speaker', 'introducer']
     }
@@ -50,7 +50,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'guest_lecture',
     name: 'Guest Lecture',
     fields: {
-      required: ['title', 'topic', 'speaker_id', 'start_time', 'end_time'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'speaker_id'],
       optional: ['chairperson_id', 'description'],
       roles: ['speaker', 'chairperson']
     }
@@ -59,7 +59,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'discussion',
     name: 'Discussion / Free Paper Session',
     fields: {
-      required: ['title', 'topic', 'discussion_leader_id', 'presenter_ids', 'start_time', 'end_time'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'discussion_leader_id', 'presenter_ids'],
       optional: ['description'],
       roles: ['discussion_leader', 'presenter']
     }
@@ -68,7 +68,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'break',
     name: 'Break / Meal (Only)',
     fields: {
-      required: ['title', 'meal_type', 'start_time', 'end_time'],
+      required: ['title', 'day_id', 'stage_id', 'time_slot_id', 'meal_type'],
       optional: ['description'],
       roles: []
     }
@@ -77,7 +77,7 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'other',
     name: 'Other / Custom',
     fields: {
-      required: ['title', 'start_time', 'end_time'],
+      required: ['title', 'day_id', 'stage_id', 'time_slot_id'],
       optional: ['topic', 'description', 'custom_data'],
       roles: []
     }
