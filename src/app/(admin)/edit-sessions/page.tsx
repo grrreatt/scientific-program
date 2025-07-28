@@ -111,9 +111,8 @@ export default function EditSessionsPage() {
 
       if (error) {
         console.error('❌ Error loading time slots:', error)
-        // Generate default time slots if none exist
-        const defaultSlots = generateTimeSlots()
-        setTimeSlots(defaultSlots)
+        // Try to create default time slots in database
+        await createDefaultTimeSlots(selectedDayData.id)
         return
       }
 
@@ -121,13 +120,70 @@ export default function EditSessionsPage() {
         console.log('✅ Time slots loaded successfully:', data.length, 'slots')
         setTimeSlots(data)
       } else {
-        // Generate default time slots if none exist
-        const defaultSlots = generateTimeSlots()
-        setTimeSlots(defaultSlots)
+        // Create default time slots in database if none exist
+        await createDefaultTimeSlots(selectedDayData.id)
       }
     } catch (error) {
       console.error('❌ Exception loading time slots:', error)
-      // Generate default time slots on error
+      // Try to create default time slots in database
+      const selectedDayData = days.find(d => d.name === selectedDay)
+      if (selectedDayData) {
+        await createDefaultTimeSlots(selectedDayData.id)
+      }
+    }
+  }
+
+  // Create default time slots in the database
+  const createDefaultTimeSlots = async (dayId: string) => {
+    try {
+      console.log('🔄 Creating default time slots for day:', dayId)
+      
+      const slots = []
+      let currentTime = new Date()
+      currentTime.setHours(8, 0, 0, 0) // Start at 8:00 AM
+      
+      const endTime = new Date()
+      endTime.setHours(20, 30, 0, 0) // End at 8:30 PM
+      
+      let slotOrder = 1
+      
+      while (currentTime <= endTime) {
+        const startTime = currentTime.toTimeString().slice(0, 5)
+        
+        // Add 30 minutes
+        currentTime.setMinutes(currentTime.getMinutes() + 30)
+        const endTimeStr = currentTime.toTimeString().slice(0, 5)
+        
+        slots.push({
+          day_id: dayId,
+          slot_order: slotOrder,
+          start_time: startTime,
+          end_time: endTimeStr,
+          is_break: false,
+          break_title: null
+        })
+        
+        slotOrder++
+      }
+
+      const { data, error } = await supabase
+        .from('day_time_slots')
+        .insert(slots)
+        .select()
+
+      if (error) {
+        console.error('❌ Error creating default time slots:', error)
+        // Fallback to local generation
+        const defaultSlots = generateTimeSlots()
+        setTimeSlots(defaultSlots)
+        return
+      }
+
+      console.log('✅ Default time slots created successfully:', data?.length || 0, 'slots')
+      setTimeSlots(data || [])
+    } catch (error) {
+      console.error('❌ Exception creating default time slots:', error)
+      // Fallback to local generation
       const defaultSlots = generateTimeSlots()
       setTimeSlots(defaultSlots)
     }
@@ -315,12 +371,20 @@ export default function EditSessionsPage() {
         return
       }
 
+      // Check if we're using a generated time slot (starts with 'slot-')
+      const timeSlotId = sessionToAdd?.timeSlotId || editingSession?.time_slot_id
+      if (timeSlotId && timeSlotId.startsWith('slot-')) {
+        alert('Cannot save session with a generated time slot. Please use an existing time slot or create a proper time slot first.')
+        setIsSubmitting(false)
+        return
+      }
+
       const insertData = {
         title: formData.title,
         session_type: sessionType,
         day_id: selectedDayData.id,
         stage_id: sessionToAdd?.hallId || editingSession?.stage_id,
-        time_slot_id: sessionToAdd?.timeSlotId || editingSession?.time_slot_id,
+        time_slot_id: timeSlotId,
         topic: formData.topic,
         description: formData.description,
         is_parallel_meal: formData.is_parallel_meal,
@@ -619,12 +683,41 @@ export default function EditSessionsPage() {
     try {
       // Check if this is a generated slot (starts with 'slot-')
       if (timeSlotId.startsWith('slot-')) {
-        // For generated slots, just update the local state
-        setTimeSlots(prev => prev.map(slot => 
-          slot.id === timeSlotId 
-            ? { ...slot, start_time: startTime, end_time: endTime }
-            : slot
-        ))
+        // For generated slots, create a proper database entry
+        const selectedDayData = days.find(d => d.name === selectedDay)
+        if (!selectedDayData) {
+          alert('Selected day not found!')
+          return
+        }
+
+        const slotData = timeSlots.find(slot => slot.id === timeSlotId)
+        if (!slotData) {
+          alert('Time slot not found!')
+          return
+        }
+
+        const { data, error } = await supabase
+          .from('day_time_slots')
+          .insert({
+            day_id: selectedDayData.id,
+            slot_order: slotData.slot_order,
+            start_time: startTime,
+            end_time: endTime,
+            is_break: isBreak,
+            break_title: breakTitle
+          })
+          .select()
+          .single()
+
+        if (error) {
+          console.error('❌ Error creating time slot:', error)
+          alert('Error creating time slot. Please try again.')
+          return
+        }
+
+        console.log('✅ Time slot created successfully:', data)
+        await loadTimeSlots()
+        setEditingTimeSlot(null)
         return
       }
 
@@ -787,55 +880,121 @@ export default function EditSessionsPage() {
       <div className="bg-white shadow-sm border-b print:shadow-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
-            <div className="text-center flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">
-                Scientific Conference Program
-              </h1>
-              <p className="mt-2 text-lg text-gray-600">
-                March 15-17, 2024
-              </p>
+            <div className="flex items-center space-x-4">
+              <div className="text-left">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  APCON 2025
+                </h1>
+                <div className="flex items-center space-x-2 mt-1">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                    Draft
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    3 - 11 Dec, 2025
+                  </span>
+                </div>
+              </div>
             </div>
             <div className="flex items-center space-x-3">
               <RealtimeStatus />
               <button
-                onClick={handleAddDay}
+                onClick={() => window.open('/public-program', '_blank')}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                Add Day
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Preview
               </button>
               <button
-                onClick={handleQuickAddHall}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
               >
-                Add Hall
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+                Publish
               </button>
+              <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                GM
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Day Navigation - Sticky */}
-      <div className="sticky top-0 z-30 bg-white border-b print:hidden shadow-sm">
+      {/* Main Navigation */}
+      <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8 overflow-x-auto">
-            {days.map(day => (
-              <button
-                key={day.id}
-                onClick={() => setSelectedDay(day.name)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-                  selectedDay === day.name
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {day.name}
-              </button>
-            ))}
-            <button
-              onClick={handleAddDay}
-              className="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap"
-            >
-              + Add Day
+          <nav className="flex space-x-8">
+            <button className="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Dashboard
+            </button>
+            <button className="py-4 px-1 border-b-2 font-medium text-sm border-teal-500 text-teal-600">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              Content
+            </button>
+            <button className="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Engagement
+            </button>
+            <button className="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+              </svg>
+              Users
+            </button>
+            <button className="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Settings
+            </button>
+          </nav>
+        </div>
+      </div>
+
+      {/* Secondary Navigation */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8">
+            <button className="py-3 px-1 border-b-2 font-medium text-sm border-teal-500 text-teal-600">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Schedule
+            </button>
+            <button className="py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Speakers
+            </button>
+            <button className="py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+              Workshops
+            </button>
+            <button className="py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              Custom menu
+            </button>
+            <button className="py-3 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+              <svg className="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              Partners
             </button>
           </nav>
         </div>
@@ -856,7 +1015,7 @@ export default function EditSessionsPage() {
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
+                  {days.find(d => d.name === selectedDay)?.date || '3 Dec - 2025'}
                   <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
@@ -1176,7 +1335,6 @@ export default function EditSessionsPage() {
           onSubmit={handleSubmitSession}
           onCancel={handleCloseModal}
           isSubmitting={isSubmitting}
-          hideTimeSelection={true}
         />
       </Modal>
 

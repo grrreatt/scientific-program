@@ -47,107 +47,72 @@ export default function PublicProgramPage() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
-  // Load sessions from Supabase
+  // Load sessions from Supabase using the sessions_with_times view
   const loadSessions = async () => {
     try {
       const { data, error } = await supabase
-        .from('sessions')
+        .from('sessions_with_times')
         .select('*')
         .order('start_time', { ascending: true })
 
       if (error) {
         console.error('Error loading sessions:', error)
-        // Fallback to mock data
-    setSessions([
-      {
-        id: '1',
-            title: 'Mock Session',
-        session_type: 'lecture',
-        day_name: 'Day 1',
-            stage_name: 'Example Hall',
-        start_time: '09:00',
-            end_time: '10:00',
-            topic: 'Introduction to Mock Data',
-            speaker_name: 'Dr. Mock Speaker'
-          }
-        ])
+        // Try fallback to direct sessions table
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('sessions')
+          .select(`
+            *,
+            conference_days!inner(name),
+            stages!inner(name)
+          `)
+          .order('start_time', { ascending: true })
+
+        if (fallbackError) {
+          console.error('Fallback error:', fallbackError)
+          setSessions([])
+          return
+        }
+
+        const transformedSessions: Session[] = (fallbackData || []).map((session: any) => ({
+          id: session.id,
+          title: session.title,
+          session_type: session.session_type,
+          day_name: session.conference_days?.name || 'Day 1',
+          stage_name: session.stages?.name || 'Main Hall',
+          start_time: session.start_time,
+          end_time: session.end_time,
+          topic: session.topic,
+          description: session.description,
+          is_parallel_meal: session.is_parallel_meal,
+          parallel_meal_type: session.parallel_meal_type
+        }))
+
+        setSessions(transformedSessions)
+        setError(null)
         return
       }
 
-      // Helper function to map stage_id to stage_name
-      const getStageName = (stageId: string) => {
-        switch (stageId) {
-          case 'main-hall': return 'Main Hall'
-          case 'seminar-a': return 'Seminar Room A'
-          case 'seminar-b': return 'Seminar Room B'
-          case 'example-hall': return 'Example Hall'
-          case 'hall-a': return 'Hall A'
-          case 'hall-b': return 'Hall B'
-          default: return 'Workshop Room'
-        }
-      }
-
-      // Helper function to map day_id to day_name
-      const getDayName = (dayId: string) => {
-        switch (dayId) {
-          case 'day1': return 'Day 1'
-          case 'day2': return 'Day 2'
-          case 'day3': return 'Day 3'
-          case 'day-1': return 'Day 1'
-          default: return 'Day 1'
-        }
-      }
-
-      // Transform Supabase data to our Session format
-      const transformedSessions: Session[] = data.map((session: any) => ({
+      // Transform data from sessions_with_times view
+      const transformedSessions: Session[] = (data || []).map((session: any) => ({
         id: session.id,
         title: session.title,
         session_type: session.session_type,
-        day_name: getDayName(session.day_id),
-        stage_name: getStageName(session.stage_id),
+        day_name: session.day_name,
+        stage_name: session.stage_name,
         start_time: session.start_time,
         end_time: session.end_time,
         topic: session.topic,
-        speaker_name: session.people_data?.speaker_name,
-        moderator_name: session.people_data?.moderator_name,
-        panelist_names: session.people_data?.panelist_names,
         description: session.description,
         is_parallel_meal: session.is_parallel_meal,
-        parallel_meal_type: session.parallel_meal_type,
-        discussion_leader_id: session.people_data?.discussion_leader_id
+        parallel_meal_type: session.parallel_meal_type
       }))
 
-      setSessions(transformedSessions.length > 0 ? transformedSessions : [
-        {
-          id: '1',
-          title: 'Mock Session',
-          session_type: 'lecture',
-        day_name: 'Day 1',
-          stage_name: 'Example Hall',
-        start_time: '09:00',
-          end_time: '10:00',
-          topic: 'Introduction to Mock Data',
-          speaker_name: 'Dr. Mock Speaker'
-        }
-      ])
+      setSessions(transformedSessions)
       setError(null)
     } catch (error) {
       console.error('Error loading sessions:', error)
       setError('Failed to load sessions. Please refresh the page.')
-      // Fallback to mock data
-      setSessions([
-      {
-          id: '1',
-          title: 'Mock Session',
-        session_type: 'lecture',
-        day_name: 'Day 1',
-          stage_name: 'Example Hall',
-          start_time: '09:00',
-          end_time: '10:00',
-          topic: 'Introduction to Mock Data',
-          speaker_name: 'Dr. Mock Speaker'
-        }
-      ])
+      setSessions([])
     }
   }
 
@@ -201,45 +166,29 @@ export default function PublicProgramPage() {
   const loadDays = async () => {
     try {
       const { data, error } = await supabase
-        .from('days')
+        .from('conference_days')
         .select('*')
         .order('name', { ascending: true })
 
       if (error) {
         console.error('Error loading days:', error)
-        // Fallback to mock days
-        const mockDays: Day[] = [
-          { id: 'day-1', name: 'Day 1', date: 'March 15, 2024' },
-          { id: 'day-2', name: 'Day 2', date: 'March 16, 2024' },
-          { id: 'day-3', name: 'Day 3', date: 'March 17, 2024' }
-        ]
-        setDays(mockDays)
+        setDays([])
         return
       }
 
       // Transform Supabase data to our Day format
-      const transformedDays: Day[] = data.map((day: any) => ({
+      const transformedDays: Day[] = (data || []).map((day: any) => ({
         id: day.id,
         name: day.name,
         date: day.date
       }))
 
-      setDays(transformedDays.length > 0 ? transformedDays : [
-        { id: 'day-1', name: 'Day 1', date: 'March 15, 2024' },
-        { id: 'day-2', name: 'Day 2', date: 'March 16, 2024' },
-        { id: 'day-3', name: 'Day 3', date: 'March 17, 2024' }
-      ])
+      setDays(transformedDays)
       setError(null)
     } catch (error) {
       console.error('Error loading days:', error)
       setError('Failed to load days. Please refresh the page.')
-      // Fallback to mock days
-      const mockDays: Day[] = [
-        { id: 'day-1', name: 'Day 1', date: 'March 15, 2024' },
-        { id: 'day-2', name: 'Day 2', date: 'March 16, 2024' },
-        { id: 'day-3', name: 'Day 3', date: 'March 17, 2024' }
-      ]
-      setDays(mockDays)
+      setDays([])
     }
   }
 
@@ -399,10 +348,10 @@ export default function PublicProgramPage() {
           <div className="flex justify-between items-center">
             <div className="text-center flex-1">
               <h1 className="text-3xl font-bold text-gray-900">
-                Scientific Conference Program
+                APCON 2025
               </h1>
               <p className="mt-2 text-lg text-gray-600">
-                March 15-17, 2024
+                3 - 11 Dec, 2025
               </p>
             </div>
             <div className="flex items-center space-x-3">
@@ -428,7 +377,7 @@ export default function PublicProgramPage() {
                 onClick={() => setSelectedDay(day.name)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   selectedDay === day.name
-                    ? 'border-indigo-500 text-indigo-600'
+                    ? 'border-teal-500 text-teal-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -451,70 +400,76 @@ export default function PublicProgramPage() {
           </p>
         </div>
 
-        {/* Halls Layout - Same as Edit Sessions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {halls.map((hall) => (
-            <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              {/* Hall Header */}
-              <div className="p-4 bg-gray-50 border-b border-gray-200">
-                <h3 className="font-medium text-gray-900">{hall.name}</h3>
-            </div>
+        {/* Halls Layout - Column-based like Edit Sessions */}
+        <div className="overflow-x-auto">
+          <div className="flex space-x-6" style={{ minWidth: `${Math.max(halls.length * 320, 100)}px` }}>
+            {halls.map((hall) => (
+              <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-shrink-0" style={{ width: '300px' }}>
+                {/* Hall Header */}
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">{hall.name}</h3>
+                </div>
 
-              {/* Hall Content - Sessions */}
-              <div className="p-4">
-                {/* Find sessions for this hall */}
-                {(() => {
-                  const hallSessions = filteredSessions.filter(session => 
-                    session.stage_name === hall.name
-                  )
-                    
-                  if (hallSessions.length === 0) {
-                    return (
-                      <div className="text-center py-8">
-                        <div className="text-gray-400 text-sm">No sessions scheduled</div>
-                      </div>
+                {/* Hall Content - Sessions */}
+                <div className="p-4">
+                  {/* Find sessions for this hall */}
+                  {(() => {
+                    const hallSessions = filteredSessions.filter(session => 
+                      session.stage_name === hall.name
                     )
-                  }
+                      
+                    if (hallSessions.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <div className="text-gray-400 text-sm">No sessions scheduled</div>
+                        </div>
+                      )
+                    }
 
-                  return (
-                    <div className="space-y-4">
-                      {hallSessions.map((session) => (
-                        <div 
-                          key={session.id}
-                          className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
-                        >
+                    return (
+                      <div className="space-y-3">
+                        {hallSessions.map((session) => (
+                          <div 
+                            key={session.id}
+                            className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
+                          >
+                            {/* Session Header */}
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-medium text-gray-900 text-sm">{session.title}</h4>
+                            </div>
+                            
+                            {/* Session Details */}
+                            <div className="flex items-center space-x-2 text-xs text-gray-500 mb-2">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>{formatTimeRange(session.start_time, session.end_time)}</span>
+                            </div>
+                            
                             {/* Session Type Badge */}
-                          <div className="flex items-center space-x-2 mb-2">
-                              <span className="text-lg">{getSessionIcon(session.session_type)}</span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getSessionTypeColor(session.session_type)}`}>
-                                {getSessionTypeLabel(session.session_type)}
+                            <div className="mb-2">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(session.session_type)}`}>
+                                {getSessionIcon(session.session_type)} {getSessionTypeLabel(session.session_type)}
                               </span>
                             </div>
-
-                            {/* Session Title */}
-                          <h3 className="font-semibold text-gray-900 text-sm leading-tight mb-2">
-                              {session.title}
-                            </h3>
-
-                            {/* Session Details */}
+                            
+                            {/* Session Info */}
                             <div className="text-xs text-gray-600 space-y-1">
-                              <p>{formatTimeRange(session.start_time, session.end_time)}</p>
                               {session.topic && <p>Topic: {session.topic}</p>}
-                              {session.speaker_name && <p>Speaker: {session.speaker_name}</p>}
-                              {session.moderator_name && <p>Moderator: {session.moderator_name}</p>}
-                              {session.panelist_names && session.panelist_names.length > 0 && (
-                                <p>Panelists: {session.panelist_names.join(', ')}</p>
+                              {session.description && (
+                                <p className="line-clamp-2">{session.description}</p>
                               )}
                             </div>
                           </div>
-                      ))}
+                        ))}
                       </div>
                     )
-                })()}
-              </div>
+                  })()}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Print Button */}
         <div className="mt-8 text-center print:hidden">
