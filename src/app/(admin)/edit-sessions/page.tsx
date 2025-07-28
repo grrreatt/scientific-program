@@ -37,6 +37,11 @@ export default function EditSessionsPage() {
   // Add hall state
   const [showAddHallModal, setShowAddHallModal] = useState(false)
   const [newHallName, setNewHallName] = useState('')
+  
+  // Add day state
+  const [showAddDayModal, setShowAddDayModal] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [currentMonth, setCurrentMonth] = useState(new Date())
 
   // Load all data from database
   const loadAllData = async () => {
@@ -399,6 +404,94 @@ export default function EditSessionsPage() {
     }
   }
 
+  const handleAddDay = async (date: Date) => {
+    const dayName = `Day ${days.length + 1}`
+    const dateString = date.toISOString().split('T')[0]
+    
+    try {
+      const { error } = await supabase
+        .from('conference_days')
+        .insert({
+          name: dayName,
+          date: dateString
+        })
+
+      if (error) {
+        console.error('❌ Error adding day:', error)
+        alert('Error adding day. Please try again.')
+        return
+      }
+
+      setShowAddDayModal(false)
+      setSelectedDate(null)
+      await loadAllData()
+      console.log('✅ Day added successfully')
+      
+    } catch (error) {
+      console.error('❌ Error adding day:', error)
+      alert('Error adding day. Please try again.')
+    }
+  }
+
+  const handleDeleteDay = async (day: Day) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${day.name}"? This will also delete all sessions and time slots scheduled for this day.`
+    )
+    
+    if (confirmed) {
+      try {
+        // First delete all sessions for this day
+        const { error: sessionsError } = await supabase
+          .from('sessions')
+          .delete()
+          .eq('day_id', day.id)
+
+        if (sessionsError) {
+          console.error('❌ Error deleting sessions:', sessionsError)
+          alert('Error deleting sessions for this day.')
+          return
+        }
+
+        // Then delete all time slots for this day
+        const { error: timeSlotsError } = await supabase
+          .from('day_time_slots')
+          .delete()
+          .eq('day_id', day.id)
+
+        if (timeSlotsError) {
+          console.error('❌ Error deleting time slots:', timeSlotsError)
+          alert('Error deleting time slots for this day.')
+          return
+        }
+
+        // Finally delete the day
+        const { error: dayError } = await supabase
+          .from('conference_days')
+          .delete()
+          .eq('id', day.id)
+
+        if (dayError) {
+          console.error('❌ Error deleting day:', dayError)
+          alert('Error deleting day.')
+          return
+        }
+
+        await loadAllData()
+        if (selectedDay === day.name) {
+          const remainingDays = days.filter(d => d.id !== day.id)
+          if (remainingDays.length > 0) {
+            setSelectedDay(remainingDays[0].name)
+          }
+        }
+        console.log('✅ Day deleted successfully')
+        
+      } catch (error) {
+        console.error('❌ Error deleting day:', error)
+        alert('Error deleting day. Please try again.')
+      }
+    }
+  }
+
   const handleAddHall = async () => {
     if (!newHallName.trim()) {
       alert('Please enter a hall name')
@@ -511,6 +604,48 @@ export default function EditSessionsPage() {
     )
   }
 
+  // Calendar utility functions
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    const startingDayOfWeek = firstDay.getDay()
+    
+    return { daysInMonth, startingDayOfWeek }
+  }
+
+  const formatDate = (date: Date) => {
+    return date.toISOString().split('T')[0]
+  }
+
+  const isDateSelected = (date: Date) => {
+    const dateString = formatDate(date)
+    return days.some(day => day.date === dateString)
+  }
+
+  const isDateToday = (date: Date) => {
+    const today = new Date()
+    return date.toDateString() === today.toDateString()
+  }
+
+  const getMonthName = (date: Date) => {
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  }
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentMonth(prev => {
+      const newMonth = new Date(prev)
+      if (direction === 'prev') {
+        newMonth.setMonth(newMonth.getMonth() - 1)
+      } else {
+        newMonth.setMonth(newMonth.getMonth() + 1)
+      }
+      return newMonth
+    })
+  }
+
   // Filter sessions for selected day
   const filteredSessions = sessions.filter(session => session.day_name === selectedDay)
 
@@ -566,27 +701,48 @@ export default function EditSessionsPage() {
       </div>
 
       {/* Day Navigation */}
-      {days.length > 0 && (
-        <div className="bg-white border-b sticky top-16 z-10">
-          <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex space-x-8 py-4 overflow-x-auto">
+      <div className="bg-white border-b sticky top-16 z-10">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex space-x-8 overflow-x-auto">
               {days.map((day) => (
                 <button
                   key={day.id}
                   onClick={() => setSelectedDay(day.name)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center space-x-2 ${
                     selectedDay === day.name
                       ? 'bg-indigo-100 text-indigo-700'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
-                  {day.name} - {day.date}
+                  <span>{day.name} - {day.date}</span>
+                  {days.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteDay(day)
+                      }}
+                      className="text-red-400 hover:text-red-600"
+                      title="Delete day"
+                    >
+                      🗑️
+                    </button>
+                  )}
                 </button>
               ))}
             </div>
+            
+            {/* Add Day Button */}
+            <button
+              onClick={() => setShowAddDayModal(true)}
+              className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+            >
+              <span>📅</span>
+              <span>Add Day</span>
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Scrollable Grid Layout */}
       <div className="overflow-auto">
@@ -850,6 +1006,103 @@ export default function EditSessionsPage() {
               className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
             >
               Add Hall
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Add Day Calendar Modal */}
+      <Modal
+        isOpen={showAddDayModal}
+        onClose={() => setShowAddDayModal(false)}
+        title="Select day"
+        maxWidth="max-w-sm"
+      >
+        <div className="space-y-4">
+          {/* Calendar Header */}
+          <div className="bg-teal-600 text-white p-3 rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => navigateMonth('prev')}
+                className="text-white hover:text-teal-100 transition-colors"
+              >
+                ‹
+              </button>
+              <h3 className="text-lg font-medium">{getMonthName(currentMonth)}</h3>
+              <button
+                onClick={() => navigateMonth('next')}
+                className="text-white hover:text-teal-100 transition-colors"
+              >
+                ›
+              </button>
+            </div>
+          </div>
+
+          {/* Days of Week Header */}
+          <div className="grid grid-cols-7 gap-1 px-3">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="grid grid-cols-7 gap-1 px-3">
+            {(() => {
+              const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth)
+              const days = []
+              
+              // Add empty cells for days before the first day of the month
+              for (let i = 0; i < startingDayOfWeek; i++) {
+                days.push(<div key={`empty-${i}`} className="h-10"></div>)
+              }
+              
+              // Add days of the month
+              for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+                const isSelected = isDateSelected(date)
+                const isToday = isDateToday(date)
+                const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
+                
+                days.push(
+                  <button
+                    key={day}
+                    onClick={() => {
+                      if (!isSelected && !isPast) {
+                        setSelectedDate(date)
+                        handleAddDay(date)
+                      }
+                    }}
+                    disabled={isSelected || isPast}
+                    className={`
+                      h-10 w-10 rounded-full text-sm font-medium transition-colors
+                      ${isSelected 
+                        ? 'bg-green-500 text-white' 
+                        : isToday 
+                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                          : isPast
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-100 cursor-pointer'
+                      }
+                    `}
+                  >
+                    {day}
+                  </button>
+                )
+              }
+              
+              return days
+            })()}
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end pt-4 border-t">
+            <button
+              onClick={() => setShowAddDayModal(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            >
+              Close
             </button>
           </div>
         </div>
