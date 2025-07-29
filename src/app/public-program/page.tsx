@@ -119,50 +119,68 @@ export default function PublicProgramPage() {
     }
   }
 
-  // Load halls from Supabase
+  // Load all halls and day-hall relationships from Supabase
+  const [allHalls, setAllHalls] = useState<Hall[]>([])
+  const [dayHalls, setDayHalls] = useState<any[]>([])
+
   const loadHalls = async () => {
     try {
-      const { data, error } = await supabase
+      // Load all halls
+      const { data: hallsData, error: hallsError } = await supabase
         .from('stages')
         .select('*')
         .order('name', { ascending: true })
 
-      if (error) {
-        console.error('Error loading halls:', error)
-        // Fallback to default halls
-        const defaultHalls: Hall[] = [
-          { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
-          { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
-          { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
-        ]
-        setHalls(defaultHalls)
+      if (hallsError) {
+        console.error('Error loading halls:', hallsError)
+        setAllHalls([])
         return
       }
 
-      // Transform Supabase data to our Hall format
-      const transformedHalls: Hall[] = data.map((stage: any) => ({
+      // Load day-hall relationships
+      const { data: dayHallsData, error: dayHallsError } = await supabase
+        .from('halls_with_days')
+        .select('*')
+        .order('day_date', { ascending: true })
+        .order('hall_order', { ascending: true })
+
+      if (dayHallsError) {
+        console.error('Error loading day halls:', dayHallsError)
+        setDayHalls([])
+        return
+      }
+
+      // Transform halls data
+      const transformedHalls: Hall[] = (hallsData || []).map((stage: any) => ({
         id: stage.id,
         name: stage.name,
         color: 'bg-gray-50 border-gray-200'
       }))
 
-      setHalls(transformedHalls.length > 0 ? transformedHalls : [
-        { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
-        { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
-        { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
-      ])
+      setAllHalls(transformedHalls)
+      setDayHalls(dayHallsData || [])
       setError(null)
     } catch (error) {
       console.error('Error loading halls:', error)
       setError('Failed to load halls. Please refresh the page.')
-      // Fallback to default halls
-      const defaultHalls: Hall[] = [
-        { id: 'hall-1', name: 'Example Hall', color: 'bg-blue-50 border-blue-200' },
-        { id: 'hall-2', name: 'Hall A', color: 'bg-green-50 border-green-200' },
-        { id: 'hall-3', name: 'Hall B', color: 'bg-purple-50 border-purple-200' }
-      ]
-      setHalls(defaultHalls)
+      setAllHalls([])
+      setDayHalls([])
     }
+  }
+
+  // Get halls for the selected day
+  const getHallsForSelectedDay = () => {
+    const selectedDayData = days.find(day => day.name === selectedDay)
+    if (!selectedDayData) return []
+    
+    return dayHalls
+      .filter(dayHall => dayHall.day_name === selectedDay)
+      .sort((a, b) => a.hall_order - b.hall_order)
+      .map(dayHall => ({
+        id: dayHall.hall_id,
+        name: dayHall.hall_name || 'Unknown Hall',
+        color: 'bg-gray-50 border-gray-200'
+      }))
   }
 
   // Load days from Supabase
@@ -441,8 +459,8 @@ export default function PublicProgramPage() {
 
         {/* Halls Layout - Column-based like Edit Sessions */}
         <div className="overflow-x-auto">
-          <div className="flex space-x-6" style={{ minWidth: `${Math.max(halls.length * 320, 100)}px` }}>
-            {halls.map((hall) => (
+          <div className="flex space-x-6" style={{ minWidth: `${Math.max(getHallsForSelectedDay().length * 320, 100)}px` }}>
+            {getHallsForSelectedDay().map((hall) => (
               <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-shrink-0" style={{ width: '300px' }}>
                 {/* Hall Header */}
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
