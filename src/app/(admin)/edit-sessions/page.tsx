@@ -35,6 +35,10 @@ export default function EditSessionsPage() {
   // Time slot editing state
   const [editingTimeSlot, setEditingTimeSlot] = useState<DayTimeSlot | null>(null)
   
+  // Hall editing state
+  const [editingHall, setEditingHall] = useState<Hall | null>(null)
+  const [editingHallName, setEditingHallName] = useState('')
+  
   // Add hall state
   const [showAddHallModal, setShowAddHallModal] = useState(false)
   const [newHallName, setNewHallName] = useState('')
@@ -688,6 +692,45 @@ export default function EditSessionsPage() {
     }
   }
 
+  const handleEditHall = (hall: Hall) => {
+    setEditingHall(hall)
+    setEditingHallName(hall.name)
+  }
+
+  const handleSaveHallName = async () => {
+    if (!editingHall || !editingHallName.trim()) {
+      alert('Please enter a valid hall name')
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('stages')
+        .update({ name: editingHallName.trim() })
+        .eq('id', editingHall.id)
+
+      if (error) {
+        console.error('❌ Error updating hall name:', error)
+        alert('Error updating hall name. Please try again.')
+        return
+      }
+
+      setEditingHall(null)
+      setEditingHallName('')
+      await loadAllData()
+      console.log('✅ Hall name updated successfully')
+      
+    } catch (error) {
+      console.error('❌ Error updating hall name:', error)
+      alert('Error updating hall name. Please try again.')
+    }
+  }
+
+  const handleCancelEditHall = () => {
+    setEditingHall(null)
+    setEditingHallName('')
+  }
+
   const handleDeleteConfirmation = (type: 'day' | 'hall', item: any) => {
     setItemToDelete({ type, item })
     setShowDeleteConfirmation(true)
@@ -1018,7 +1061,7 @@ export default function EditSessionsPage() {
                 <button
                   key={day.id}
                   onClick={() => setSelectedDay(day.name)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center space-x-2 ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center space-x-2 group ${
                     selectedDay === day.name
                       ? 'bg-indigo-100 text-indigo-700'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -1031,7 +1074,7 @@ export default function EditSessionsPage() {
                         e.stopPropagation()
                         handleDeleteConfirmation('day', day)
                       }}
-                      className="text-red-500 hover:text-red-700 text-lg font-bold"
+                      className="text-red-500 hover:text-red-700 text-lg font-bold opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Delete day"
                     >
                       ❌
@@ -1076,15 +1119,50 @@ export default function EditSessionsPage() {
               
               {/* Hall Column Headers */}
               {getHallsForSelectedDay().map((hall) => (
-                <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
+                <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 group">
                   <div className="flex items-center justify-between">
-                    <span>🏛️ {hall.name}</span>
+                    {editingHall?.id === hall.id ? (
+                      <div className="flex items-center space-x-2 flex-1">
+                        <input
+                          type="text"
+                          value={editingHallName}
+                          onChange={(e) => setEditingHallName(e.target.value)}
+                          className="flex-1 text-sm border rounded px-2 py-1 bg-white"
+                          placeholder="Hall name"
+                        />
+                        <button
+                          onClick={handleSaveHallName}
+                          className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                          title="Save hall name"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={handleCancelEditHall}
+                          className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                          title="Cancel editing"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2 flex-1">
+                        <span>🏛️ {hall.name}</span>
+                        <button
+                          onClick={() => handleEditHall(hall)}
+                          className="text-xs text-blue-600 hover:text-blue-800"
+                          title="Edit hall name"
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    )}
                     <button
-                        onClick={() => handleDeleteConfirmation('hall', hall)}
-                        className="text-red-500 hover:text-red-700 text-lg font-bold"
+                      onClick={() => handleDeleteConfirmation('hall', hall)}
+                      className="text-red-500 hover:text-red-700 text-sm opacity-0 group-hover:opacity-100 transition-opacity"
                       title="Remove Hall from Day"
                     >
-                        ❌
+                      🗑️
                     </button>
                   </div>
                 </div>
