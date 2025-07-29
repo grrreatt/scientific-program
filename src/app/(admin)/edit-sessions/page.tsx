@@ -664,12 +664,12 @@ export default function EditSessionsPage() {
         }
       }
 
-      // Then delete the hall-day association
+      // Then delete the hall-day association from day_halls table
       const { error: dayHallError } = await supabase
-        .from('halls_with_days')
+        .from('day_halls')
         .delete()
         .eq('hall_id', hall.id)
-        .eq('day_date', selectedDay)
+        .eq('day_id', dayId)
 
       if (dayHallError) {
         console.error('❌ Error deleting hall-day association:', dayHallError)
