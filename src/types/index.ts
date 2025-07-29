@@ -52,6 +52,10 @@ export interface Session {
   end_time?: string
   day_name?: string
   stage_name?: string
+  // Participant fields
+  speakers?: string[]
+  moderators?: string[]
+  chairpersons?: string[]
   // Optimistic update flag
   optimistic?: boolean
 }

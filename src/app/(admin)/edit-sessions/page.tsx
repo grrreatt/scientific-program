@@ -130,14 +130,19 @@ export default function EditSessionsPage() {
 
       setDayHalls(dayHallsData || [])
 
-      // Load sessions with a more robust query
+      // Load sessions with participants
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
         .select(`
           *,
           conference_days(name),
           stages(name),
-          day_time_slots(start_time, end_time, is_break, break_title)
+          day_time_slots(start_time, end_time, is_break, break_title),
+          session_participants(
+            id,
+            role,
+            speakers(id, name, title, organization)
+          )
         `)
         .order('created_at', { ascending: true })
 
@@ -147,15 +152,32 @@ export default function EditSessionsPage() {
         setSessions([])
       } else {
         // Transform the data to match the expected format
-        const transformedSessions = sessionsData?.map(session => ({
-          ...session,
-          day_name: session.conference_days?.name || 'Unknown Day',
-          stage_name: session.stages?.name || 'Unknown Hall',
-          start_time: session.day_time_slots?.start_time || session.start_time || '',
-          end_time: session.day_time_slots?.end_time || session.end_time || '',
-          is_break: session.day_time_slots?.is_break || false,
-          break_title: session.day_time_slots?.break_title
-        })) || []
+        const transformedSessions = sessionsData?.map(session => {
+          // Extract participants by role
+          const participants = session.session_participants || []
+          const speakers = participants
+            .filter((p: any) => ['speaker', 'orator', 'presenter', 'workshop_lead'].includes(p.role))
+            .map((p: any) => p.speakers?.name || 'Unknown Speaker')
+          const moderators = participants
+            .filter((p: any) => ['moderator', 'discussion_leader'].includes(p.role))
+            .map((p: any) => p.speakers?.name || 'Unknown Moderator')
+          const chairpersons = participants
+            .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
+            .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
+
+          return {
+            ...session,
+            day_name: session.conference_days?.name || 'Unknown Day',
+            stage_name: session.stages?.name || 'Unknown Hall',
+            start_time: session.day_time_slots?.start_time || session.start_time || '',
+            end_time: session.day_time_slots?.end_time || session.end_time || '',
+            is_break: session.day_time_slots?.is_break || false,
+            break_title: session.day_time_slots?.break_title,
+            speakers,
+            moderators,
+            chairpersons
+          }
+        }) || []
 
         setSessions(transformedSessions)
       }
@@ -1276,56 +1298,51 @@ export default function EditSessionsPage() {
                   return (
                     <div key={hall.id} className="w-80 border-r border-gray-200 p-4">
                       {session ? (
-                        <div className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                          {/* Session Card */}
-                          <div className="space-y-3">
-                            {/* Title */}
-                            <div className="font-semibold text-sm text-gray-900 flex items-center">
-                              <span className="mr-2">{getSessionIcon(session.session_type)}</span>
+                        <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                          {/* Uniform Session Block Structure */}
+                          <div className="text-center space-y-2">
+                            {/* TYPE */}
+                            <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
+                              {getSessionTypeLabel(session.session_type)}
+                            </div>
+                            
+                            {/* TITLE */}
+                            <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
                               {session.title}
                             </div>
                             
-                            {/* Speaker */}
-                            {session.topic && (
-                              <div className="text-xs text-gray-600 flex items-center">
-                                <span className="mr-1">🎤</span>
-                                {session.topic}
+                            {/* SPEAKERS */}
+                            {session.speakers && session.speakers.length > 0 && (
+                              <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                {session.speakers.join(', ')}
                               </div>
                             )}
                             
-                            {/* Location */}
-                            <div className="text-xs text-gray-600 flex items-center">
-                              <span className="mr-1">📍</span>
-                              {session.stage_name}
-                            </div>
+                            {/* MODERATORS */}
+                            {session.moderators && session.moderators.length > 0 && (
+                              <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                {session.moderators.join(', ')}
+                              </div>
+                            )}
                             
-                            {/* Format/Type */}
-                            <div className="text-xs flex items-center">
-                              <span className="mr-1">🧪</span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(session.session_type)}`}>
-                                {getSessionTypeLabel(session.session_type)}
-                              </span>
-                            </div>
-                            
-                            {/* Tags */}
-                            {session.description && (
-                              <div className="text-xs text-gray-600 flex items-center">
-                                <span className="mr-1">🏷️</span>
-                                {session.description.substring(0, 50)}{session.description.length > 50 ? '...' : ''}
+                            {/* CHAIRPERSONS */}
+                            {session.chairpersons && session.chairpersons.length > 0 && (
+                              <div className="text-xs text-gray-600 pb-1">
+                                {session.chairpersons.join(', ')}
                               </div>
                             )}
                             
                             {/* Action Buttons */}
-                            <div className="flex space-x-2 pt-2">
+                            <div className="flex space-x-1 pt-2">
                               <button
                                 onClick={() => handleEditSession(session)}
-                                className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700"
+                                className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteSession(session.id)}
-                                className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                                className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
                               >
                                 Delete
                               </button>

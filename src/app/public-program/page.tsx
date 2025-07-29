@@ -16,13 +16,12 @@ interface Session {
   start_time: string
   end_time: string
   topic?: string
-  speaker_name?: string
-  moderator_name?: string
-  panelist_names?: string[]
   description?: string
   is_parallel_meal?: boolean
   parallel_meal_type?: string
-  discussion_leader_id?: string
+  speakers?: string[]
+  moderators?: string[]
+  chairpersons?: string[]
 }
 
 interface Hall {
@@ -53,62 +52,59 @@ export default function PublicProgramPage() {
   // Load sessions from Supabase using the sessions_with_times view
   const loadSessions = async () => {
     try {
+      // Load sessions with participants
       const { data, error } = await supabase
-        .from('sessions_with_times')
-        .select('*')
+        .from('sessions')
+        .select(`
+          *,
+          conference_days(name),
+          stages(name),
+          day_time_slots(start_time, end_time, is_break, break_title),
+          session_participants(
+            id,
+            role,
+            speakers(id, name, title, organization)
+          )
+        `)
         .order('start_time', { ascending: true })
 
       if (error) {
         console.error('Error loading sessions:', error)
-        // Try fallback to direct sessions table
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('sessions')
-          .select(`
-            *,
-            conference_days!inner(name),
-            stages!inner(name)
-          `)
-          .order('start_time', { ascending: true })
+        setSessions([])
+        return
+      }
 
-        if (fallbackError) {
-          console.error('Fallback error:', fallbackError)
-          setSessions([])
-          return
-        }
+      // Transform sessions with participant information
+      const transformedSessions: Session[] = (data || []).map((session: any) => {
+        // Extract participants by role
+        const participants = session.session_participants || []
+        const speakers = participants
+          .filter((p: any) => ['speaker', 'orator', 'presenter', 'workshop_lead'].includes(p.role))
+          .map((p: any) => p.speakers?.name || 'Unknown Speaker')
+        const moderators = participants
+          .filter((p: any) => ['moderator', 'discussion_leader'].includes(p.role))
+          .map((p: any) => p.speakers?.name || 'Unknown Moderator')
+        const chairpersons = participants
+          .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
+          .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
 
-        const transformedSessions: Session[] = (fallbackData || []).map((session: any) => ({
+        return {
           id: session.id,
           title: session.title,
           session_type: session.session_type,
           day_name: session.conference_days?.name || 'Day 1',
           stage_name: session.stages?.name || 'Main Hall',
-          start_time: session.start_time,
-          end_time: session.end_time,
+          start_time: session.day_time_slots?.start_time || session.start_time,
+          end_time: session.day_time_slots?.end_time || session.end_time,
           topic: session.topic,
           description: session.description,
           is_parallel_meal: session.is_parallel_meal,
-          parallel_meal_type: session.parallel_meal_type
-        }))
-
-        setSessions(transformedSessions)
-        setError(null)
-        return
-      }
-
-      // Transform data from sessions_with_times view
-      const transformedSessions: Session[] = (data || []).map((session: any) => ({
-        id: session.id,
-        title: session.title,
-        session_type: session.session_type,
-        day_name: session.day_name,
-        stage_name: session.stage_name,
-        start_time: session.start_time,
-        end_time: session.end_time,
-        topic: session.topic,
-        description: session.description,
-        is_parallel_meal: session.is_parallel_meal,
-        parallel_meal_type: session.parallel_meal_type
-      }))
+          parallel_meal_type: session.parallel_meal_type,
+          speakers,
+          moderators,
+          chairpersons
+        }
+      })
 
       setSessions(transformedSessions)
       setError(null)
@@ -308,8 +304,9 @@ export default function PublicProgramPage() {
       session.stage_name?.toLowerCase().includes(searchLower) ||
       session.session_type?.toLowerCase().includes(searchLower) ||
       session.description?.toLowerCase().includes(searchLower) ||
-      session.speaker_name?.toLowerCase().includes(searchLower) ||
-      session.moderator_name?.toLowerCase().includes(searchLower)
+      session.speakers?.some(speaker => speaker.toLowerCase().includes(searchLower)) ||
+      session.moderators?.some(moderator => moderator.toLowerCase().includes(searchLower)) ||
+      session.chairpersons?.some(chairperson => chairperson.toLowerCase().includes(searchLower))
     )
   })
 
@@ -490,31 +487,37 @@ export default function PublicProgramPage() {
                             key={session.id}
                             className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
                           >
-                            {/* Session Header */}
-                            <div className="flex items-start justify-between mb-2">
-                              <h4 className="font-medium text-gray-900 text-sm">{session.title}</h4>
-                            </div>
-                            
-                            {/* Session Details */}
-                            <div className="flex items-center space-x-2 text-xs text-gray-500 mb-2">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <span>{formatTimeRange(session.start_time, session.end_time)}</span>
-                            </div>
-                            
-                            {/* Session Type Badge */}
-                            <div className="mb-2">
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(session.session_type)}`}>
-                                {getSessionIcon(session.session_type)} {getSessionTypeLabel(session.session_type)}
-                              </span>
-                            </div>
-                            
-                            {/* Session Info */}
-                            <div className="text-xs text-gray-600 space-y-1">
-                              {session.topic && <p>Topic: {session.topic}</p>}
-                              {session.description && (
-                                <p className="line-clamp-2">{session.description}</p>
+                            {/* Uniform Session Block Structure */}
+                            <div className="text-center space-y-2">
+                              {/* TYPE */}
+                              <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
+                                {getSessionTypeLabel(session.session_type)}
+                              </div>
+                              
+                              {/* TITLE */}
+                              <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
+                                {session.title}
+                              </div>
+                              
+                              {/* SPEAKERS */}
+                              {session.speakers && session.speakers.length > 0 && (
+                                <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                  {session.speakers.join(', ')}
+                                </div>
+                              )}
+                              
+                              {/* MODERATORS */}
+                              {session.moderators && session.moderators.length > 0 && (
+                                <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                  {session.moderators.join(', ')}
+                                </div>
+                              )}
+                              
+                              {/* CHAIRPERSONS */}
+                              {session.chairpersons && session.chairpersons.length > 0 && (
+                                <div className="text-xs text-gray-600 pb-1">
+                                  {session.chairpersons.join(', ')}
+                                </div>
                               )}
                             </div>
                           </div>
