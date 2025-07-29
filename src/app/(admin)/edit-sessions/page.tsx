@@ -55,7 +55,7 @@ export default function EditSessionsPage() {
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Session[]>([])
-  
+
   // Load all data from database
   const loadAllData = async () => {
     setLoading(true)
@@ -662,27 +662,27 @@ export default function EditSessionsPage() {
           alert('Error deleting sessions in this hall')
           return
         }
-      }
+        }
 
       // Then delete the hall-day association from day_halls table
-      const { error: dayHallError } = await supabase
-        .from('day_halls')
-        .delete()
-        .eq('hall_id', hall.id)
+        const { error: dayHallError } = await supabase
+          .from('day_halls')
+          .delete()
+          .eq('hall_id', hall.id)
         .eq('day_id', dayId)
 
-      if (dayHallError) {
+        if (dayHallError) {
         console.error('❌ Error deleting hall-day association:', dayHallError)
         alert('Error removing hall from day')
-        return
-      }
+          return
+        }
 
       console.log('✅ Hall deleted successfully')
       
       // Reload data to reflect changes
-      await loadAllData()
-      
-    } catch (error) {
+        await loadAllData()
+        
+      } catch (error) {
       console.error('❌ Error deleting hall:', error)
       alert('Error deleting hall')
     }
@@ -761,12 +761,12 @@ export default function EditSessionsPage() {
       // Update current time slot
       updates.push(
         supabase
-          .from('day_time_slots')
-          .update({
-            start_time: startTime,
-            end_time: endTime
-          })
-          .eq('id', timeSlotId)
+        .from('day_time_slots')
+        .update({
+          start_time: startTime,
+          end_time: endTime
+        })
+        .eq('id', timeSlotId)
       )
 
       // If there's a next time slot and its start time was auto-updated, save it too
@@ -806,8 +806,8 @@ export default function EditSessionsPage() {
       for (const result of results) {
         if (result.error) {
           console.error('❌ Error updating time slot:', result.error)
-          alert('Error updating time slot. Please try again.')
-          return
+        alert('Error updating time slot. Please try again.')
+        return
         }
       }
 
@@ -1065,35 +1065,35 @@ export default function EditSessionsPage() {
       {/* Scrollable Grid Layout */}
       {getHallsForSelectedDay().length > 0 ? (
         <div className="h-[calc(100vh-200px)] overflow-auto">
-          <div className="min-w-max">
-            {/* Header Row - Hall Names */}
+        <div className="min-w-max">
+          {/* Header Row - Hall Names */}
             <div className="bg-white border-b sticky top-0 z-40">
-              <div className="flex">
+            <div className="flex">
                 {/* Time Column Header - Sticky */}
                 <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50">
-                  🕘 Time
-                </div>
-                
-                {/* Hall Column Headers */}
-                {getHallsForSelectedDay().map((hall) => (
-                  <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
-                    <div className="flex items-center justify-between">
-                      <span>🏛️ {hall.name}</span>
-                      <button
+                🕘 Time
+              </div>
+              
+              {/* Hall Column Headers */}
+              {getHallsForSelectedDay().map((hall) => (
+                <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700">
+                  <div className="flex items-center justify-between">
+                    <span>🏛️ {hall.name}</span>
+                    <button
                         onClick={() => handleDeleteConfirmation('hall', hall)}
                         className="text-red-500 hover:text-red-700 text-lg font-bold"
-                        title="Remove Hall from Day"
-                      >
+                      title="Remove Hall from Day"
+                    >
                         ❌
-                      </button>
-                    </div>
+                    </button>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
+          </div>
 
-            {/* Time Slot Rows */}
-            {timeSlots.map((timeSlot, index) => (
+          {/* Time Slot Rows */}
+          {timeSlots.map((timeSlot, index) => (
             <div key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
               <div className="flex">
                 {/* Time Column - Sticky */}
@@ -1126,14 +1126,6 @@ export default function EditSessionsPage() {
                         }}
                         className="w-full text-sm border rounded px-2 py-1"
                       />
-                      {index > 0 && (
-                        <div className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                          🔗 Previous slot will end at this time
-                        </div>
-                      )}
-                      <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                          ⏰ End time auto-calculated (+30 min)
-                        </div>
                       <input
                         type="time"
                         value={timeSlot.end_time}
@@ -1153,16 +1145,6 @@ export default function EditSessionsPage() {
                         }}
                         className="w-full text-sm border rounded px-2 py-1"
                       />
-                      {index < timeSlots.length - 1 && (
-                        <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                          ⚡ Next slot will start at this time
-                        </div>
-                      )}
-                      {index === timeSlots.length - 1 && (
-                        <div className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
-                          ➕ New slot will be created after this
-                        </div>
-                      )}
                       <div className="flex space-x-1">
                         <button
                           onClick={() => handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, timeSlot.end_time)}
@@ -1183,12 +1165,12 @@ export default function EditSessionsPage() {
                       <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
                       <div className="text-gray-500">{timeSlot.end_time}</div>
                       <div className="flex space-x-1 mt-2">
-                        <button
-                          onClick={() => handleEditTimeSlot(timeSlot)}
+                      <button
+                        onClick={() => handleEditTimeSlot(timeSlot)}
                           className="text-xs text-indigo-600 hover:text-indigo-800"
-                        >
-                          Edit
-                        </button>
+                      >
+                        Edit
+                      </button>
                         {index < timeSlots.length - 1 && (
                           <button
                             onClick={() => {
@@ -1285,11 +1267,11 @@ export default function EditSessionsPage() {
                     </div>
                   )
                 })}
-              </div>
-            </div>
+                    </div>
+                  </div>
           ))}
-        </div>
-      </div>
+                </div>
+              </div>
       ) : (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -1300,7 +1282,7 @@ export default function EditSessionsPage() {
             >
               Add First Hall
             </button>
-          </div>
+            </div>
         </div>
       )}
 
@@ -1357,41 +1339,41 @@ export default function EditSessionsPage() {
             <div className="p-6">
               <div className="mb-4">
                 <label htmlFor="hallNameInput" className="block text-sm font-medium text-gray-700 mb-2">
-                  Hall Name
-                </label>
-                <input
-                  type="text"
+              Hall Name
+            </label>
+            <input
+              type="text"
                   id="hallNameInput"
-                  value={newHallName}
-                  onChange={(e) => setNewHallName(e.target.value)}
+              value={newHallName}
+              onChange={(e) => setNewHallName(e.target.value)}
                   placeholder="e.g., Hall A - Auditorium"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   autoFocus
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddHall()
+                if (e.key === 'Enter') {
+                  handleAddHall()
                     } else if (e.key === 'Escape') {
                       setShowAddHallModal(false)
-                    }
-                  }}
-                />
-              </div>
-              
+                }
+              }}
+            />
+          </div>
+          
               <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowAddHallModal(false)}
-                  className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddHall}
-                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                  Add Hall
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={() => setShowAddHallModal(false)}
+              className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAddHall}
+              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+              Add Hall
+            </button>
+          </div>
+        </div>
           </div>
         </div>
       )}
@@ -1439,93 +1421,93 @@ export default function EditSessionsPage() {
                 </p>
               </div>
 
-              {/* Calendar Header */}
+          {/* Calendar Header */}
               <div className="bg-teal-600 text-white p-3 rounded-t-lg mb-4">
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => navigateMonth('prev')}
-                    className="text-white hover:text-teal-100 transition-colors"
-                  >
-                    ‹
-                  </button>
-                  <h3 className="text-lg font-medium">{getMonthName(currentMonth)}</h3>
-                  <button
-                    onClick={() => navigateMonth('next')}
-                    className="text-white hover:text-teal-100 transition-colors"
-                  >
-                    ›
-                  </button>
-                </div>
-              </div>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => navigateMonth('prev')}
+                className="text-white hover:text-teal-100 transition-colors"
+              >
+                ‹
+              </button>
+              <h3 className="text-lg font-medium">{getMonthName(currentMonth)}</h3>
+              <button
+                onClick={() => navigateMonth('next')}
+                className="text-white hover:text-teal-100 transition-colors"
+              >
+                ›
+              </button>
+            </div>
+          </div>
 
-              {/* Days of Week Header */}
+          {/* Days of Week Header */}
               <div className="grid grid-cols-7 gap-1 px-3 mb-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
-                    {day}
-                  </div>
-                ))}
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                {day}
               </div>
+            ))}
+          </div>
 
-              {/* Calendar Grid */}
+          {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-1 px-3 mb-4">
-                {(() => {
-                  const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth)
-                  const days = []
-                  
-                  // Add empty cells for days before the first day of the month
-                  for (let i = 0; i < startingDayOfWeek; i++) {
-                    days.push(<div key={`empty-${i}`} className="h-10"></div>)
-                  }
-                  
-                  // Add days of the month
-                  for (let day = 1; day <= daysInMonth; day++) {
-                    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-                    const isSelected = isDateSelected(date)
-                    const isToday = isDateToday(date)
-                    const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
-                    
-                    days.push(
-                      <button
-                        key={day}
-                        onClick={() => {
-                          if (!isSelected && !isPast) {
-                            setSelectedDate(date)
-                            handleAddDay(date)
-                          }
-                        }}
-                        disabled={isSelected || isPast}
-                        className={`
-                          h-10 w-10 rounded-full text-sm font-medium transition-colors
-                          ${isSelected 
-                            ? 'bg-green-500 text-white' 
-                            : isToday 
-                              ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                              : isPast
-                                ? 'text-gray-300 cursor-not-allowed'
-                                : 'text-gray-700 hover:bg-gray-100 cursor-pointer'
-                          }
-                        `}
-                      >
-                        {day}
-                      </button>
-                    )
-                  }
-                  
-                  return days
-                })()}
-              </div>
+            {(() => {
+              const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth)
+              const days = []
+              
+              // Add empty cells for days before the first day of the month
+              for (let i = 0; i < startingDayOfWeek; i++) {
+                days.push(<div key={`empty-${i}`} className="h-10"></div>)
+              }
+              
+              // Add days of the month
+              for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+                const isSelected = isDateSelected(date)
+                const isToday = isDateToday(date)
+                const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
+                
+                days.push(
+                  <button
+                    key={day}
+                    onClick={() => {
+                      if (!isSelected && !isPast) {
+                        setSelectedDate(date)
+                        handleAddDay(date)
+                      }
+                    }}
+                    disabled={isSelected || isPast}
+                    className={`
+                      h-10 w-10 rounded-full text-sm font-medium transition-colors
+                      ${isSelected 
+                        ? 'bg-green-500 text-white' 
+                        : isToday 
+                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                          : isPast
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-100 cursor-pointer'
+                      }
+                    `}
+                  >
+                    {day}
+                  </button>
+                )
+              }
+              
+              return days
+            })()}
+          </div>
 
-              {/* Footer */}
-              <div className="flex justify-end pt-4 border-t">
-                <button
+          {/* Footer */}
+          <div className="flex justify-end pt-4 border-t">
+            <button
                   onClick={() => {
                     setShowAddDayModal(false)
                     setNewDayName('')
                   }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-                >
-                  Close
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            >
+              Close
                 </button>
               </div>
             </div>
@@ -1557,10 +1539,10 @@ export default function EditSessionsPage() {
                 className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
               >
                 Delete
-              </button>
-            </div>
+            </button>
           </div>
-        </Modal>
+        </div>
+      </Modal>
       )}
     </div>
   )
