@@ -241,6 +241,12 @@ export default function PublicProgramPage() {
         // Reload sessions to get updated time slots
         loadSessions()
       },
+      onDayHallChange: (payload) => {
+        console.log('Public: Day Hall change detected:', payload)
+        setLastUpdate(new Date())
+        // Reload halls to get updated day-hall relationships
+        loadHalls()
+      },
       onConnectionChange: (status) => {
         console.log('Public: Connection status changed:', status)
         setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')

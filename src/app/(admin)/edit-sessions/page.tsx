@@ -319,6 +319,11 @@ export default function EditSessionsPage() {
             loadTimeSlots()
             setLastUpdate(new Date())
           },
+          onDayHallChange: () => {
+            console.log('🔄 Day Halls updated via realtime')
+            loadAllData()
+            setLastUpdate(new Date())
+          },
           onConnectionChange: (status) => {
             console.log('🔗 Connection status changed:', status)
             setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')

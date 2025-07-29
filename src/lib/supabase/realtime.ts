@@ -6,6 +6,7 @@ export interface RealtimeConfig {
   onHallChange?: (payload: any) => void
   onDayChange?: (payload: any) => void
   onTimeSlotChange?: (payload: any) => void
+  onDayHallChange?: (payload: any) => void
   onConnectionChange?: (status: string) => void
 }
 
@@ -58,6 +59,9 @@ class RealtimeService {
     
     // Subscribe to time slots
     this.subscribeToTimeSlots(config.onTimeSlotChange)
+    
+    // Subscribe to day_halls changes
+    this.subscribeToDayHalls(config.onDayHallChange)
     
     // Monitor connection changes
     if (config.onConnectionChange) {
@@ -166,6 +170,31 @@ class RealtimeService {
         console.log('📡 Time slots subscription status:', status)
         if (status === 'SUBSCRIBED') {
           this.channels.set('timeslots', channel)
+        }
+      })
+  }
+
+  private subscribeToDayHalls(onChange?: (payload: any) => void) {
+    const channel = supabase
+      .channel('day-halls-realtime')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'day_halls' }, 
+        (payload) => {
+          console.log('🔄 Day Hall change detected:', payload)
+          
+          // Optimistic update
+          this.handleOptimisticUpdate('day_halls', payload)
+          
+          // Call callback
+          if (onChange) {
+            onChange(payload)
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Day Halls subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          this.channels.set('day_halls', channel)
         }
       })
   }
