@@ -803,8 +803,37 @@ export default function EditSessionsPage() {
   const handleCancelGlobalBlock = () => {
     setShowGlobalBlockModal(false)
     setSelectedTimeSlotForGlobalBlock(null)
-    setGlobalBlockType('tea_break')
+    setGlobalBlockType('')
     setGlobalBlockDescription('')
+    setGlobalBlockStartTime('')
+    setGlobalBlockEndTime('')
+  }
+
+  const handleDeleteGlobalBlock = async (timeSlot: DayTimeSlot) => {
+    if (!timeSlot.is_break) return
+
+    try {
+      const { error } = await supabase
+        .from('day_time_slots')
+        .update({ 
+          is_break: false, 
+          break_title: undefined 
+        })
+        .eq('id', timeSlot.id)
+
+      if (error) throw error
+
+      // Update local state
+      setTimeSlots(prev => prev.map(ts => 
+        ts.id === timeSlot.id 
+          ? { ...ts, is_break: false, break_title: undefined }
+          : ts
+      ))
+
+      console.log('Global block deleted successfully')
+    } catch (error) {
+      console.error('Error deleting global block:', error)
+    }
   }
 
   const handleDeleteConfirmation = (type: 'day' | 'hall', item: any) => {
@@ -1191,7 +1220,7 @@ export default function EditSessionsPage() {
                 <thead>
                   <tr className="bg-gray-50">
                     {/* Time Column Header */}
-                    <th className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50 text-left">
+                    <th className="w-40 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50 text-left">
                 🕘 Time
                     </th>
               
@@ -1251,7 +1280,7 @@ export default function EditSessionsPage() {
           {timeSlots.map((timeSlot, index) => (
                     <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
                 {/* Time Column - Sticky */}
-                      <td className="w-32 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
+                      <td className="w-40 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
                   {editingTimeSlot?.id === timeSlot.id ? (
                     <div className="space-y-2">
                       <input
@@ -1316,9 +1345,9 @@ export default function EditSessionsPage() {
                     </div>
                   ) : (
                     <div className="text-sm">
-                      <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
-                      <div className="text-gray-500">{timeSlot.end_time}</div>
-                      <div className="flex space-x-1 mt-2">
+                      <div className="font-medium text-gray-900 mb-1">{timeSlot.start_time}</div>
+                      <div className="text-gray-500 mb-3">{timeSlot.end_time}</div>
+                      <div className="flex space-x-2">
                       <button
                         onClick={() => handleEditTimeSlot(timeSlot)}
                           className="text-xs text-indigo-600 hover:text-indigo-800"
@@ -1339,9 +1368,18 @@ export default function EditSessionsPage() {
                       
                       {/* Check if this is a global block (break) */}
                       {timeSlot.is_break ? (
-                        <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-4 text-center">
+                        <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-4 text-center group">
                           <div className="text-sm font-medium text-orange-800">
                             🔶 {timeSlot.break_title || 'Global Block'}
+                          </div>
+                          <div className="flex justify-center mt-2">
+                            <button
+                              onClick={() => handleDeleteGlobalBlock(timeSlot)}
+                              className="text-xs text-red-600 hover:text-red-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Delete Global Block"
+                            >
+                              🗑️ Delete
+                            </button>
                           </div>
                         </td>
                       ) : (
@@ -1352,7 +1390,7 @@ export default function EditSessionsPage() {
                   return (
                             <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
                       {session ? (
-                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow group">
                                   {/* Uniform Session Block Structure */}
                                   <div className="text-center space-y-2">
                                     {/* TYPE */}
@@ -1387,7 +1425,7 @@ export default function EditSessionsPage() {
                             )}
                             
                             {/* Action Buttons */}
-                                    <div className="flex space-x-1 pt-2">
+                                    <div className="flex justify-center space-x-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={() => handleEditSession(session)}
                                         className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
