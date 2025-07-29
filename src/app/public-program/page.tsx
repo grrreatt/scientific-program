@@ -70,9 +70,9 @@ export default function PublicProgramPage() {
 
       if (error) {
         console.error('Error loading sessions:', error)
-        setSessions([])
-        return
-      }
+          setSessions([])
+          return
+        }
 
       // Transform sessions with participant information
       const transformedSessions: Session[] = (data || []).map((session: any) => {
@@ -490,33 +490,33 @@ export default function PublicProgramPage() {
                       <div className="text-sm">
                         <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
                         <div className="text-gray-500">{timeSlot.end_time}</div>
-                      </div>
+                </div>
                     </td>
-                    
+
                     {/* Check if this is a global block (all halls have the same session) */}
-                    {(() => {
+                  {(() => {
                       const sessionsInTimeSlot = filteredSessions.filter(s => 
                         s.start_time === timeSlot.start_time && s.end_time === timeSlot.end_time
                       )
                       
-                      // Check if all halls have the same session (global block)
-                      const uniqueSessions = [...new Set(sessionsInTimeSlot.map(s => s.title))]
+                                             // Check if all halls have the same session (global block)
+                       const uniqueSessions = Array.from(new Set(sessionsInTimeSlot.map(s => s.title)))
                       
                       if (uniqueSessions.length === 1 && sessionsInTimeSlot.length === getHallsForSelectedDay().length) {
                         // This is a global block
-                        return (
+                      return (
                           <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-4 text-center">
                             <div className="text-sm font-medium text-orange-800">
                               🔶 {uniqueSessions[0]}
-                            </div>
+                        </div>
                           </td>
-                        )
+                      )
                       } else {
                         // Regular sessions - show each hall separately
                         return getHallsForSelectedDay().map((hall) => {
                           const session = sessionsInTimeSlot.find(s => s.stage_name === hall.name)
-                          
-                          return (
+
+                    return (
                             <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
                               {session ? (
                                 <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
@@ -525,13 +525,13 @@ export default function PublicProgramPage() {
                                     {/* TYPE */}
                                     <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
                                       {getSessionTypeLabel(session.session_type)}
-                                    </div>
-                                    
+                            </div>
+                            
                                     {/* TITLE */}
                                     <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
                                       {session.title}
-                                    </div>
-                                    
+                            </div>
+                            
                                     {/* SPEAKERS */}
                                     {session.speakers && session.speakers.length > 0 && (
                                       <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
@@ -543,7 +543,7 @@ export default function PublicProgramPage() {
                                     {session.moderators && session.moderators.length > 0 && (
                                       <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
                                         {session.moderators.join(', ')}
-                                      </div>
+                            </div>
                                     )}
                                     
                                     {/* CHAIRPERSONS */}
@@ -551,22 +551,22 @@ export default function PublicProgramPage() {
                                       <div className="text-xs text-gray-600 pb-1">
                                         {session.chairpersons.join(', ')}
                                       </div>
-                                    )}
-                                  </div>
-                                </div>
+                              )}
+                            </div>
+                          </div>
                               ) : (
                                 <div className="text-center py-8">
                                   <div className="text-gray-400 text-sm">No session</div>
-                                </div>
+                      </div>
                               )}
                             </td>
-                          )
+                    )
                         })
                       }
                     })()}
                   </tr>
                 ))
-              })()}
+                  })()}
             </tbody>
           </table>
         </div>

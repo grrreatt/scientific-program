@@ -174,12 +174,12 @@ export default function EditSessionsPage() {
             .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
 
           return {
-            ...session,
-            day_name: session.conference_days?.name || 'Unknown Day',
-            stage_name: session.stages?.name || 'Unknown Hall',
-            start_time: session.day_time_slots?.start_time || session.start_time || '',
-            end_time: session.day_time_slots?.end_time || session.end_time || '',
-            is_break: session.day_time_slots?.is_break || false,
+          ...session,
+          day_name: session.conference_days?.name || 'Unknown Day',
+          stage_name: session.stages?.name || 'Unknown Hall',
+          start_time: session.day_time_slots?.start_time || session.start_time || '',
+          end_time: session.day_time_slots?.end_time || session.end_time || '',
+          is_break: session.day_time_slots?.is_break || false,
             break_title: session.day_time_slots?.break_title,
             speakers,
             moderators,
@@ -1184,7 +1184,7 @@ export default function EditSessionsPage() {
       {/* Timeline Table Layout */}
       {getHallsForSelectedDay().length > 0 ? (
         <div className="h-[calc(100vh-200px)] overflow-auto">
-          <div className="min-w-max">
+        <div className="min-w-max">
             {/* Table Header */}
             <div className="bg-white border-b sticky top-0 z-40">
               <table className="w-full border-collapse">
@@ -1192,13 +1192,13 @@ export default function EditSessionsPage() {
                   <tr className="bg-gray-50">
                     {/* Time Column Header */}
                     <th className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50 text-left">
-                      🕘 Time
+                🕘 Time
                     </th>
-                    
-                    {/* Hall Column Headers */}
-                    {getHallsForSelectedDay().map((hall) => (
+              
+              {/* Hall Column Headers */}
+              {getHallsForSelectedDay().map((hall) => (
                       <th key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 text-left">
-                        <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between">
                           {editingHall?.id === hall.id ? (
                             <div className="flex items-center space-x-2 flex-1">
                               <input
@@ -1225,7 +1225,7 @@ export default function EditSessionsPage() {
                             </div>
                           ) : (
                             <div className="flex items-center space-x-2 flex-1">
-                              <span>🏛️ {hall.name}</span>
+                    <span>🏛️ {hall.name}</span>
                               <button
                                 onClick={() => handleEditHall(hall)}
                                 className="text-xs text-blue-600 hover:text-blue-800"
@@ -1235,106 +1235,106 @@ export default function EditSessionsPage() {
                               </button>
                             </div>
                           )}
-                          <button
-                            onClick={() => handleDeleteConfirmation('hall', hall)}
+                    <button
+                        onClick={() => handleDeleteConfirmation('hall', hall)}
                             className="text-red-500 hover:text-red-700 text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Remove Hall from Day"
-                          >
+                      title="Remove Hall from Day"
+                    >
                             🗑️
-                          </button>
-                        </div>
+                    </button>
+                  </div>
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {timeSlots.map((timeSlot, index) => (
+          {timeSlots.map((timeSlot, index) => (
                     <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                      {/* Time Column - Sticky */}
+                {/* Time Column - Sticky */}
                       <td className="w-32 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
-                        {editingTimeSlot?.id === timeSlot.id ? (
-                          <div className="space-y-2">
-                            <input
-                              type="time"
-                              value={timeSlot.start_time}
-                              onChange={(e) => {
-                                const newTimeSlots = [...timeSlots]
-                                const newStartTime = e.target.value
-                                const newEndTime = calculateDefaultEndTime(newStartTime)
-                                
-                                newTimeSlots[index] = { 
-                                  ...timeSlot, 
-                                  start_time: newStartTime,
-                                  end_time: newEndTime
-                                }
-                                
-                                // Auto-update previous time slot's end time if it exists
-                                if (index > 0) {
-                                  newTimeSlots[index - 1] = { 
-                                    ...newTimeSlots[index - 1], 
-                                    end_time: newStartTime 
-                                  }
-                                }
-                                
-                                setTimeSlots(newTimeSlots)
-                              }}
-                              className="w-full text-sm border rounded px-2 py-1"
-                            />
-                            <input
-                              type="time"
-                              value={timeSlot.end_time}
-                              onChange={(e) => {
-                                const newTimeSlots = [...timeSlots]
-                                newTimeSlots[index] = { ...timeSlot, end_time: e.target.value }
-                                
-                                // Auto-update next time slot's start time if it exists
-                                if (index < timeSlots.length - 1) {
-                                  newTimeSlots[index + 1] = { 
-                                    ...newTimeSlots[index + 1], 
-                                    start_time: e.target.value 
-                                  }
-                                }
-                                
-                                setTimeSlots(newTimeSlots)
-                              }}
-                              className="w-full text-sm border rounded px-2 py-1"
-                            />
-                            <div className="flex space-x-1">
-                              <button
-                                onClick={() => handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, timeSlot.end_time)}
-                                className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={() => setEditingTimeSlot(null)}
-                                className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-sm">
-                            <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
-                            <div className="text-gray-500">{timeSlot.end_time}</div>
-                            <div className="flex space-x-1 mt-2">
-                              <button
-                                onClick={() => handleEditTimeSlot(timeSlot)}
-                                className="text-xs text-indigo-600 hover:text-indigo-800"
-                              >
-                                Edit
-                              </button>
-                              <button
+                  {editingTimeSlot?.id === timeSlot.id ? (
+                    <div className="space-y-2">
+                      <input
+                        type="time"
+                        value={timeSlot.start_time}
+                        onChange={(e) => {
+                          const newTimeSlots = [...timeSlots]
+                          const newStartTime = e.target.value
+                          const newEndTime = calculateDefaultEndTime(newStartTime)
+                          
+                          newTimeSlots[index] = { 
+                            ...timeSlot, 
+                            start_time: newStartTime,
+                            end_time: newEndTime
+                          }
+                          
+                          // Auto-update previous time slot's end time if it exists
+                          if (index > 0) {
+                            newTimeSlots[index - 1] = { 
+                              ...newTimeSlots[index - 1], 
+                              end_time: newStartTime 
+                            }
+                          }
+                          
+                          setTimeSlots(newTimeSlots)
+                        }}
+                        className="w-full text-sm border rounded px-2 py-1"
+                      />
+                      <input
+                        type="time"
+                        value={timeSlot.end_time}
+                        onChange={(e) => {
+                          const newTimeSlots = [...timeSlots]
+                          newTimeSlots[index] = { ...timeSlot, end_time: e.target.value }
+                          
+                          // Auto-update next time slot's start time if it exists
+                          if (index < timeSlots.length - 1) {
+                            newTimeSlots[index + 1] = { 
+                              ...newTimeSlots[index + 1], 
+                              start_time: e.target.value 
+                            }
+                          }
+                          
+                          setTimeSlots(newTimeSlots)
+                        }}
+                        className="w-full text-sm border rounded px-2 py-1"
+                      />
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, timeSlot.end_time)}
+                          className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingTimeSlot(null)}
+                          className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm">
+                      <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
+                      <div className="text-gray-500">{timeSlot.end_time}</div>
+                      <div className="flex space-x-1 mt-2">
+                      <button
+                        onClick={() => handleEditTimeSlot(timeSlot)}
+                          className="text-xs text-indigo-600 hover:text-indigo-800"
+                      >
+                        Edit
+                      </button>
+                          <button
                                 onClick={() => handleAddGlobalBlock(timeSlot)}
                                 className="text-xs text-orange-600 hover:text-orange-800"
                                 title="Add Global Block"
                               >
                                 Global Block
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                          </button>
+                      </div>
+                    </div>
+                  )}
                       </td>
                       
                       {/* Check if this is a global block (break) */}
@@ -1347,11 +1347,11 @@ export default function EditSessionsPage() {
                       ) : (
                         /* Hall Columns */
                         getHallsForSelectedDay().map((hall) => {
-                          const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
-                          
-                          return (
+                  const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
+                  
+                  return (
                             <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
-                              {session ? (
+                      {session ? (
                                 <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
                                   {/* Uniform Session Block Structure */}
                                   <div className="text-center space-y-2">
@@ -1362,57 +1362,57 @@ export default function EditSessionsPage() {
                                     
                                     {/* TITLE */}
                                     <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
-                                      {session.title}
-                                    </div>
-                                    
+                              {session.title}
+                            </div>
+                            
                                     {/* SPEAKERS */}
                                     {session.speakers && session.speakers.length > 0 && (
                                       <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
                                         {session.speakers.join(', ')}
-                                      </div>
-                                    )}
-                                    
+                              </div>
+                            )}
+                            
                                     {/* MODERATORS */}
                                     {session.moderators && session.moderators.length > 0 && (
                                       <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
                                         {session.moderators.join(', ')}
-                                      </div>
+                            </div>
                                     )}
                                     
                                     {/* CHAIRPERSONS */}
                                     {session.chairpersons && session.chairpersons.length > 0 && (
                                       <div className="text-xs text-gray-600 pb-1">
                                         {session.chairpersons.join(', ')}
-                                      </div>
-                                    )}
-                                    
-                                    {/* Action Buttons */}
+                              </div>
+                            )}
+                            
+                            {/* Action Buttons */}
                                     <div className="flex space-x-1 pt-2">
-                                      <button
-                                        onClick={() => handleEditSession(session)}
+                              <button
+                                onClick={() => handleEditSession(session)}
                                         className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
-                                      >
-                                        Edit
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteSession(session.id)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSession(session.id)}
                                         className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
-                                      >
-                                        Delete
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="h-full flex items-center justify-center">
-                                  <button
-                                    onClick={() => handleAddSession(hall.id, timeSlot.id)}
-                                    className="text-gray-400 hover:text-gray-600 text-sm border-2 border-dashed border-gray-300 rounded-lg p-6 w-full h-24 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
-                                  >
-                                    + Add Session
-                                  </button>
-                                </div>
-                              )}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-full flex items-center justify-center">
+                          <button
+                            onClick={() => handleAddSession(hall.id, timeSlot.id)}
+                            className="text-gray-400 hover:text-gray-600 text-sm border-2 border-dashed border-gray-300 rounded-lg p-6 w-full h-24 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
+                          >
+                            + Add Session
+                          </button>
+                        </div>
+                      )}
                             </td>
                           )
                         })
@@ -1422,8 +1422,8 @@ export default function EditSessionsPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
+                </div>
+              </div>
       ) : (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
