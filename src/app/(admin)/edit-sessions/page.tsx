@@ -1341,168 +1341,197 @@ export default function EditSessionsPage() {
       </Modal>
 
       {/* Add Hall Modal */}
-      <Modal
-        isOpen={showAddHallModal}
-        onClose={() => setShowAddHallModal(false)}
-        title="Add New Hall"
-        maxWidth="max-w-md"
-      >
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="hallName" className="block text-sm font-medium text-gray-700 mb-2">
-              Hall Name
-            </label>
-            <input
-              type="text"
-              id="hallName"
-              value={newHallName}
-              onChange={(e) => setNewHallName(e.target.value)}
-              placeholder="e.g., Hall A - Auditorium"
-              className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleAddHall()
-                }
-              }}
-            />
-          </div>
-          
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={() => setShowAddHallModal(false)}
-              className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleAddHall}
-              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Add Hall
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Add Day Calendar Modal */}
-      <Modal
-        isOpen={showAddDayModal}
-        onClose={() => setShowAddDayModal(false)}
-        title="Add New Day"
-        maxWidth="max-w-sm"
-      >
-        <div className="space-y-4">
-          {/* Day Name Input */}
-          <div className="space-y-2">
-            <label htmlFor="dayName" className="block text-sm font-medium text-gray-700">
-              Day Name
-            </label>
-            <input
-              type="text"
-              id="dayName"
-              value={newDayName}
-              onChange={(e) => setNewDayName(e.target.value)}
-              placeholder="e.g., Day 4 - IAP-ID"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <p className="text-xs text-gray-500">
-              Leave empty to use default name (Day {days.length + 1})
-            </p>
-          </div>
-
-          {/* Calendar Header */}
-          <div className="bg-teal-600 text-white p-3 rounded-t-lg">
-            <div className="flex items-center justify-between">
+      {showAddHallModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-medium text-gray-900">Add New Hall</h3>
               <button
-                onClick={() => navigateMonth('prev')}
-                className="text-white hover:text-teal-100 transition-colors"
+                onClick={() => setShowAddHallModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
               >
-                ‹
-              </button>
-              <h3 className="text-lg font-medium">{getMonthName(currentMonth)}</h3>
-              <button
-                onClick={() => navigateMonth('next')}
-                className="text-white hover:text-teal-100 transition-colors"
-              >
-                ›
+                ×
               </button>
             </div>
-          </div>
-
-          {/* Days of Week Header */}
-          <div className="grid grid-cols-7 gap-1 px-3">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
-                {day}
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <label htmlFor="hallNameInput" className="block text-sm font-medium text-gray-700 mb-2">
+                  Hall Name
+                </label>
+                <input
+                  type="text"
+                  id="hallNameInput"
+                  value={newHallName}
+                  onChange={(e) => setNewHallName(e.target.value)}
+                  placeholder="e.g., Hall A - Auditorium"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddHall()
+                    } else if (e.key === 'Escape') {
+                      setShowAddHallModal(false)
+                    }
+                  }}
+                />
               </div>
-            ))}
-          </div>
-
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1 px-3">
-            {(() => {
-              const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth)
-              const days = []
               
-              // Add empty cells for days before the first day of the month
-              for (let i = 0; i < startingDayOfWeek; i++) {
-                days.push(<div key={`empty-${i}`} className="h-10"></div>)
-              }
-              
-              // Add days of the month
-              for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-                const isSelected = isDateSelected(date)
-                const isToday = isDateToday(date)
-                const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
-                
-                days.push(
-                  <button
-                    key={day}
-                    onClick={() => {
-                      if (!isSelected && !isPast) {
-                        setSelectedDate(date)
-                        handleAddDay(date)
-                      }
-                    }}
-                    disabled={isSelected || isPast}
-                    className={`
-                      h-10 w-10 rounded-full text-sm font-medium transition-colors
-                      ${isSelected 
-                        ? 'bg-green-500 text-white' 
-                        : isToday 
-                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                          : isPast
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'text-gray-700 hover:bg-gray-100 cursor-pointer'
-                      }
-                    `}
-                  >
-                    {day}
-                  </button>
-                )
-              }
-              
-              return days
-            })()}
-          </div>
-
-          {/* Footer */}
-          <div className="flex justify-end pt-4 border-t">
-            <button
-              onClick={() => {
-                setShowAddDayModal(false)
-                setNewDayName('')
-              }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-            >
-              Close
-            </button>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowAddHallModal(false)}
+                  className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddHall}
+                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Add Hall
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </Modal>
+      )}
+
+      {/* Add Day Calendar Modal */}
+      {showAddDayModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-medium text-gray-900">Add New Day</h3>
+              <button
+                onClick={() => {
+                  setShowAddDayModal(false)
+                  setNewDayName('')
+                }}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {/* Day Name Input */}
+              <div className="mb-4">
+                <label htmlFor="dayNameInput" className="block text-sm font-medium text-gray-700 mb-2">
+                  Day Name
+                </label>
+                <input
+                  type="text"
+                  id="dayNameInput"
+                  value={newDayName}
+                  onChange={(e) => setNewDayName(e.target.value)}
+                  placeholder="e.g., Day 4 - IAP-ID"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setShowAddDayModal(false)
+                      setNewDayName('')
+                    }
+                  }}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave empty to use default name (Day {days.length + 1})
+                </p>
+              </div>
+
+              {/* Calendar Header */}
+              <div className="bg-teal-600 text-white p-3 rounded-t-lg mb-4">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => navigateMonth('prev')}
+                    className="text-white hover:text-teal-100 transition-colors"
+                  >
+                    ‹
+                  </button>
+                  <h3 className="text-lg font-medium">{getMonthName(currentMonth)}</h3>
+                  <button
+                    onClick={() => navigateMonth('next')}
+                    className="text-white hover:text-teal-100 transition-colors"
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+
+              {/* Days of Week Header */}
+              <div className="grid grid-cols-7 gap-1 px-3 mb-2">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-1 px-3 mb-4">
+                {(() => {
+                  const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth)
+                  const days = []
+                  
+                  // Add empty cells for days before the first day of the month
+                  for (let i = 0; i < startingDayOfWeek; i++) {
+                    days.push(<div key={`empty-${i}`} className="h-10"></div>)
+                  }
+                  
+                  // Add days of the month
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+                    const isSelected = isDateSelected(date)
+                    const isToday = isDateToday(date)
+                    const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
+                    
+                    days.push(
+                      <button
+                        key={day}
+                        onClick={() => {
+                          if (!isSelected && !isPast) {
+                            setSelectedDate(date)
+                            handleAddDay(date)
+                          }
+                        }}
+                        disabled={isSelected || isPast}
+                        className={`
+                          h-10 w-10 rounded-full text-sm font-medium transition-colors
+                          ${isSelected 
+                            ? 'bg-green-500 text-white' 
+                            : isToday 
+                              ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                              : isPast
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-700 hover:bg-gray-100 cursor-pointer'
+                          }
+                        `}
+                      >
+                        {day}
+                      </button>
+                    )
+                  }
+                  
+                  return days
+                })()}
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end pt-4 border-t">
+                <button
+                  onClick={() => {
+                    setShowAddDayModal(false)
+                    setNewDayName('')
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirmation && itemToDelete && (

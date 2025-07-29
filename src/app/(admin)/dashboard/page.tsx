@@ -443,50 +443,77 @@ export default function DashboardPage() {
 
       {/* Add Person Modal */}
       {showAddPersonModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-medium text-gray-900">
                 Add {personType.charAt(0).toUpperCase() + personType.slice(1)}
               </h3>
+              <button
+                onClick={() => {
+                  setShowAddPersonModal(false)
+                  setNewPerson({ name: '', designation: '', email: '' })
+                }}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-6">
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="personName" className="block text-sm font-medium text-gray-700 mb-2">
                     Name
                   </label>
                   <input
                     type="text"
-                    id="name"
+                    id="personName"
                     value={newPerson.name}
                     onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Enter full name"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setShowAddPersonModal(false)
+                        setNewPerson({ name: '', designation: '', email: '' })
+                      }
+                    }}
                   />
                 </div>
                 <div>
-                  <label htmlFor="designation" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="personDesignation" className="block text-sm font-medium text-gray-700 mb-2">
                     Designation/Title
                   </label>
                   <input
                     type="text"
-                    id="designation"
+                    id="personDesignation"
                     value={newPerson.designation}
                     onChange={(e) => setNewPerson({ ...newPerson, designation: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="e.g., Professor, CEO, Director"
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="personEmail" className="block text-sm font-medium text-gray-700 mb-2">
                     Email
                   </label>
                   <input
                     type="email"
-                    id="email"
+                    id="personEmail"
                     value={newPerson.email}
                     onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Enter email address"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddPerson()
+                      } else if (e.key === 'Escape') {
+                        setShowAddPersonModal(false)
+                        setNewPerson({ name: '', designation: '', email: '' })
+                      }
+                    }}
                   />
                 </div>
                 <div className="flex justify-end space-x-3 pt-4">
