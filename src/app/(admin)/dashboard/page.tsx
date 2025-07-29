@@ -34,6 +34,16 @@ export default function DashboardPage() {
     email: ''
   })
 
+  // Bulk upload state
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false)
+  const [bulkUploadType, setBulkUploadType] = useState<'speaker' | 'moderator' | 'chairperson'>('speaker')
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
+  const [deleteExisting, setDeleteExisting] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [uploadSuccess, setUploadSuccess] = useState('')
+
   const loadStats = async () => {
     try {
       console.log('🔄 Loading dashboard stats...')
@@ -139,6 +149,150 @@ export default function DashboardPage() {
     setShowAddPersonModal(true)
   }
 
+  const openBulkUploadModal = (type: 'speaker' | 'moderator' | 'chairperson') => {
+    setBulkUploadType(type)
+    setShowBulkUploadModal(true)
+    setCsvFile(null)
+    setUploadProgress(0)
+    setIsUploading(false)
+    setDeleteExisting(false)
+    setUploadError('')
+    setUploadSuccess('')
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file && file.type === 'text/csv') {
+      setCsvFile(file)
+      setUploadError('')
+    } else if (file) {
+      setUploadError('Please select a valid CSV file')
+      setCsvFile(null)
+    }
+  }
+
+  const parseCSV = (csvText: string) => {
+    const lines = csvText.split('\n')
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+    const data = lines.slice(1).filter(line => line.trim()).map(line => {
+      const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
+      const row: any = {}
+      headers.forEach((header, index) => {
+        row[header] = values[index] || ''
+      })
+      return row
+    })
+    return data
+  }
+
+  const handleBulkUpload = async () => {
+    if (!csvFile) {
+      setUploadError('Please select a CSV file')
+      return
+    }
+
+    setIsUploading(true)
+    setUploadProgress(0)
+    setUploadError('')
+    setUploadSuccess('')
+
+    try {
+      const text = await csvFile.text()
+      const data = parseCSV(text)
+      
+      if (data.length === 0) {
+        setUploadError('No valid data found in CSV file')
+        setIsUploading(false)
+        return
+      }
+
+      // Validate CSV structure
+      const requiredFields = ['name', 'email', 'title', 'organization']
+      const firstRow = data[0]
+      const missingFields = requiredFields.filter(field => !firstRow[field])
+      
+      if (missingFields.length > 0) {
+        setUploadError(`Missing required fields: ${missingFields.join(', ')}`)
+        setIsUploading(false)
+        return
+      }
+
+      // Delete existing records if requested
+      if (deleteExisting) {
+        setUploadProgress(10)
+        const { error: deleteError } = await supabase
+          .from('speakers')
+          .delete()
+          .eq('role_type', bulkUploadType)
+        
+        if (deleteError) {
+          setUploadError(`Error deleting existing ${bulkUploadType}s: ${deleteError.message}`)
+          setIsUploading(false)
+          return
+        }
+      }
+
+      setUploadProgress(30)
+
+      // Prepare data for insertion
+      const speakersData = data.map((row, index) => ({
+        name: row.name,
+        email: row.email,
+        title: row.title,
+        organization: row.organization,
+        bio: row.bio || '',
+        role_type: bulkUploadType
+      }))
+
+      setUploadProgress(50)
+
+      // Insert new records
+      const { error: insertError } = await supabase
+        .from('speakers')
+        .insert(speakersData)
+
+      if (insertError) {
+        setUploadError(`Error uploading ${bulkUploadType}s: ${insertError.message}`)
+        setIsUploading(false)
+        return
+      }
+
+      setUploadProgress(100)
+      setUploadSuccess(`Successfully uploaded ${data.length} ${bulkUploadType}s`)
+      
+      // Reload stats
+      await loadStats()
+      
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setShowBulkUploadModal(false)
+        setUploadSuccess('')
+      }, 2000)
+
+    } catch (error) {
+      console.error('Error processing CSV:', error)
+      setUploadError('Error processing CSV file. Please check the format.')
+    }
+
+    setIsUploading(false)
+  }
+
+  const downloadTemplate = async (type: 'speaker' | 'moderator' | 'chairperson') => {
+    const template = `name,email,title,organization,bio
+"Dr. John Doe","john.doe@university.edu","Professor","University of Medical Sciences","Expert in medical research with 15+ years of experience"
+"Dr. Jane Smith","jane.smith@hospital.com","Chief Medical Officer","City General Hospital","Specialist in emergency medicine and hospital administration"`
+    
+    const blob = new Blob([template], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${type}s_template.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -237,7 +391,9 @@ export default function DashboardPage() {
           <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
             People Management
           </h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          
+          {/* Individual Add Buttons */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
             <button
               onClick={() => openAddPersonModal('speaker')}
               className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
@@ -288,6 +444,63 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-500">Register a new chairperson</p>
               </div>
             </button>
+          </div>
+
+          {/* Bulk Upload Section */}
+          <div className="border-t pt-6">
+            <h4 className="text-md font-medium text-gray-900 mb-4">Bulk Upload</h4>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <button
+                onClick={() => openBulkUploadModal('speaker')}
+                className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+              >
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">Bulk Upload Speakers</p>
+                  <p className="text-sm text-gray-500">Upload CSV with multiple speakers</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => openBulkUploadModal('moderator')}
+                className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-green-500"
+              >
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">Bulk Upload Moderators</p>
+                  <p className="text-sm text-gray-500">Upload CSV with multiple moderators</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => openBulkUploadModal('chairperson')}
+                className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-purple-500"
+              >
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">Bulk Upload Chairpersons</p>
+                  <p className="text-sm text-gray-500">Upload CSV with multiple chairpersons</p>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -531,6 +744,145 @@ export default function DashboardPage() {
                     className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
                   >
                     Add {personType.charAt(0).toUpperCase() + personType.slice(1)}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-medium text-gray-900">
+                Bulk Upload {bulkUploadType.charAt(0).toUpperCase() + bulkUploadType.slice(1)}s
+              </h3>
+              <button
+                onClick={() => {
+                  setShowBulkUploadModal(false)
+                  setCsvFile(null)
+                  setUploadError('')
+                  setUploadSuccess('')
+                }}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-6">
+                {/* Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">CSV Format Requirements:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Required columns: name, email, title, organization</li>
+                    <li>• Optional column: bio</li>
+                    <li>• Use commas to separate values</li>
+                    <li>• Enclose text in quotes if it contains commas</li>
+                  </ul>
+                </div>
+
+                {/* Template Download */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900 mb-1">Download Template</h4>
+                    <p className="text-sm text-gray-500">Get a sample CSV file to use as a template</p>
+                  </div>
+                  <button
+                    onClick={() => downloadTemplate(bulkUploadType)}
+                    className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Download Template
+                  </button>
+                </div>
+
+                {/* File Upload */}
+                <div>
+                  <label htmlFor="csvFile" className="block text-sm font-medium text-gray-700 mb-2">
+                    Select CSV File
+                  </label>
+                  <input
+                    type="file"
+                    id="csvFile"
+                    accept=".csv"
+                    onChange={handleFileChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  {csvFile && (
+                    <p className="mt-2 text-sm text-green-600">
+                      ✓ Selected: {csvFile.name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Delete Existing Option */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="deleteExisting"
+                    checked={deleteExisting}
+                    onChange={(e) => setDeleteExisting(e.target.checked)}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="deleteExisting" className="ml-2 block text-sm text-gray-900">
+                    Delete existing {bulkUploadType}s before uploading
+                  </label>
+                </div>
+
+                {/* Progress Bar */}
+                {isUploading && (
+                  <div>
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Uploading...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {uploadError && (
+                  <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                    <p className="text-sm text-red-800">{uploadError}</p>
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {uploadSuccess && (
+                  <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                    <p className="text-sm text-green-800">{uploadSuccess}</p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowBulkUploadModal(false)
+                      setCsvFile(null)
+                      setUploadError('')
+                      setUploadSuccess('')
+                    }}
+                    className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                    disabled={isUploading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBulkUpload}
+                    disabled={!csvFile || isUploading}
+                    className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {isUploading ? 'Uploading...' : `Upload ${bulkUploadType.charAt(0).toUpperCase() + bulkUploadType.slice(1)}s`}
                   </button>
                 </div>
               </div>
