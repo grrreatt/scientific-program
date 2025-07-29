@@ -454,81 +454,121 @@ export default function PublicProgramPage() {
           </p>
         </div>
 
-        {/* Halls Layout - Column-based like Edit Sessions */}
+        {/* Timeline Table Layout */}
         <div className="overflow-x-auto">
-          <div className="flex space-x-6" style={{ minWidth: `${Math.max(getHallsForSelectedDay().length * 320, 100)}px` }}>
-            {getHallsForSelectedDay().map((hall) => (
-              <div key={hall.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex-shrink-0" style={{ width: '300px' }}>
-                {/* Hall Header */}
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">{hall.name}</h3>
-                </div>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-50">
+                {/* Time Column Header */}
+                <th className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50 text-left">
+                  🕘 Time
+                </th>
+                
+                {/* Hall Column Headers */}
+                {getHallsForSelectedDay().map((hall) => (
+                  <th key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 text-left">
+                    <span>🏛️ {hall.name}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* Group sessions by time slots */}
+              {(() => {
+                // Create time slots from sessions
+                const timeSlots = Array.from(new Set(filteredSessions.map(s => `${s.start_time}-${s.end_time}`)))
+                  .sort()
+                  .map(timeRange => {
+                    const [start, end] = timeRange.split('-')
+                    return { start_time: start, end_time: end }
+                  })
 
-                {/* Hall Content - Sessions */}
-                <div className="p-4">
-                  {/* Find sessions for this hall */}
-                  {(() => {
-                    const hallSessions = filteredSessions.filter(session => 
-                      session.stage_name === hall.name
-                    )
-                      
-                    if (hallSessions.length === 0) {
-                      return (
-                        <div className="text-center py-8">
-                          <div className="text-gray-400 text-sm">No sessions scheduled</div>
-                        </div>
-                      )
-                    }
-
-                    return (
-                      <div className="space-y-3">
-                        {hallSessions.map((session) => (
-                          <div 
-                            key={session.id}
-                            className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
-                          >
-                            {/* Uniform Session Block Structure */}
-                            <div className="text-center space-y-2">
-                              {/* TYPE */}
-                              <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
-                                {getSessionTypeLabel(session.session_type)}
-                              </div>
-                              
-                              {/* TITLE */}
-                              <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
-                                {session.title}
-                              </div>
-                              
-                              {/* SPEAKERS */}
-                              {session.speakers && session.speakers.length > 0 && (
-                                <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
-                                  {session.speakers.join(', ')}
-                                </div>
-                              )}
-                              
-                              {/* MODERATORS */}
-                              {session.moderators && session.moderators.length > 0 && (
-                                <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
-                                  {session.moderators.join(', ')}
-                                </div>
-                              )}
-                              
-                              {/* CHAIRPERSONS */}
-                              {session.chairpersons && session.chairpersons.length > 0 && (
-                                <div className="text-xs text-gray-600 pb-1">
-                                  {session.chairpersons.join(', ')}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                return timeSlots.map((timeSlot, index) => (
+                  <tr key={index} className="bg-white border-b hover:bg-gray-50 transition-colors">
+                    {/* Time Column */}
+                    <td className="w-32 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
+                        <div className="text-gray-500">{timeSlot.end_time}</div>
                       </div>
-                    )
-                  })()}
-                </div>
-              </div>
-            ))}
-          </div>
+                    </td>
+                    
+                    {/* Check if this is a global block (all halls have the same session) */}
+                    {(() => {
+                      const sessionsInTimeSlot = filteredSessions.filter(s => 
+                        s.start_time === timeSlot.start_time && s.end_time === timeSlot.end_time
+                      )
+                      
+                      // Check if all halls have the same session (global block)
+                      const uniqueSessions = [...new Set(sessionsInTimeSlot.map(s => s.title))]
+                      
+                      if (uniqueSessions.length === 1 && sessionsInTimeSlot.length === getHallsForSelectedDay().length) {
+                        // This is a global block
+                        return (
+                          <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-4 text-center">
+                            <div className="text-sm font-medium text-orange-800">
+                              🔶 {uniqueSessions[0]}
+                            </div>
+                          </td>
+                        )
+                      } else {
+                        // Regular sessions - show each hall separately
+                        return getHallsForSelectedDay().map((hall) => {
+                          const session = sessionsInTimeSlot.find(s => s.stage_name === hall.name)
+                          
+                          return (
+                            <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
+                              {session ? (
+                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                                  {/* Uniform Session Block Structure */}
+                                  <div className="text-center space-y-2">
+                                    {/* TYPE */}
+                                    <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
+                                      {getSessionTypeLabel(session.session_type)}
+                                    </div>
+                                    
+                                    {/* TITLE */}
+                                    <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
+                                      {session.title}
+                                    </div>
+                                    
+                                    {/* SPEAKERS */}
+                                    {session.speakers && session.speakers.length > 0 && (
+                                      <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                        {session.speakers.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {/* MODERATORS */}
+                                    {session.moderators && session.moderators.length > 0 && (
+                                      <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                        {session.moderators.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {/* CHAIRPERSONS */}
+                                    {session.chairpersons && session.chairpersons.length > 0 && (
+                                      <div className="text-xs text-gray-600 pb-1">
+                                        {session.chairpersons.join(', ')}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-center py-8">
+                                  <div className="text-gray-400 text-sm">No session</div>
+                                </div>
+                              )}
+                            </td>
+                          )
+                        })
+                      }
+                    })()}
+                  </tr>
+                ))
+              })()}
+            </tbody>
+          </table>
         </div>
 
         {/* Print Button */}

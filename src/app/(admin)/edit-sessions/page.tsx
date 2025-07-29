@@ -56,6 +56,14 @@ export default function EditSessionsPage() {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<{ type: 'day' | 'hall', item: any } | null>(null)
 
+  // Global block state
+  const [showGlobalBlockModal, setShowGlobalBlockModal] = useState(false)
+  const [selectedTimeSlotForGlobalBlock, setSelectedTimeSlotForGlobalBlock] = useState<DayTimeSlot | null>(null)
+  const [globalBlockType, setGlobalBlockType] = useState('tea_break')
+  const [globalBlockDescription, setGlobalBlockDescription] = useState('')
+  const [globalBlockStartTime, setGlobalBlockStartTime] = useState('')
+  const [globalBlockEndTime, setGlobalBlockEndTime] = useState('')
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Session[]>([])
@@ -753,6 +761,52 @@ export default function EditSessionsPage() {
     setEditingHallName('')
   }
 
+  const handleAddGlobalBlock = (timeSlot: DayTimeSlot) => {
+    setSelectedTimeSlotForGlobalBlock(timeSlot)
+    setGlobalBlockStartTime(timeSlot.start_time)
+    setGlobalBlockEndTime(timeSlot.end_time)
+    setGlobalBlockType('tea_break')
+    setGlobalBlockDescription('')
+    setShowGlobalBlockModal(true)
+  }
+
+  const handleSubmitGlobalBlock = async () => {
+    if (!selectedTimeSlotForGlobalBlock) return
+
+    try {
+      // Update the time slot to be a global block
+      const { error } = await supabase
+        .from('day_time_slots')
+        .update({
+          is_break: true,
+          break_title: globalBlockType === 'custom' ? globalBlockDescription : globalBlockType
+        })
+        .eq('id', selectedTimeSlotForGlobalBlock.id)
+
+      if (error) {
+        console.error('❌ Error creating global block:', error)
+        alert('Error creating global block. Please try again.')
+        return
+      }
+
+      setShowGlobalBlockModal(false)
+      setSelectedTimeSlotForGlobalBlock(null)
+      await loadTimeSlots()
+      console.log('✅ Global block created successfully')
+      
+    } catch (error) {
+      console.error('❌ Error creating global block:', error)
+      alert('Error creating global block. Please try again.')
+    }
+  }
+
+  const handleCancelGlobalBlock = () => {
+    setShowGlobalBlockModal(false)
+    setSelectedTimeSlotForGlobalBlock(null)
+    setGlobalBlockType('tea_break')
+    setGlobalBlockDescription('')
+  }
+
   const handleDeleteConfirmation = (type: 'day' | 'hall', item: any) => {
     setItemToDelete({ type, item })
     setShowDeleteConfirmation(true)
@@ -1127,246 +1181,249 @@ export default function EditSessionsPage() {
         </div>
       </div>
 
-      {/* Scrollable Grid Layout */}
+      {/* Timeline Table Layout */}
       {getHallsForSelectedDay().length > 0 ? (
         <div className="h-[calc(100vh-200px)] overflow-auto">
-        <div className="min-w-max">
-          {/* Header Row - Hall Names */}
+          <div className="min-w-max">
+            {/* Table Header */}
             <div className="bg-white border-b sticky top-0 z-40">
-            <div className="flex">
-                {/* Time Column Header - Sticky */}
-                <div className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50">
-                🕘 Time
-              </div>
-              
-              {/* Hall Column Headers */}
-              {getHallsForSelectedDay().map((hall) => (
-                <div key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 group">
-                  <div className="flex items-center justify-between">
-                    {editingHall?.id === hall.id ? (
-                      <div className="flex items-center space-x-2 flex-1">
-                        <input
-                          type="text"
-                          value={editingHallName}
-                          onChange={(e) => setEditingHallName(e.target.value)}
-                          className="flex-1 text-sm border rounded px-2 py-1 bg-white"
-                          placeholder="Hall name"
-                        />
-                        <button
-                          onClick={handleSaveHallName}
-                          className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                          title="Save hall name"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={handleCancelEditHall}
-                          className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
-                          title="Cancel editing"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-2 flex-1">
-                        <span>🏛️ {hall.name}</span>
-                        <button
-                          onClick={() => handleEditHall(hall)}
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                          title="Edit hall name"
-                        >
-                          ✏️
-                        </button>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => handleDeleteConfirmation('hall', hall)}
-                      className="text-red-500 hover:text-red-700 text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Remove Hall from Day"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Time Slot Rows */}
-          {timeSlots.map((timeSlot, index) => (
-            <div key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-              <div className="flex">
-                {/* Time Column - Sticky */}
-                <div className="w-32 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
-                  {editingTimeSlot?.id === timeSlot.id ? (
-                    <div className="space-y-2">
-                      <input
-                        type="time"
-                        value={timeSlot.start_time}
-                        onChange={(e) => {
-                          const newTimeSlots = [...timeSlots]
-                          const newStartTime = e.target.value
-                          const newEndTime = calculateDefaultEndTime(newStartTime)
-                          
-                          newTimeSlots[index] = { 
-                            ...timeSlot, 
-                            start_time: newStartTime,
-                            end_time: newEndTime
-                          }
-                          
-                          // Auto-update previous time slot's end time if it exists
-                          if (index > 0) {
-                            newTimeSlots[index - 1] = { 
-                              ...newTimeSlots[index - 1], 
-                              end_time: newStartTime 
-                            }
-                          }
-                          
-                          setTimeSlots(newTimeSlots)
-                        }}
-                        className="w-full text-sm border rounded px-2 py-1"
-                      />
-                      <input
-                        type="time"
-                        value={timeSlot.end_time}
-                        onChange={(e) => {
-                          const newTimeSlots = [...timeSlots]
-                          newTimeSlots[index] = { ...timeSlot, end_time: e.target.value }
-                          
-                          // Auto-update next time slot's start time if it exists
-                          if (index < timeSlots.length - 1) {
-                            newTimeSlots[index + 1] = { 
-                              ...newTimeSlots[index + 1], 
-                              start_time: e.target.value 
-                            }
-                          }
-                          
-                          setTimeSlots(newTimeSlots)
-                        }}
-                        className="w-full text-sm border rounded px-2 py-1"
-                      />
-                      <div className="flex space-x-1">
-                        <button
-                          onClick={() => handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, timeSlot.end_time)}
-                          className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingTimeSlot(null)}
-                          className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-sm">
-                      <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
-                      <div className="text-gray-500">{timeSlot.end_time}</div>
-                      <div className="flex space-x-1 mt-2">
-                      <button
-                        onClick={() => handleEditTimeSlot(timeSlot)}
-                          className="text-xs text-indigo-600 hover:text-indigo-800"
-                      >
-                        Edit
-                      </button>
-                        {index < timeSlots.length - 1 && (
-                          <button
-                            onClick={() => {
-                              const newTimeSlots = [...timeSlots]
-                              const nextSlot = newTimeSlots[index + 1]
-                              newTimeSlots[index] = { ...timeSlot, end_time: nextSlot.start_time }
-                              setTimeSlots(newTimeSlots)
-                              handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, nextSlot.start_time)
-                            }}
-                            className="text-xs text-green-600 hover:text-green-800"
-                            title="Quick adjust to next slot start time"
-                          >
-                            Quick
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Hall Columns */}
-                {getHallsForSelectedDay().map((hall) => {
-                  const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
-                  
-                  return (
-                    <div key={hall.id} className="w-80 border-r border-gray-200 p-4">
-                      {session ? (
-                        <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
-                          {/* Uniform Session Block Structure */}
-                          <div className="text-center space-y-2">
-                            {/* TYPE */}
-                            <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
-                              {getSessionTypeLabel(session.session_type)}
-                            </div>
-                            
-                            {/* TITLE */}
-                            <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
-                              {session.title}
-                            </div>
-                            
-                            {/* SPEAKERS */}
-                            {session.speakers && session.speakers.length > 0 && (
-                              <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
-                                {session.speakers.join(', ')}
-                              </div>
-                            )}
-                            
-                            {/* MODERATORS */}
-                            {session.moderators && session.moderators.length > 0 && (
-                              <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
-                                {session.moderators.join(', ')}
-                              </div>
-                            )}
-                            
-                            {/* CHAIRPERSONS */}
-                            {session.chairpersons && session.chairpersons.length > 0 && (
-                              <div className="text-xs text-gray-600 pb-1">
-                                {session.chairpersons.join(', ')}
-                              </div>
-                            )}
-                            
-                            {/* Action Buttons */}
-                            <div className="flex space-x-1 pt-2">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    {/* Time Column Header */}
+                    <th className="w-32 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 sticky left-0 z-50 text-left">
+                      🕘 Time
+                    </th>
+                    
+                    {/* Hall Column Headers */}
+                    {getHallsForSelectedDay().map((hall) => (
+                      <th key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 text-left">
+                        <div className="flex items-center justify-between">
+                          {editingHall?.id === hall.id ? (
+                            <div className="flex items-center space-x-2 flex-1">
+                              <input
+                                type="text"
+                                value={editingHallName}
+                                onChange={(e) => setEditingHallName(e.target.value)}
+                                className="flex-1 text-sm border rounded px-2 py-1 bg-white"
+                                placeholder="Hall name"
+                              />
                               <button
-                                onClick={() => handleEditSession(session)}
-                                className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
+                                onClick={handleSaveHallName}
+                                className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                title="Save hall name"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={handleCancelEditHall}
+                                className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                                title="Cancel editing"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2 flex-1">
+                              <span>🏛️ {hall.name}</span>
+                              <button
+                                onClick={() => handleEditHall(hall)}
+                                className="text-xs text-blue-600 hover:text-blue-800"
+                                title="Edit hall name"
+                              >
+                                ✏️
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => handleDeleteConfirmation('hall', hall)}
+                            className="text-red-500 hover:text-red-700 text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove Hall from Day"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {timeSlots.map((timeSlot, index) => (
+                    <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
+                      {/* Time Column - Sticky */}
+                      <td className="w-32 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
+                        {editingTimeSlot?.id === timeSlot.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="time"
+                              value={timeSlot.start_time}
+                              onChange={(e) => {
+                                const newTimeSlots = [...timeSlots]
+                                const newStartTime = e.target.value
+                                const newEndTime = calculateDefaultEndTime(newStartTime)
+                                
+                                newTimeSlots[index] = { 
+                                  ...timeSlot, 
+                                  start_time: newStartTime,
+                                  end_time: newEndTime
+                                }
+                                
+                                // Auto-update previous time slot's end time if it exists
+                                if (index > 0) {
+                                  newTimeSlots[index - 1] = { 
+                                    ...newTimeSlots[index - 1], 
+                                    end_time: newStartTime 
+                                  }
+                                }
+                                
+                                setTimeSlots(newTimeSlots)
+                              }}
+                              className="w-full text-sm border rounded px-2 py-1"
+                            />
+                            <input
+                              type="time"
+                              value={timeSlot.end_time}
+                              onChange={(e) => {
+                                const newTimeSlots = [...timeSlots]
+                                newTimeSlots[index] = { ...timeSlot, end_time: e.target.value }
+                                
+                                // Auto-update next time slot's start time if it exists
+                                if (index < timeSlots.length - 1) {
+                                  newTimeSlots[index + 1] = { 
+                                    ...newTimeSlots[index + 1], 
+                                    start_time: e.target.value 
+                                  }
+                                }
+                                
+                                setTimeSlots(newTimeSlots)
+                              }}
+                              className="w-full text-sm border rounded px-2 py-1"
+                            />
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, timeSlot.end_time)}
+                                className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditingTimeSlot(null)}
+                                className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
+                            <div className="text-gray-500">{timeSlot.end_time}</div>
+                            <div className="flex space-x-1 mt-2">
+                              <button
+                                onClick={() => handleEditTimeSlot(timeSlot)}
+                                className="text-xs text-indigo-600 hover:text-indigo-800"
                               >
                                 Edit
                               </button>
                               <button
-                                onClick={() => handleDeleteSession(session.id)}
-                                className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                                onClick={() => handleAddGlobalBlock(timeSlot)}
+                                className="text-xs text-orange-600 hover:text-orange-800"
+                                title="Add Global Block"
                               >
-                                Delete
+                                Global Block
                               </button>
                             </div>
                           </div>
-                        </div>
+                        )}
+                      </td>
+                      
+                      {/* Check if this is a global block (break) */}
+                      {timeSlot.is_break ? (
+                        <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-4 text-center">
+                          <div className="text-sm font-medium text-orange-800">
+                            🔶 {timeSlot.break_title || 'Global Block'}
+                          </div>
+                        </td>
                       ) : (
-                        <div className="h-full flex items-center justify-center">
-                          <button
-                            onClick={() => handleAddSession(hall.id, timeSlot.id)}
-                            className="text-gray-400 hover:text-gray-600 text-sm border-2 border-dashed border-gray-300 rounded-lg p-6 w-full h-24 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
-                          >
-                            + Add Session
-                          </button>
-                        </div>
+                        /* Hall Columns */
+                        getHallsForSelectedDay().map((hall) => {
+                          const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
+                          
+                          return (
+                            <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
+                              {session ? (
+                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                                  {/* Uniform Session Block Structure */}
+                                  <div className="text-center space-y-2">
+                                    {/* TYPE */}
+                                    <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
+                                      {getSessionTypeLabel(session.session_type)}
+                                    </div>
+                                    
+                                    {/* TITLE */}
+                                    <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
+                                      {session.title}
+                                    </div>
+                                    
+                                    {/* SPEAKERS */}
+                                    {session.speakers && session.speakers.length > 0 && (
+                                      <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                        {session.speakers.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {/* MODERATORS */}
+                                    {session.moderators && session.moderators.length > 0 && (
+                                      <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                        {session.moderators.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {/* CHAIRPERSONS */}
+                                    {session.chairpersons && session.chairpersons.length > 0 && (
+                                      <div className="text-xs text-gray-600 pb-1">
+                                        {session.chairpersons.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Action Buttons */}
+                                    <div className="flex space-x-1 pt-2">
+                                      <button
+                                        onClick={() => handleEditSession(session)}
+                                        className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteSession(session.id)}
+                                        className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="h-full flex items-center justify-center">
+                                  <button
+                                    onClick={() => handleAddSession(hall.id, timeSlot.id)}
+                                    className="text-gray-400 hover:text-gray-600 text-sm border-2 border-dashed border-gray-300 rounded-lg p-6 w-full h-24 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
+                                  >
+                                    + Add Session
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          )
+                        })
                       )}
-                    </div>
-                  )
-                })}
-                    </div>
-                  </div>
-          ))}
-                </div>
-              </div>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
@@ -1603,6 +1660,102 @@ export default function EditSessionsPage() {
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
             >
               Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Block Modal */}
+      {showGlobalBlockModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-medium text-gray-900">Add Global Block (All Halls)</h3>
+              <button
+                onClick={handleCancelGlobalBlock}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {/* Block Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Block Type
+                </label>
+                <select
+                  value={globalBlockType}
+                  onChange={(e) => setGlobalBlockType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="registration">Registration</option>
+                  <option value="tea_break">Tea Break</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="inauguration">Inauguration</option>
+                  <option value="valedictory">Valedictory</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+
+              {/* Time Range */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start Time
+                  </label>
+                  <input
+                    type="time"
+                    value={globalBlockStartTime}
+                    onChange={(e) => setGlobalBlockStartTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End Time
+                  </label>
+                  <input
+                    type="time"
+                    value={globalBlockEndTime}
+                    onChange={(e) => setGlobalBlockEndTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Optional Description */}
+              {globalBlockType === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <input
+                    type="text"
+                    value={globalBlockDescription}
+                    onChange={(e) => setGlobalBlockDescription(e.target.value)}
+                    placeholder="Enter custom block name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={handleSubmitGlobalBlock}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  ADD
+                </button>
+                <button
+                  onClick={handleCancelGlobalBlock}
+                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+                >
+                  CANCEL
                 </button>
               </div>
             </div>
