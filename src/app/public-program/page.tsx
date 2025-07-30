@@ -22,6 +22,8 @@ interface Session {
   speakers?: string[]
   moderators?: string[]
   chairpersons?: string[]
+  time_slot_id?: string // Added for session-time-slot relationship
+  stage_id?: string // Added for session-hall relationship
 }
 
 interface Hall {
@@ -36,10 +38,22 @@ interface Day {
   date: string
 }
 
+interface DayTimeSlot {
+  id: string
+  day_id: string
+  start_time: string
+  end_time: string
+  slot_order: number
+  is_break: boolean
+  break_title?: string
+  created_at?: string
+}
+
 export default function PublicProgramPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [halls, setHalls] = useState<Hall[]>([])
   const [days, setDays] = useState<Day[]>([])
+  const [timeSlots, setTimeSlots] = useState<DayTimeSlot[]>([])
   const [selectedDay, setSelectedDay] = useState('Day 1')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -102,7 +116,9 @@ export default function PublicProgramPage() {
           parallel_meal_type: session.parallel_meal_type,
           speakers,
           moderators,
-          chairpersons
+          chairpersons,
+          time_slot_id: session.time_slot_id, // Use the actual time_slot_id from the session
+          stage_id: session.stage_id // Use the actual stage_id from the session
         }
       })
 
@@ -112,6 +128,33 @@ export default function PublicProgramPage() {
       console.error('Error loading sessions:', error)
       setError('Failed to load sessions. Please refresh the page.')
       setSessions([])
+    }
+  }
+
+  // Load time slots for selected day
+  const loadTimeSlots = async () => {
+    if (!selectedDay) return
+
+    try {
+      const selectedDayData = days.find(d => d.name === selectedDay)
+      if (!selectedDayData) return
+
+      const { data, error } = await supabase
+        .from('day_time_slots')
+        .select('*')
+        .eq('day_id', selectedDayData.id)
+        .order('slot_order', { ascending: true })
+
+      if (error) {
+        console.error('Error loading time slots:', error)
+        setTimeSlots([])
+        return
+      }
+
+      setTimeSlots(data || [])
+    } catch (error) {
+      console.error('Error loading time slots:', error)
+      setTimeSlots([])
     }
   }
 
@@ -238,8 +281,8 @@ export default function PublicProgramPage() {
       onTimeSlotChange: (payload) => {
         console.log('Public: Time slot change detected:', payload)
         setLastUpdate(new Date())
-        // Reload sessions to get updated time slots
-        loadSessions()
+        // Reload time slots to get updated time slots
+        loadTimeSlots()
       },
       onDayHallChange: (payload) => {
         console.log('Public: Day Hall change detected:', payload)
@@ -257,6 +300,11 @@ export default function PublicProgramPage() {
       realtimeService.unsubscribeFromAll()
     }
   }, [])
+
+  // Load time slots when selected day changes
+  useEffect(() => {
+    loadTimeSlots()
+  }, [selectedDay, days])
 
   const getSessionTypeLabel = (type: string) => {
     return SESSION_TYPES[type]?.name || type
@@ -315,6 +363,15 @@ export default function PublicProgramPage() {
       session.chairpersons?.some(chairperson => chairperson.toLowerCase().includes(searchLower))
     )
   })
+
+  // Get sessions for a specific time slot and hall
+  const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
+    return sessions.find(session => 
+      session.time_slot_id === timeSlotId && 
+      session.stage_id === hallId &&
+      session.day_name === selectedDay
+    )
+  }
 
   if (loading) {
     return (
@@ -479,100 +536,78 @@ export default function PublicProgramPage() {
               </tr>
             </thead>
             <tbody>
-              {/* Group sessions by time slots */}
-              {(() => {
-                // Create time slots from sessions
-                const timeSlots = Array.from(new Set(filteredSessions.map(s => `${s.start_time}-${s.end_time}`)))
-                  .sort()
-                  .map(timeRange => {
-                    const [start, end] = timeRange.split('-')
-                    return { start_time: start, end_time: end }
-                  })
+              {/* Use actual time slots from database */}
+              {timeSlots.map((timeSlot, index) => (
+                <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
+                  {/* Time Column */}
+                  <td className="w-32 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
+                    <div className="text-sm">
+                      <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
+                      <div className="text-gray-500">{timeSlot.end_time}</div>
+                    </div>
+                  </td>
 
-                return timeSlots.map((timeSlot, index) => (
-                  <tr key={index} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                    {/* Time Column */}
-                    <td className="w-32 bg-gray-50 border-r border-gray-200 p-4 sticky left-0 z-30">
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900">{timeSlot.start_time}</div>
-                        <div className="text-gray-500">{timeSlot.end_time}</div>
-                </div>
-                    </td>
-
-                    {/* Check if this is a global block (all halls have the same session) */}
-                  {(() => {
-                      const sessionsInTimeSlot = filteredSessions.filter(s => 
-                        s.start_time === timeSlot.start_time && s.end_time === timeSlot.end_time
-                      )
-                      
-                                             // Check if all halls have the same session (global block)
-                       const uniqueSessions = Array.from(new Set(sessionsInTimeSlot.map(s => s.title)))
-                      
-                      if (uniqueSessions.length === 1 && sessionsInTimeSlot.length === getHallsForSelectedDay().length) {
-                        // This is a global block
-                      return (
-                          <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-4 text-center">
-                            <div className="text-sm font-medium text-orange-800">
-                              🔶 {uniqueSessions[0]}
-                        </div>
-                          </td>
-                      )
-                      } else {
-                        // Regular sessions - show each hall separately
-                        return getHallsForSelectedDay().map((hall) => {
-                          const session = sessionsInTimeSlot.find(s => s.stage_name === hall.name)
-
-                    return (
-                            <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
-                              {session ? (
-                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-                                  {/* Uniform Session Block Structure */}
-                                  <div className="text-center space-y-2">
-                                    {/* TYPE */}
-                                    <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
-                                      {getSessionTypeLabel(session.session_type)}
-                            </div>
-                            
-                                    {/* TITLE */}
-                                    <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
-                                      {session.title}
-                            </div>
-                            
-                                    {/* SPEAKERS */}
-                                    {session.speakers && session.speakers.length > 0 && (
-                                      <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
-                                        {session.speakers.join(', ')}
-                                      </div>
-                                    )}
-                                    
-                                    {/* MODERATORS */}
-                                    {session.moderators && session.moderators.length > 0 && (
-                                      <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
-                                        {session.moderators.join(', ')}
-                            </div>
-                                    )}
-                                    
-                                    {/* CHAIRPERSONS */}
-                                    {session.chairpersons && session.chairpersons.length > 0 && (
-                                      <div className="text-xs text-gray-600 pb-1">
-                                        {session.chairpersons.join(', ')}
-                                      </div>
-                              )}
-                            </div>
-                          </div>
-                              ) : (
-                                <div className="text-center py-8">
-                                  <div className="text-gray-400 text-sm">No session</div>
+                  {/* Check if this is a global block (break) */}
+                  {timeSlot.is_break ? (
+                    <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-4 text-center">
+                      <div className="text-sm font-medium text-orange-800">
+                        🔶 {timeSlot.break_title || 'Global Block'}
                       </div>
-                              )}
-                            </td>
-                    )
-                        })
-                      }
-                    })()}
-                  </tr>
-                ))
-                  })()}
+                    </td>
+                  ) : (
+                    /* Hall Columns */
+                    getHallsForSelectedDay().map((hall) => {
+                      const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
+                      
+                      return (
+                        <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
+                          {session ? (
+                            <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                              {/* Uniform Session Block Structure */}
+                              <div className="text-center space-y-2">
+                                {/* TYPE */}
+                                <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
+                                  {getSessionTypeLabel(session.session_type)}
+                                </div>
+                                
+                                {/* TITLE */}
+                                <div className="text-sm font-semibold text-gray-900 border-b border-gray-100 pb-1">
+                                  {session.title}
+                                </div>
+                                
+                                {/* SPEAKERS */}
+                                {session.speakers && session.speakers.length > 0 && (
+                                  <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                    {session.speakers.join(', ')}
+                                  </div>
+                                )}
+                                
+                                {/* MODERATORS */}
+                                {session.moderators && session.moderators.length > 0 && (
+                                  <div className="text-xs text-gray-600 border-b border-gray-100 pb-1">
+                                    {session.moderators.join(', ')}
+                                  </div>
+                                )}
+                                
+                                {/* CHAIRPERSONS */}
+                                {session.chairpersons && session.chairpersons.length > 0 && (
+                                  <div className="text-xs text-gray-600 pb-1">
+                                    {session.chairpersons.join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <div className="text-gray-400 text-sm">No session</div>
+                            </div>
+                          )}
+                        </td>
+                      )
+                    })
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
