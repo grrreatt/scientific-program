@@ -11,25 +11,37 @@ interface Session {
   id: string
   title: string
   session_type: string
-  day_name: string
-  stage_name: string
-  start_time: string
-  end_time: string
+  day_id: string
+  stage_id: string
+  time_slot_id: string
   topic?: string
   description?: string
   is_parallel_meal?: boolean
   parallel_meal_type?: string
+  data?: any
+  created_at?: string
+  updated_at?: string
+  // Joined fields from view
+  start_time?: string
+  end_time?: string
+  day_name?: string
+  stage_name?: string
+  // Participant fields
   speakers?: string[]
   moderators?: string[]
   chairpersons?: string[]
-  time_slot_id?: string // Added for session-time-slot relationship
-  stage_id?: string // Added for session-hall relationship
+  // Break fields
+  is_break?: boolean
+  break_title?: string
+  // Optimistic update flag
+  optimistic?: boolean
 }
 
 interface Hall {
   id: string
   name: string
-  color: string
+  capacity?: number
+  created_at?: string
 }
 
 interface Day {
@@ -63,11 +75,11 @@ export default function PublicProgramPage() {
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Load sessions from Supabase using the sessions_with_times view
+  // Load sessions from Supabase - EXACTLY same as edit sessions page
   const loadSessions = async () => {
     try {
-      // Load sessions with participants
-      const { data, error } = await supabase
+      // Load sessions with participants - EXACTLY same query as edit sessions page
+      const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
         .select(`
           *,
@@ -80,17 +92,17 @@ export default function PublicProgramPage() {
             speakers(id, name, title, organization)
           )
         `)
-        .order('start_time', { ascending: true })
+        .order('created_at', { ascending: true })
 
-      if (error) {
-        console.error('Error loading sessions:', error)
-          setSessions([])
-          return
-        }
+      if (sessionsError) {
+        console.error('Error loading sessions:', sessionsError)
+        setSessions([])
+        return
+      }
 
-      // Transform sessions with participant information
-      const transformedSessions: Session[] = (data || []).map((session: any) => {
-        // Extract participants by role
+      // Transform sessions with participant information - EXACTLY same logic as edit sessions page
+      const transformedSessions: Session[] = (sessionsData || []).map((session: any) => {
+        // Extract participants by role - EXACTLY same logic as edit sessions page
         const participants = session.session_participants || []
         const speakers = participants
           .filter((p: any) => ['speaker', 'orator', 'presenter', 'workshop_lead'].includes(p.role))
@@ -102,23 +114,18 @@ export default function PublicProgramPage() {
           .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
           .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
 
+        // EXACTLY same transformation as edit sessions page
         return {
-          id: session.id,
-          title: session.title,
-          session_type: session.session_type,
-          day_name: session.conference_days?.name || 'Day 1',
-          stage_name: session.stages?.name || 'Main Hall',
-          start_time: session.day_time_slots?.start_time || session.start_time,
-          end_time: session.day_time_slots?.end_time || session.end_time,
-          topic: session.topic,
-          description: session.description,
-          is_parallel_meal: session.is_parallel_meal,
-          parallel_meal_type: session.parallel_meal_type,
+          ...session,
+          day_name: session.conference_days?.name || 'Unknown Day',
+          stage_name: session.stages?.name || 'Unknown Hall',
+          start_time: session.day_time_slots?.start_time || session.start_time || '',
+          end_time: session.day_time_slots?.end_time || session.end_time || '',
+          is_break: session.day_time_slots?.is_break || false,
+          break_title: session.day_time_slots?.break_title,
           speakers,
           moderators,
-          chairpersons,
-          time_slot_id: session.time_slot_id, // Use the actual time_slot_id from the session
-          stage_id: session.stage_id // Use the actual stage_id from the session
+          chairpersons
         }
       })
 
@@ -131,7 +138,7 @@ export default function PublicProgramPage() {
     }
   }
 
-  // Load time slots for selected day
+  // Load time slots for selected day - EXACTLY same as edit sessions page
   const loadTimeSlots = async () => {
     if (!selectedDay) return
 
@@ -147,24 +154,84 @@ export default function PublicProgramPage() {
 
       if (error) {
         console.error('Error loading time slots:', error)
-        setTimeSlots([])
+        // Try to create default time slots
+        await createDefaultTimeSlots(selectedDayData.id)
         return
       }
 
-      setTimeSlots(data || [])
+      if (data && data.length > 0) {
+        setTimeSlots(data)
+      } else {
+        // Create default time slots if none exist
+        await createDefaultTimeSlots(selectedDayData.id)
+      }
     } catch (error) {
       console.error('Error loading time slots:', error)
-      setTimeSlots([])
+      // Try to create default time slots
+      const selectedDayData = days.find(d => d.name === selectedDay)
+      if (selectedDayData) {
+        await createDefaultTimeSlots(selectedDayData.id)
+      }
     }
   }
 
-  // Load all halls and day-hall relationships from Supabase
+  // Create default time slots for a day - EXACTLY same as edit sessions page
+  const createDefaultTimeSlots = async (dayId: string) => {
+    try {
+      console.log('Creating default time slots for day:', dayId)
+      
+      const slots = []
+      let currentTime = new Date()
+      currentTime.setHours(8, 0, 0, 0) // Start at 8:00 AM
+      
+      const endTime = new Date()
+      endTime.setHours(20, 30, 0, 0) // End at 8:30 PM
+      
+      let slotOrder = 1
+      
+      while (currentTime <= endTime) {
+        const startTime = currentTime.toTimeString().slice(0, 5)
+        
+        // Add 30 minutes
+        currentTime.setMinutes(currentTime.getMinutes() + 30)
+        const endTimeStr = currentTime.toTimeString().slice(0, 5)
+        
+        slots.push({
+          day_id: dayId,
+          slot_order: slotOrder,
+          start_time: startTime,
+          end_time: endTimeStr,
+          is_break: false,
+          break_title: null
+        })
+        
+        slotOrder++
+      }
+
+      const { data, error } = await supabase
+        .from('day_time_slots')
+        .insert(slots)
+        .select()
+
+      if (error) {
+        console.error('Error creating default time slots:', error)
+        return
+      }
+
+      console.log('Default time slots created successfully:', data?.length || 0, 'slots')
+      setTimeSlots(data || [])
+    } catch (error) {
+      console.error('Exception creating default time slots:', error)
+    }
+  }
+
+  // Load all halls and day-hall relationships from Supabase - EXACTLY same as edit sessions page
   const [allHalls, setAllHalls] = useState<Hall[]>([])
   const [dayHalls, setDayHalls] = useState<any[]>([])
 
   const loadHalls = async () => {
     try {
-      // Load all halls
+      // Load halls - EXACTLY same as edit sessions page
       const { data: hallsData, error: hallsError } = await supabase
         .from('stages')
         .select('*')
@@ -176,7 +243,9 @@ export default function PublicProgramPage() {
         return
       }
 
-      // Load day-hall relationships
+      setAllHalls(hallsData || [])
+
+      // Load day-specific halls - EXACTLY same as edit sessions page
       const { data: dayHallsData, error: dayHallsError } = await supabase
         .from('halls_with_days')
         .select('*')
@@ -189,14 +258,6 @@ export default function PublicProgramPage() {
         return
       }
 
-      // Transform halls data
-      const transformedHalls: Hall[] = (hallsData || []).map((stage: any) => ({
-        id: stage.id,
-        name: stage.name,
-        color: 'bg-gray-50 border-gray-200'
-      }))
-
-      setAllHalls(transformedHalls)
       setDayHalls(dayHallsData || [])
       setError(null)
     } catch (error) {
@@ -207,18 +268,18 @@ export default function PublicProgramPage() {
     }
   }
 
-  // Get halls for the selected day
+  // Get halls for selected day - EXACTLY same as edit sessions page
   const getHallsForSelectedDay = () => {
     const selectedDayData = days.find(day => day.name === selectedDay)
     if (!selectedDayData) return []
     
     return dayHalls
-      .filter(dayHall => dayHall.day_name === selectedDay)
+      .filter(dayHall => dayHall.day_id === selectedDayData.id)
       .sort((a, b) => a.hall_order - b.hall_order)
       .map(dayHall => ({
         id: dayHall.hall_id,
         name: dayHall.hall_name || 'Unknown Hall',
-        color: 'bg-gray-50 border-gray-200'
+        capacity: dayHall.hall_capacity
       }))
   }
 
@@ -364,7 +425,7 @@ export default function PublicProgramPage() {
     )
   })
 
-  // Get sessions for a specific time slot and hall
+  // Get sessions for a specific time slot and hall - EXACTLY same as edit sessions page
   const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
     return sessions.find(session => 
       session.time_slot_id === timeSlotId && 
