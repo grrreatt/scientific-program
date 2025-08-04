@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { SESSION_TYPES, MEAL_TYPES } from '@/lib/constants'
 import { TimePicker } from '@/components/ui/time-picker'
 
@@ -69,6 +69,23 @@ export function SessionForm({
   speakers = []
 }: SessionFormProps) {
   const [currentSessionType, setCurrentSessionType] = useState(sessionType)
+  const [showParticipantDropdown, setShowParticipantDropdown] = useState(false)
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.participant-dropdown')) {
+        setShowParticipantDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+  
   const [formData, setFormData] = useState<SessionFormData>({
     title: '',
     topic: '',
@@ -83,20 +100,19 @@ export function SessionForm({
     speaker_id: '',
     chairperson_id: '',
     moderator_id: '',
-    panelist_ids: [''],
-    workshop_lead_ids: [''],
-    assistant_ids: [''],
+    panelist_ids: [],
+    workshop_lead_ids: [],
+    assistant_ids: [],
     capacity: '',
     introducer_id: '',
-    presenter_ids: [''],
+    presenter_ids: [],
     discussion_leader_id: '',
     meal_type: '',
     speakers: [],
     moderators: [],
     chairpersons: [],
     symposium_subtalks: [],
-    custom_data: {},
-    ...initialData
+    custom_data: {}
   })
 
   const handleInputChange = (field: string, value: any) => {
@@ -575,6 +591,48 @@ export function SessionForm({
 
     return (
       <div className="space-y-6">
+        {/* Single Add More Button with Dropdown */}
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium text-gray-900">Participants</h4>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowParticipantDropdown(!showParticipantDropdown)}
+              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Add More
+              <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {/* Dropdown Menu */}
+            {showParticipantDropdown && (
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                <div className="py-1">
+                  {participantTypes.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        addParticipant(key)
+                        setShowParticipantDropdown(false)
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+                    >
+                      Add {label.slice(0, -1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Participant Sections */}
         {participantTypes.map(({ key, label, role }) => {
           const participants = formData[key] || [];
           
@@ -582,16 +640,6 @@ export function SessionForm({
             <div key={key} className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium text-gray-900">{label}</h4>
-                <button
-                  type="button"
-                  onClick={() => addParticipant(key)}
-                  className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Add {label.slice(0, -1)}
-                </button>
               </div>
               
               {participants.length === 0 ? (
