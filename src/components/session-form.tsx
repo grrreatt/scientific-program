@@ -634,6 +634,11 @@ export function SessionForm({
   const requiredFields = sessionConfig.fields.required
   const optionalFields = sessionConfig.fields.optional
 
+  const getSessionTypeLabel = (type: string) => {
+    const sessionTypeConfig = SESSION_TYPES[type];
+    return sessionTypeConfig ? sessionTypeConfig.name : type;
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Session Type Selection */}
@@ -754,6 +759,45 @@ export function SessionForm({
           {renderCustomDataFields()}
         </div>
       )}
+
+      {/* Session Block Preview */}
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">Session Block Preview:</h3>
+        <div className="bg-white border border-gray-200 rounded p-1 shadow-sm max-w-xs mx-auto">
+          <div className="text-center space-y-0.5">
+            {/* TYPE */}
+            <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-0.5">
+              {getSessionTypeLabel(sessionType)}
+            </div>
+            
+            {/* TITLE */}
+            <div className="text-xs font-semibold text-gray-900 border-b border-gray-100 pb-0.5">
+              {formData.title || 'Session Title'}
+            </div>
+            
+            {/* SPEAKERS */}
+            {formData.speakers && formData.speakers.length > 0 && (
+              <div className="text-xs text-gray-600 border-b border-gray-100 pb-0.5">
+                {formData.speakers.map((s: any) => s.role || 'Speaker').join(', ')}
+              </div>
+            )}
+            
+            {/* MODERATORS */}
+            {formData.moderators && formData.moderators.length > 0 && (
+              <div className="text-xs text-gray-600 border-b border-gray-100 pb-0.5">
+                {formData.moderators.map((m: any) => m.role || 'Moderator').join(', ')}
+              </div>
+            )}
+            
+            {/* CHAIRPERSONS */}
+            {formData.chairpersons && formData.chairpersons.length > 0 && (
+              <div className="text-xs text-gray-600 pb-0.5">
+                {formData.chairpersons.map((c: any) => c.role || 'Chairperson').join(', ')}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Form Actions */}
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
