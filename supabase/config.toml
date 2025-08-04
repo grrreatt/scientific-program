@@ -3,16 +3,16 @@
 project_id = "scientific-conference-scheduler"
 
 [api]
-# Port to use for the API URL.
-port = 54321
-# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API endpoints.
-# public and storage are always included.
 schemas = ["public", "storage", "graphql_public"]
 # Extra schemas to add to the search_path of every request. public is always included.
 extra_search_path = ["public", "extensions"]
 # The maximum number of rows returned from a table or view. Limits payload size for accidental or malicious requests.
 max_rows = 1000
 
+# Port to use for the API URL.
+port = 54321
+# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API endpoints.
+# public and storage are always included.
 [db]
 # Port to use for the local database URL.
 port = 54322

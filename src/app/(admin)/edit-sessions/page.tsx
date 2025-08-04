@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatTime, formatTimeRange } from '@/lib/utils'
+import { formatTime, formatTimeRange, supabaseUtils } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
 import { SessionForm } from '@/components/session-form'
@@ -138,20 +138,10 @@ export default function EditSessionsPage() {
 
       setDayHalls(dayHallsData || [])
 
-      // Load sessions with participants
+      // Load sessions with participants using consistent query
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
-        .select(`
-          *,
-          conference_days(name),
-          stages(name),
-          day_time_slots(start_time, end_time, is_break, break_title),
-          session_participants(
-            id,
-            role,
-            speakers(id, name, title, organization)
-          )
-        `)
+        .select(supabaseUtils.getSessionQuery())
         .order('created_at', { ascending: true })
 
       if (sessionsError) {
@@ -159,34 +149,8 @@ export default function EditSessionsPage() {
         // Don't fail completely, just set empty sessions
         setSessions([])
       } else {
-        // Transform the data to match the expected format
-        const transformedSessions = sessionsData?.map(session => {
-          // Extract participants by role
-          const participants = session.session_participants || []
-          const speakers = participants
-            .filter((p: any) => ['speaker', 'orator', 'presenter', 'workshop_lead'].includes(p.role))
-            .map((p: any) => p.speakers?.name || 'Unknown Speaker')
-          const moderators = participants
-            .filter((p: any) => ['moderator', 'discussion_leader'].includes(p.role))
-            .map((p: any) => p.speakers?.name || 'Unknown Moderator')
-          const chairpersons = participants
-            .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
-            .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
-
-          return {
-          ...session,
-          day_name: session.conference_days?.name || 'Unknown Day',
-          stage_name: session.stages?.name || 'Unknown Hall',
-          start_time: session.day_time_slots?.start_time || session.start_time || '',
-          end_time: session.day_time_slots?.end_time || session.end_time || '',
-          is_break: session.day_time_slots?.is_break || false,
-            break_title: session.day_time_slots?.break_title,
-            speakers,
-            moderators,
-            chairpersons
-          }
-        }) || []
-
+        // Transform the data using consistent utility function
+        const transformedSessions = sessionsData?.map(supabaseUtils.transformSession) || []
         setSessions(transformedSessions)
       }
       console.log('✅ All data loaded successfully')
@@ -439,22 +403,94 @@ export default function EditSessionsPage() {
         parallel_meal_type: formData.parallel_meal_type
       }
 
+      let sessionId: string
       let response
       if (editingSession) {
         response = await supabase
           .from('sessions')
           .update(insertData)
           .eq('id', editingSession.id)
+        sessionId = editingSession.id
       } else {
         response = await supabase
           .from('sessions')
           .insert(insertData)
+          .select('id')
+          .single()
+        sessionId = response.data?.id
       }
 
       if (response.error) {
         console.error('❌ Error saving session:', response.error)
         alert(`Error saving session: ${response.error.message}`)
         return
+      }
+
+      // Handle dynamic participants
+      if (sessionId) {
+        // Delete existing participants for this session
+        await supabase
+          .from('session_participants')
+          .delete()
+          .eq('session_id', sessionId)
+
+        // Add new participants from dynamic arrays
+        const participantsToAdd: Array<{
+          session_id: string;
+          speaker_id: string;
+          role: string;
+        }> = []
+        
+        // Add speakers
+        if (formData.speakers && formData.speakers.length > 0) {
+          formData.speakers.forEach((speaker: any) => {
+            if (speaker.id) {
+              participantsToAdd.push({
+                session_id: sessionId,
+                speaker_id: speaker.id,
+                role: 'speaker'
+              })
+            }
+          })
+        }
+
+        // Add moderators
+        if (formData.moderators && formData.moderators.length > 0) {
+          formData.moderators.forEach((moderator: any) => {
+            if (moderator.id) {
+              participantsToAdd.push({
+                session_id: sessionId,
+                speaker_id: moderator.id,
+                role: 'moderator'
+              })
+            }
+          })
+        }
+
+        // Add chairpersons
+        if (formData.chairpersons && formData.chairpersons.length > 0) {
+          formData.chairpersons.forEach((chairperson: any) => {
+            if (chairperson.id) {
+              participantsToAdd.push({
+                session_id: sessionId,
+                speaker_id: chairperson.id,
+                role: 'chairperson'
+              })
+            }
+          })
+        }
+
+        // Insert all participants
+        if (participantsToAdd.length > 0) {
+          const { error: participantError } = await supabase
+            .from('session_participants')
+            .insert(participantsToAdd)
+
+          if (participantError) {
+            console.error('❌ Error saving participants:', participantError)
+            alert('Session saved but there was an error saving participants.')
+          }
+        }
       }
 
       handleCloseModal()
@@ -1393,11 +1429,11 @@ export default function EditSessionsPage() {
                   const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
                   
                   return (
-                            <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
+                            <td key={hall.id} className="min-w-60 max-w-80 border-r border-gray-200 p-2">
                       {session ? (
-                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow group">
+                                <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm hover:shadow-md transition-shadow group">
                                   {/* Uniform Session Block Structure */}
-                                  <div className="text-center space-y-2">
+                                  <div className="text-center space-y-1">
                                     {/* TYPE */}
                                     <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
                                       {getSessionTypeLabel(session.session_type)}

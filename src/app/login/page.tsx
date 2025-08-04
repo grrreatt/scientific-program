@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -17,16 +18,25 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // For demo purposes, use hardcoded credentials
-      if (email === 'admin@conference.com' && password === 'admin123') {
-        // In a real app, you'd use Supabase auth here
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+
+      if (authError) {
+        setError(authError.message)
+        return
+      }
+
+      if (data.user) {
+        // Store user session in localStorage for client-side auth check
         localStorage.setItem('isAuthenticated', 'true')
+        localStorage.setItem('user', JSON.stringify(data.user))
         router.push('/dashboard')
-      } else {
-        setError('Invalid credentials. Use admin@conference.com / admin123')
       }
     } catch (err) {
-      setError('An error occurred during login')
+      console.error('Login error:', err)
+      setError('An error occurred during login. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -95,7 +105,7 @@ export default function LoginPage() {
 
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              Demo credentials: admin@conference.com / admin123
+              Use your Supabase account credentials
             </p>
           </div>
         </form>

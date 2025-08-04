@@ -6,39 +6,111 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatTime(time: string): string {
-  const [hours, minutes] = time.split(':').map(Number)
-  const period = hours >= 12 ? 'pm' : 'am'
-  const displayHours = hours % 12 || 12
-  const displayMinutes = minutes.toString().padStart(2, '0')
-  return `${displayHours}:${displayMinutes}${period}`
+  if (!time) return ''
+  
+  // Handle both "HH:MM" and "HH:MM:SS" formats
+  const timeStr = time.split(':').slice(0, 2).join(':')
+  
+  try {
+    const [hours, minutes] = timeStr.split(':').map(Number)
+    const date = new Date()
+    date.setHours(hours, minutes, 0)
+    
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  } catch (error) {
+    console.error('Error formatting time:', error)
+    return timeStr
+  }
 }
 
 export function formatTimeRange(startTime: string, endTime: string): string {
-  return `${formatTime(startTime)}–${formatTime(endTime)}`
+  const formattedStart = formatTime(startTime)
+  const formattedEnd = formatTime(endTime)
+  
+  if (!formattedStart || !formattedEnd) return ''
+  
+  return `${formattedStart} - ${formattedEnd}`
 }
 
 export function calculateDuration(startTime: string, endTime: string): string {
-  const [startHours, startMinutes] = startTime.split(':').map(Number)
-  const [endHours, endMinutes] = endTime.split(':').map(Number)
+  if (!startTime || !endTime) return ''
   
-  let startTotal = startHours * 60 + startMinutes
-  let endTotal = endHours * 60 + endMinutes
-  
-  if (endTotal < startTotal) {
-    endTotal += 24 * 60 // Add 24 hours if end time is next day
+  try {
+    const start = new Date(`2000-01-01T${startTime}`)
+    const end = new Date(`2000-01-01T${endTime}`)
+    const diffMs = end.getTime() - start.getTime()
+    const diffMinutes = Math.round(diffMs / (1000 * 60))
+    
+    if (diffMinutes < 60) {
+      return `${diffMinutes} min`
+    } else {
+      const hours = Math.floor(diffMinutes / 60)
+      const minutes = diffMinutes % 60
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+    }
+  } catch (error) {
+    console.error('Error calculating duration:', error)
+    return ''
   }
-  
-  const durationMinutes = endTotal - startTotal
-  const hours = Math.floor(durationMinutes / 60)
-  const minutes = durationMinutes % 60
-  
-  if (hours === 0) {
-    return `${minutes}m`
-  } else if (minutes === 0) {
-    return `${hours}h`
-  } else {
-    return `${hours}h ${minutes}m`
-  }
+}
+
+// Supabase data loading utilities for consistent data fetching
+export const supabaseUtils = {
+  // Transform session data consistently across pages
+  transformSession: (session: any) => {
+    const participants = session.session_participants || []
+    const speakers = participants
+      .filter((p: any) => ['speaker', 'orator', 'presenter', 'workshop_lead'].includes(p.role))
+      .map((p: any) => p.speakers?.name || 'Unknown Speaker')
+    const moderators = participants
+      .filter((p: any) => ['moderator', 'discussion_leader'].includes(p.role))
+      .map((p: any) => p.speakers?.name || 'Unknown Moderator')
+    const chairpersons = participants
+      .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
+      .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
+
+    return {
+      ...session,
+      day_name: session.conference_days?.name || 'Unknown Day',
+      stage_name: session.stages?.name || 'Unknown Hall',
+      start_time: session.day_time_slots?.start_time || session.start_time || '',
+      end_time: session.day_time_slots?.end_time || session.end_time || '',
+      is_break: session.day_time_slots?.is_break || false,
+      break_title: session.day_time_slots?.break_title,
+      speakers,
+      moderators,
+      chairpersons
+    }
+  },
+
+  // Standard session query for both pages
+  getSessionQuery: () => `
+    *,
+    conference_days(name),
+    stages(name),
+    day_time_slots(start_time, end_time, is_break, break_title),
+    session_participants(
+      id,
+      role,
+      speakers(id, name, title, organization)
+    )
+  `,
+
+  // Standard halls query
+  getHallsQuery: () => `
+    *,
+    day_halls!inner(day_id, hall_order)
+  `,
+
+  // Standard days query
+  getDaysQuery: () => `
+    *,
+    day_halls(hall_id, hall_order)
+  `
 }
 
 export function parseTimeInput(timeString: string): string {

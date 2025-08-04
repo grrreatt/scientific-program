@@ -1,282 +1,92 @@
--- Scientific Program Database Setup - COMPLETE CLEAN VERSION
--- Run this in your Supabase SQL Editor
+-- =====================================================
+-- SUPABASE SETUP FOR CONFERENCE PROGRAM
+-- =====================================================
+-- This script sets up the database structure for the conference program
+-- No mock data is included - all data must be added through the application
+-- =====================================================
 
--- ========================================
--- STEP 1: CLEAN UP - DROP ALL EXISTING TABLES
--- ========================================
-
--- Drop all tables in reverse dependency order
+-- Drop existing tables if they exist
 DROP TABLE IF EXISTS symposium_subtalks CASCADE;
 DROP TABLE IF EXISTS sessions CASCADE;
 DROP TABLE IF EXISTS people CASCADE;
 DROP TABLE IF EXISTS stages CASCADE;
 DROP TABLE IF EXISTS days CASCADE;
 
--- Drop any existing functions
-DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
-DROP FUNCTION IF EXISTS validate_session_data() CASCADE;
+-- =====================================================
+-- CREATE TABLES
+-- =====================================================
 
--- ========================================
--- STEP 2: CREATE FRESH TABLES
--- ========================================
-
--- 1. Create days table
+-- Days table
 CREATE TABLE days (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    date TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 2. Create stages (halls) table
-CREATE TABLE stages (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    capacity INTEGER DEFAULT 100,
+    name VARCHAR(255) NOT NULL,
+    date DATE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Create people table (for speakers, moderators, etc.)
+-- Stages/Halls table
+CREATE TABLE stages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    capacity INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- People table (speakers, moderators, etc.)
 CREATE TABLE people (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    title TEXT,
-    organization TEXT,
-    email TEXT,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    title VARCHAR(255),
+    organization VARCHAR(255),
     bio TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Create sessions table with ALL form fields (MUST BE BEFORE symposium_subtalks)
+-- Sessions table
 CREATE TABLE sessions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    
-    -- Basic session info
-    title TEXT NOT NULL,
-    topic TEXT,
+    title VARCHAR(255) NOT NULL,
+    topic VARCHAR(500),
     description TEXT,
-    session_type TEXT NOT NULL DEFAULT 'lecture',
-    
-    -- Time and location
-    day_id TEXT NOT NULL,
-    stage_id TEXT NOT NULL,
-    start_time TEXT NOT NULL,
-    end_time TEXT NOT NULL,
-    
-    -- People involved (stored as JSON for flexibility)
+    session_type VARCHAR(100) NOT NULL,
+    day_id UUID NOT NULL REFERENCES days(id) ON DELETE CASCADE,
+    stage_id UUID NOT NULL REFERENCES stages(id) ON DELETE CASCADE,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
     people_data JSONB DEFAULT '{}',
-    
-    -- Workshop specific
     capacity INTEGER,
-    
-    -- Meal/break specific
     is_parallel_meal BOOLEAN DEFAULT FALSE,
-    parallel_meal_type TEXT,
-    meal_type TEXT,
-    
-    -- Symposium specific (stored as JSON for flexibility)
+    meal_type VARCHAR(100),
     symposium_data JSONB DEFAULT '{}',
-    
-    -- Custom data for other session types
     custom_data JSONB DEFAULT '{}',
-    
-    -- Metadata
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. Create symposium subtalks table (AFTER sessions table)
+-- Symposium subtalks table
 CREATE TABLE symposium_subtalks (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    speaker_id TEXT,
-    speaker_name TEXT,
-    start_time TEXT NOT NULL,
-    end_time TEXT NOT NULL,
-    topic TEXT,
-    description TEXT,
-    order_index INTEGER DEFAULT 0,
+    title VARCHAR(255) NOT NULL,
+    speaker_name VARCHAR(255),
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    topic VARCHAR(500),
+    order_index INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ========================================
--- STEP 3: INSERT INITIAL DATA
--- ========================================
+-- =====================================================
+-- CREATE INDEXES
+-- =====================================================
 
--- Insert default days
-INSERT INTO days (name, date) VALUES
-    ('Day 1', 'March 15, 2024'),
-    ('Day 2', 'March 16, 2024'),
-    ('Day 3', 'March 17, 2024');
-
--- Insert default people
-INSERT INTO people (name, title, organization) VALUES
-    ('Dr. Sarah Johnson', 'Professor', 'Medical University'),
-    ('Dr. Michael Chen', 'Associate Professor', 'Research Institute'),
-    ('Dr. Emily Rodriguez', 'Senior Researcher', 'Clinical Center'),
-    ('Prof. David Thompson', 'Director', 'Academic Hospital'),
-    ('Dr. Lisa Wang', 'Principal Investigator', 'Biotech Lab'),
-    ('Dr. James Wilson', 'Clinical Director', 'Medical Center'),
-    ('Prof. Maria Garcia', 'Department Head', 'University Hospital'),
-    ('Dr. Robert Brown', 'Research Fellow', 'Institute of Medicine');
-
--- Insert default halls
-INSERT INTO stages (name, capacity) VALUES
-    ('Example Hall', 100),
-    ('Hall A', 80),
-    ('Hall B', 60),
-    ('Main Hall', 150),
-    ('Seminar Room A', 50),
-    ('Seminar Room B', 50),
-    ('Workshop Room', 30);
-
--- Insert sample sessions with complete data structure
-INSERT INTO sessions (
-    title, 
-    topic, 
-    description, 
-    session_type, 
-    day_id, 
-    stage_id, 
-    start_time, 
-    end_time, 
-    people_data,
-    capacity,
-    is_parallel_meal,
-    meal_type,
-    symposium_data,
-    custom_data
-) VALUES
-    (
-        'Mock Session',
-        'Introduction to Mock Data',
-        'This is a mock session for testing purposes.',
-        'lecture',
-        'day1',
-        'example-hall',
-        '09:00',
-        '10:00',
-        '{
-            "speaker_id": "speaker1",
-            "speaker_name": "Dr. Sarah Johnson",
-            "chairperson_id": "speaker2",
-            "chairperson_name": "Dr. Michael Chen"
-        }',
-        NULL,
-        FALSE,
-        NULL,
-        '{}',
-        '{}'
-    ),
-    (
-        'Panel Discussion: AI in Healthcare',
-        'Artificial Intelligence Applications',
-        'A comprehensive discussion on AI applications in modern healthcare.',
-        'panel',
-        'day1',
-        'hall-a',
-        '14:00',
-        '15:30',
-        '{
-            "moderator_id": "speaker2",
-            "moderator_name": "Dr. Michael Chen",
-            "panelist_ids": ["speaker3", "speaker4", "speaker5"],
-            "panelist_names": ["Dr. Emily Rodriguez", "Prof. David Thompson", "Dr. Lisa Wang"]
-        }',
-        NULL,
-        FALSE,
-        NULL,
-        '{}',
-        '{}'
-    ),
-    (
-        'Workshop: Advanced Techniques',
-        'Hands-on Learning Session',
-        'Interactive workshop on advanced medical techniques.',
-        'workshop',
-        'day2',
-        'hall-b',
-        '10:00',
-        '12:00',
-        '{
-            "workshop_lead_ids": ["speaker3", "speaker4"],
-            "workshop_lead_names": ["Dr. Emily Rodriguez", "Prof. David Thompson"],
-            "assistant_ids": ["speaker5"],
-            "assistant_names": ["Dr. Lisa Wang"]
-        }',
-        25,
-        FALSE,
-        NULL,
-        '{}',
-        '{}'
-    ),
-    (
-        'Symposium: Future of Medicine',
-        'Innovation in Healthcare',
-        'A comprehensive symposium on the future of medical technology.',
-        'symposium',
-        'day2',
-        'main-hall',
-        '13:00',
-        '16:00',
-        '{
-            "moderator_id": "speaker1",
-            "moderator_name": "Dr. Sarah Johnson"
-        }',
-        NULL,
-        FALSE,
-        NULL,
-        '{
-            "subtalks": [
-                {
-                    "title": "AI in Diagnostics",
-                    "speaker_name": "Dr. Michael Chen",
-                    "start_time": "13:00",
-                    "end_time": "13:45",
-                    "topic": "Machine Learning Applications"
-                },
-                {
-                    "title": "Telemedicine Revolution",
-                    "speaker_name": "Dr. Emily Rodriguez",
-                    "start_time": "13:45",
-                    "end_time": "14:30",
-                    "topic": "Remote Healthcare Delivery"
-                },
-                {
-                    "title": "Precision Medicine",
-                    "speaker_name": "Prof. David Thompson",
-                    "start_time": "14:30",
-                    "end_time": "15:15",
-                    "topic": "Personalized Treatment Approaches"
-                }
-            ]
-        }',
-        '{}'
-    ),
-    (
-        'Lunch Break',
-        'Networking Lunch',
-        'Time for networking and refreshments.',
-        'break',
-        'day1',
-        'main-hall',
-        '12:00',
-        '13:30',
-        '{}',
-        NULL,
-        FALSE,
-        'lunch',
-        '{}',
-        '{}'
-    );
-
--- ========================================
--- STEP 4: CREATE INDEXES FOR PERFORMANCE
--- ========================================
-
+CREATE INDEX idx_days_date ON days(date);
+CREATE INDEX idx_stages_name ON stages(name);
+CREATE INDEX idx_people_name ON people(name);
 CREATE INDEX idx_sessions_day_id ON sessions(day_id);
 CREATE INDEX idx_sessions_stage_id ON sessions(stage_id);
 CREATE INDEX idx_sessions_start_time ON sessions(start_time);
@@ -285,51 +95,9 @@ CREATE INDEX idx_people_name ON people(name);
 CREATE INDEX idx_symposium_subtalks_session_id ON symposium_subtalks(session_id);
 CREATE INDEX idx_symposium_subtalks_order ON symposium_subtalks(order_index);
 
--- ========================================
--- STEP 5: ENABLE ROW LEVEL SECURITY
--- ========================================
-
-ALTER TABLE stages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE days ENABLE ROW LEVEL SECURITY;
-ALTER TABLE people ENABLE ROW LEVEL SECURITY;
-ALTER TABLE symposium_subtalks ENABLE ROW LEVEL SECURITY;
-
--- ========================================
--- STEP 6: CREATE SECURITY POLICIES
--- ========================================
-
--- Allow public read access to all tables
-CREATE POLICY "Allow public read access to stages" ON stages FOR SELECT USING (true);
-CREATE POLICY "Allow public read access to sessions" ON sessions FOR SELECT USING (true);
-CREATE POLICY "Allow public read access to days" ON days FOR SELECT USING (true);
-CREATE POLICY "Allow public read access to people" ON people FOR SELECT USING (true);
-CREATE POLICY "Allow public read access to symposium_subtalks" ON symposium_subtalks FOR SELECT USING (true);
-
--- Allow public insert/update/delete access for the application
-CREATE POLICY "Allow public insert to stages" ON stages FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update to stages" ON stages FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete from stages" ON stages FOR DELETE USING (true);
-
-CREATE POLICY "Allow public insert to sessions" ON sessions FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update to sessions" ON sessions FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete from sessions" ON sessions FOR DELETE USING (true);
-
-CREATE POLICY "Allow public insert to days" ON days FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update to days" ON days FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete from days" ON days FOR DELETE USING (true);
-
-CREATE POLICY "Allow public insert to people" ON people FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update to people" ON people FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete from people" ON people FOR DELETE USING (true);
-
-CREATE POLICY "Allow public insert to symposium_subtalks" ON symposium_subtalks FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update to symposium_subtalks" ON symposium_subtalks FOR UPDATE USING (true);
-CREATE POLICY "Allow public delete from symposium_subtalks" ON symposium_subtalks FOR DELETE USING (true);
-
--- ========================================
--- STEP 7: CREATE AUTO-UPDATE TRIGGERS
--- ========================================
+-- =====================================================
+-- CREATE TRIGGERS
+-- =====================================================
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -340,36 +108,37 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Triggers for auto-updating updated_at
+-- Triggers for updated_at
 CREATE TRIGGER update_stages_updated_at BEFORE UPDATE ON stages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_sessions_updated_at BEFORE UPDATE ON sessions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_people_updated_at BEFORE UPDATE ON people FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- ========================================
--- STEP 8: CREATE DATA VALIDATION FUNCTIONS
--- ========================================
+-- =====================================================
+-- CREATE VALIDATION FUNCTIONS
+-- =====================================================
 
--- Function to validate session data
+-- Function to validate session data based on session type
 CREATE OR REPLACE FUNCTION validate_session_data()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Validate time format
-    IF NEW.start_time !~ '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$' THEN
-        RAISE EXCEPTION 'Invalid start_time format. Use HH:MM format.';
-    END IF;
-    
-    IF NEW.end_time !~ '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$' THEN
-        RAISE EXCEPTION 'Invalid end_time format. Use HH:MM format.';
-    END IF;
-    
-    -- Validate that end time is after start time
+    -- Validate that start_time is before end_time
     IF NEW.start_time >= NEW.end_time THEN
-        RAISE EXCEPTION 'End time must be after start time.';
+        RAISE EXCEPTION 'Start time must be before end time';
     END IF;
     
     -- Validate session type
-    IF NEW.session_type NOT IN ('lecture', 'panel', 'symposium', 'workshop', 'oration', 'guest_lecture', 'discussion', 'break', 'other') THEN
-        RAISE EXCEPTION 'Invalid session_type.';
+    IF NEW.session_type NOT IN ('lecture', 'panel', 'workshop', 'symposium', 'oration', 'guest_lecture', 'discussion', 'break', 'other') THEN
+        RAISE EXCEPTION 'Invalid session type: %', NEW.session_type;
+    END IF;
+    
+    -- Validate meal type if is_parallel_meal is true
+    IF NEW.is_parallel_meal = TRUE AND NEW.meal_type IS NULL THEN
+        RAISE EXCEPTION 'Meal type is required when is_parallel_meal is true';
+    END IF;
+    
+    -- Validate meal type values
+    IF NEW.meal_type IS NOT NULL AND NEW.meal_type NOT IN ('breakfast', 'lunch', 'dinner', 'coffee_break') THEN
+        RAISE EXCEPTION 'Invalid meal type: %', NEW.meal_type;
     END IF;
     
     RETURN NEW;
@@ -379,15 +148,61 @@ $$ language 'plpgsql';
 -- Trigger for session validation
 CREATE TRIGGER validate_session_data_trigger BEFORE INSERT OR UPDATE ON sessions FOR EACH ROW EXECUTE FUNCTION validate_session_data();
 
--- ========================================
--- STEP 9: VERIFICATION QUERY
--- ========================================
+-- =====================================================
+-- ENABLE ROW LEVEL SECURITY
+-- =====================================================
 
--- This will show you what was created
-SELECT 
-    'Tables created successfully!' as status,
-    (SELECT COUNT(*) FROM days) as days_count,
-    (SELECT COUNT(*) FROM stages) as stages_count,
-    (SELECT COUNT(*) FROM people) as people_count,
-    (SELECT COUNT(*) FROM sessions) as sessions_count,
-    (SELECT COUNT(*) FROM symposium_subtalks) as subtalks_count; 
+ALTER TABLE days ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE people ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE symposium_subtalks ENABLE ROW LEVEL SECURITY;
+
+-- =====================================================
+-- CREATE POLICIES
+-- =====================================================
+
+CREATE POLICY "Allow all operations on days" ON days
+FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on stages" ON stages
+FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on people" ON people
+FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on sessions" ON sessions
+FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY "Allow all operations on symposium_subtalks" ON symposium_subtalks
+FOR ALL USING (true) WITH CHECK (true);
+
+-- =====================================================
+-- VERIFICATION QUERIES
+-- =====================================================
+
+-- Verify the structure
+SELECT 'Days' as table_name, COUNT(*) as record_count FROM days
+UNION ALL
+SELECT 'Stages', COUNT(*) FROM stages
+UNION ALL
+SELECT 'People', COUNT(*) FROM people
+UNION ALL
+SELECT 'Sessions', COUNT(*) FROM sessions
+UNION ALL
+SELECT 'Symposium Subtalks', COUNT(*) FROM symposium_subtalks;
+
+-- =====================================================
+-- COMPLETION MESSAGE
+-- =====================================================
+
+SELECT 'Supabase setup completed successfully!' as status;
+SELECT 'Features included:' as features;
+SELECT '- Days management' as feature1;
+SELECT '- Stages/Halls management' as feature2;
+SELECT '- People/Speakers management' as feature3;
+SELECT '- Sessions with multiple types' as feature4;
+SELECT '- Symposium subtalks support' as feature5;
+SELECT '- Data validation triggers' as feature6;
+SELECT '- Row Level Security enabled' as feature7;
+SELECT '- Clean database with no mock data - all data must be added through the application' as feature8; 

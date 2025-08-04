@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatTime, formatTimeRange, calculateDuration } from '@/lib/utils'
+import { formatTime, formatTimeRange, calculateDuration, supabaseUtils } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { supabase } from '@/lib/supabase/client'
 import realtimeService from '@/lib/supabase/realtime'
@@ -75,64 +75,32 @@ export default function PublicProgramPage() {
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Load sessions from Supabase - EXACTLY same as edit sessions page
+  // Load sessions from Supabase - single source of truth
   const loadSessions = async () => {
     try {
-      // Load sessions with participants - EXACTLY same query as edit sessions page
+      console.log('🔄 Loading sessions from Supabase...')
+      
+      // Load sessions with participants using consistent query
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
-        .select(`
-          *,
-          conference_days(name),
-          stages(name),
-          day_time_slots(start_time, end_time, is_break, break_title),
-          session_participants(
-            id,
-            role,
-            speakers(id, name, title, organization)
-          )
-        `)
+        .select(supabaseUtils.getSessionQuery())
         .order('created_at', { ascending: true })
 
       if (sessionsError) {
-        console.error('Error loading sessions:', sessionsError)
+        console.error('❌ Error loading sessions:', sessionsError)
         setSessions([])
+        setError('Failed to load sessions from database')
         return
       }
 
-      // Transform sessions with participant information - EXACTLY same logic as edit sessions page
-      const transformedSessions: Session[] = (sessionsData || []).map((session: any) => {
-        // Extract participants by role - EXACTLY same logic as edit sessions page
-        const participants = session.session_participants || []
-        const speakers = participants
-          .filter((p: any) => ['speaker', 'orator', 'presenter', 'workshop_lead'].includes(p.role))
-          .map((p: any) => p.speakers?.name || 'Unknown Speaker')
-        const moderators = participants
-          .filter((p: any) => ['moderator', 'discussion_leader'].includes(p.role))
-          .map((p: any) => p.speakers?.name || 'Unknown Moderator')
-        const chairpersons = participants
-          .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
-          .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
-
-        // EXACTLY same transformation as edit sessions page
-        return {
-          ...session,
-          day_name: session.conference_days?.name || 'Unknown Day',
-          stage_name: session.stages?.name || 'Unknown Hall',
-          start_time: session.day_time_slots?.start_time || session.start_time || '',
-          end_time: session.day_time_slots?.end_time || session.end_time || '',
-          is_break: session.day_time_slots?.is_break || false,
-          break_title: session.day_time_slots?.break_title,
-          speakers,
-          moderators,
-          chairpersons
-        }
-      })
+      // Transform sessions using consistent utility function
+      const transformedSessions: Session[] = (sessionsData || []).map(supabaseUtils.transformSession)
 
       setSessions(transformedSessions)
       setError(null)
+      console.log('✅ Sessions loaded successfully:', transformedSessions.length)
     } catch (error) {
-      console.error('Error loading sessions:', error)
+      console.error('❌ Exception loading sessions:', error)
       setError('Failed to load sessions. Please refresh the page.')
       setSessions([])
     }
@@ -590,7 +558,7 @@ export default function PublicProgramPage() {
                 
                 {/* Hall Column Headers */}
                 {getHallsForSelectedDay().map((hall) => (
-                  <th key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-3 font-semibold text-sm text-gray-700 text-left">
+                  <th key={hall.id} className="min-w-60 max-w-80 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left">
                     <span>🏛️ {hall.name}</span>
                   </th>
                 ))}
@@ -621,11 +589,11 @@ export default function PublicProgramPage() {
                       const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
                       
                       return (
-                        <td key={hall.id} className="w-80 border-r border-gray-200 p-4">
+                        <td key={hall.id} className="min-w-60 max-w-80 border-r border-gray-200 p-2">
                           {session ? (
-                            <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                            <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-sm">
                               {/* Uniform Session Block Structure */}
-                              <div className="text-center space-y-2">
+                              <div className="text-center space-y-1">
                                 {/* TYPE */}
                                 <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-1">
                                   {getSessionTypeLabel(session.session_type)}

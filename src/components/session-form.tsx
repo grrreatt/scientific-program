@@ -26,6 +26,10 @@ interface SessionFormData {
   presenter_ids: string[]
   discussion_leader_id: string
   meal_type: string
+  // Dynamic participant arrays for all session types
+  speakers: Array<{ id: string; role: string }>
+  moderators: Array<{ id: string; role: string }>
+  chairpersons: Array<{ id: string; role: string }>
   // Symposium specific
   symposium_subtalks: Array<{
     title: string
@@ -87,6 +91,9 @@ export function SessionForm({
     presenter_ids: [''],
     discussion_leader_id: '',
     meal_type: '',
+    speakers: [],
+    moderators: [],
+    chairpersons: [],
     symposium_subtalks: [],
     custom_data: {},
     ...initialData
@@ -139,12 +146,35 @@ export function SessionForm({
         ...prev,
         symposium_subtalks: (prev.symposium_subtalks || []).filter((_: any, i: number) => i !== index)
       }))
+    } else if (field === 'speakers' || field === 'moderators' || field === 'chairpersons') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: (prev[field as keyof typeof prev] as Array<{ id: string; role: string }>).filter((_: any, i: number) => i !== index)
+      }))
     } else {
       setFormData(prev => ({
         ...prev,
         [field]: (prev[field as keyof typeof prev] as string[]).filter((_: string, i: number) => i !== index)
       }))
     }
+  }
+
+  const addParticipant = (type: 'speakers' | 'moderators' | 'chairpersons') => {
+    console.log(`➕ Adding participant to: ${type}`)
+    setFormData(prev => ({
+      ...prev,
+      [type]: [...(prev[type] || []), { id: '', role: type.slice(0, -1) }] // Remove 's' from end
+    }))
+  }
+
+  const updateParticipant = (type: 'speakers' | 'moderators' | 'chairpersons', index: number, speakerId: string) => {
+    console.log(`🔄 Updating participant: ${type}[${index}] = ${speakerId}`)
+    setFormData(prev => ({
+      ...prev,
+      [type]: (prev[type] || []).map((participant: any, i: number) => 
+        i === index ? { ...participant, id: speakerId } : participant
+      )
+    }))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -536,6 +566,70 @@ export function SessionForm({
     );
   };
 
+  const renderDynamicParticipants = () => {
+    const participantTypes = [
+      { key: 'speakers', label: 'Speakers', role: 'speaker' },
+      { key: 'moderators', label: 'Moderators', role: 'moderator' },
+      { key: 'chairpersons', label: 'Chairpersons', role: 'chairperson' }
+    ] as const;
+
+    return (
+      <div className="space-y-6">
+        {participantTypes.map(({ key, label, role }) => {
+          const participants = formData[key] || [];
+          
+          return (
+            <div key={key} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-gray-900">{label}</h4>
+                <button
+                  type="button"
+                  onClick={() => addParticipant(key)}
+                  className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add {label.slice(0, -1)}
+                </button>
+              </div>
+              
+              {participants.length === 0 ? (
+                <div className="text-sm text-gray-500 italic">No {label.toLowerCase()} added yet</div>
+              ) : (
+                <div className="space-y-2">
+                  {participants.map((participant, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <select
+                        value={participant.id}
+                        onChange={(e) => updateParticipant(key, index, e.target.value)}
+                        className="flex-1 block pl-3 pr-10 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+                      >
+                        <option value="">Select {label.slice(0, -1)}</option>
+                        {speakers.map(speaker => (
+                          <option key={speaker.id} value={speaker.id}>
+                            {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => removeArrayItem(key, index)}
+                        className="text-red-600 hover:text-red-900 text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const sessionConfig = SESSION_TYPES[currentSessionType]
   const requiredFields = sessionConfig.fields.required
   const optionalFields = sessionConfig.fields.optional
@@ -637,6 +731,12 @@ export function SessionForm({
             return null
           })}
         </div>
+      </div>
+
+      {/* Dynamic Participants Section */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-gray-900">Participants</h3>
+        {renderDynamicParticipants()}
       </div>
 
       {/* Symposium Subtalks Section */}
