@@ -12,6 +12,10 @@ export async function GET() {
         session_participants(
           role,
           speakers(name, email, organization)
+        ),
+        sub_sessions(
+          title, topic, start_time, end_time,
+          speakers(name, email, organization)
         )
       `)
 
@@ -60,6 +64,26 @@ export async function GET() {
           role: '',
           organization: '',
           email: ''
+        })
+      }
+
+      // Include sub-sessions (each row for the sub-talk speaker if present)
+      if (session.sub_sessions && session.sub_sessions.length > 0) {
+        session.sub_sessions.forEach((sub: any) => {
+          csvRows.push({
+            session_name: `${session.title} – ${sub.title}`,
+            session_type: `${session.session_type} / ${sub.sub_session_type || 'sub'}`,
+            day: dayName,
+            stage: stageName,
+            start_time: sub.start_time,
+            end_time: sub.end_time,
+            duration: calculateDuration(sub.start_time, sub.end_time),
+            topic: sub.topic || '',
+            person_name: sub.speakers?.name || '',
+            role: sub.speakers?.name ? 'speaker' : '',
+            organization: sub.speakers?.organization || '',
+            email: sub.speakers?.email || ''
+          })
         })
       }
     })

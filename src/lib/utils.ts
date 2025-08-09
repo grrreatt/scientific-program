@@ -73,17 +73,31 @@ export const supabaseUtils = {
       .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
       .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
 
+    // Sub-sessions (sub-talks)
+    const subSessionsRaw = session.sub_sessions || []
+    const subSessions = subSessionsRaw.map((st: any) => ({
+      id: st.id,
+      title: st.title,
+      topic: st.topic || '',
+      start_time: st.start_time || '',
+      end_time: st.end_time || '',
+      type: st.sub_session_type || 'lecture',
+      speaker_name: st.speakers?.name || ''
+    }))
+
     return {
       ...session,
       day_name: session.conference_days?.name || 'Unknown Day',
       stage_name: session.stages?.name || 'Unknown Hall',
-      start_time: session.day_time_slots?.start_time || session.start_time || '',
-      end_time: session.day_time_slots?.end_time || session.end_time || '',
+      // Prefer custom_* if present, else day_time_slots
+      start_time: session.custom_start_time || session.day_time_slots?.start_time || '',
+      end_time: session.custom_end_time || session.day_time_slots?.end_time || '',
       is_break: session.day_time_slots?.is_break || false,
       break_title: session.day_time_slots?.break_title,
       speakers,
       moderators,
-      chairpersons
+      chairpersons,
+      sub_sessions: subSessions
     }
   },
 
@@ -97,6 +111,16 @@ export const supabaseUtils = {
       id,
       role,
       speakers(id, name, title, organization)
+    ),
+    sub_sessions(
+      id,
+      title,
+      start_time,
+      end_time,
+      topic,
+      sub_session_type,
+      speaker_id,
+      speakers(name)
     )
   `,
 
@@ -153,3 +177,97 @@ export function debounce<T extends (...args: any[]) => any>(
     timeout = setTimeout(() => func(...args), wait)
   }
 } 
+
+// Time utility functions
+export const formatTime12h = (time: string): string => {
+  if (!time) return '';
+  try {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minutes} ${ampm}`;
+  } catch {
+    return time;
+  }
+};
+
+export const parseTime12h = (timeStr: string): string => {
+  if (!timeStr) return '';
+  try {
+    // Handle formats like "9:00 AM", "9.00am", "09:00 PM"
+    const cleanTime = timeStr.replace(/\./g, ':').toUpperCase();
+    const match = cleanTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
+    if (match) {
+      let [_, hours, minutes, ampm] = match;
+      let hour = parseInt(hours);
+      if (ampm === 'PM' && hour !== 12) hour += 12;
+      if (ampm === 'AM' && hour === 12) hour = 0;
+      return `${hour.toString().padStart(2, '0')}:${minutes}`;
+    }
+    return timeStr;
+  } catch {
+    return timeStr;
+  }
+};
+
+// Session numbering utility
+export const getSessionNumberDisplay = (number: number): string => {
+  const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  if (number >= 1 && number <= 10) {
+    return `Session ${romanNumerals[number - 1]}`;
+  }
+  return `Session ${number}`;
+};
+
+// Participant display utility
+export const formatParticipantsDisplay = (session: any): string => {
+  const parts = [];
+  
+  if (session.speakers && session.speakers.length > 0) {
+    parts.push(`S: ${session.speakers.join(', ')}`);
+  }
+  
+  if (session.moderators && session.moderators.length > 0) {
+    parts.push(`M: ${session.moderators.join(', ')}`);
+  }
+  
+  if (session.chairpersons && session.chairpersons.length > 0) {
+    parts.push(`C: ${session.chairpersons.join(', ')}`);
+  }
+
+  if (session.panelists && session.panelists.length > 0) {
+    parts.push(`P: ${session.panelists.join(', ')}`);
+  }
+
+  if (session.experts && session.experts.length > 0) {
+    parts.push(`E: ${session.experts.join(', ')}`);
+  }
+  
+  return parts.join(' | ');
+};
+
+// Time suggestion utility
+export const getNextStartTime = (endTime: string): string => {
+  if (!endTime) return '';
+  try {
+    const [hours, minutes] = endTime.split(':');
+    const date = new Date();
+    date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    return date.toTimeString().slice(0, 5);
+  } catch {
+    return '';
+  }
+};
+
+// Session title suggestions
+export const getSessionTitleSuggestions = (sessionNumber: number): string[] => {
+  const baseSuggestions = [
+    getSessionNumberDisplay(sessionNumber),
+    `Session ${sessionNumber}`,
+    `Day ${sessionNumber} Session`,
+    `Main Session ${sessionNumber}`
+  ];
+  
+  return baseSuggestions;
+}; 

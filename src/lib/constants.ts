@@ -1,12 +1,21 @@
 import { SessionTypeConfig } from '@/types'
 
 export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
+  session: {
+    id: 'session',
+    name: 'Session',
+    fields: {
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id'],
+      optional: ['description', 'sub_sessions'],
+      roles: []
+    }
+  },
   lecture: {
     id: 'lecture',
     name: 'Lecture / Talk',
     fields: {
-      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'speaker_id'],
-      optional: ['chairperson_id', 'description', 'is_parallel_meal'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id'],
+      optional: ['description', 'is_parallel_meal'],
       roles: ['speaker', 'chairperson']
     }
   },
@@ -14,29 +23,21 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'panel',
     name: 'Panel Discussion',
     fields: {
-      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'moderator_id', 'panelist_ids'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id'],
       optional: ['description', 'is_parallel_meal'],
-      roles: ['moderator', 'panelist']
+      roles: ['moderator', 'panelist', 'expert']
     }
   },
   symposium: {
     id: 'symposium',
     name: 'Symposium',
     fields: {
-      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'moderator_id', 'symposium_subtalks'],
-      optional: ['description'],
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id'],
+      optional: ['description', 'symposium_subtalks'],
       roles: ['moderator', 'speaker']
     }
   },
-  workshop: {
-    id: 'workshop',
-    name: 'Workshop',
-    fields: {
-      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id', 'workshop_lead_ids'],
-      optional: ['assistant_ids', 'capacity', 'description'],
-      roles: ['workshop_lead', 'assistant']
-    }
-  },
+  // workshop removed from generic sessions flow; handled via dedicated pages
   oration: {
     id: 'oration',
     name: 'Oration / Keynote / Plenary',

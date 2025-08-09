@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { DashboardStats } from '@/types'
+import { RealtimeStatus } from '@/components/ui/realtime-status'
+import { useState as useReactState } from 'react'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -43,6 +45,11 @@ export default function DashboardPage() {
   const [deleteExisting, setDeleteExisting] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [uploadSuccess, setUploadSuccess] = useState('')
+
+  // Person export state
+  const [personName, setPersonName] = useState('')
+  const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx')
+  const [exporting, setExporting] = useState(false)
 
   const loadStats = async () => {
     try {
@@ -295,11 +302,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Welcome to your conference program management dashboard
-        </p>
+          <p className="mt-1 text-sm text-gray-500">Welcome to your conference program management dashboard</p>
+        </div>
+        <RealtimeStatus />
       </div>
 
       {/* Stats Grid */}
@@ -576,6 +584,72 @@ export default function DashboardPage() {
               </div>
             </Link>
 
+            {/* Per-person export */}
+            <div className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex flex-col space-y-3">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">Download Person Schedule</p>
+                  <p className="text-sm text-gray-500">Enter name to export (Excel/CSV)</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={personName}
+                  onChange={(e) => setPersonName(e.target.value)}
+                  placeholder="Type part of the name..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <select
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value as any)}
+                  className="px-2 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="xlsx">Excel</option>
+                  <option value="csv">CSV</option>
+                </select>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={async () => {
+                    if (!personName.trim()) {
+                      alert('Please enter a name to export')
+                      return
+                    }
+                    setExporting(true)
+                    try {
+                      const url = `/api/export/person?name=${encodeURIComponent(personName.trim())}&format=${exportFormat}`
+                      const res = await fetch(url)
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}))
+                        throw new Error(data.error || 'Export failed')
+                      }
+                      const blob = await res.blob()
+                      const a = document.createElement('a')
+                      a.href = URL.createObjectURL(blob)
+                      a.download = `person-schedule-${personName.trim()}.${exportFormat}`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                    } catch (err: any) {
+                      alert(err.message || 'Failed to export')
+                    } finally {
+                      setExporting(false)
+                    }
+                  }}
+                  disabled={exporting}
+                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400"
+                >
+                  {exporting ? 'Preparing...' : 'Download'}
+                </button>
+              </div>
+            </div>
+
             <Link
               href="/export"
               className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
@@ -591,6 +665,40 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-500">Download CSV</p>
               </div>
             </Link>
+
+            {/* Export all people schedules */}
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/export/people')
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}))
+                    throw new Error(data.error || 'Export failed')
+                  }
+                  const blob = await res.blob()
+                  const a = document.createElement('a')
+                  a.href = URL.createObjectURL(blob)
+                  a.download = 'all-people-schedules.xlsx'
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                } catch (err: any) {
+                  alert(err.message || 'Failed to export')
+                }
+              }}
+              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+            >
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+          </div>
+              <div className="flex-1 min-w-0 text-left">
+                <span className="absolute inset-0" aria-hidden="true" />
+                <p className="text-sm font-medium text-gray-900">Export All People Schedules</p>
+                <p className="text-sm text-gray-500">Excel (.xlsx), live data</p>
+              </div>
+            </button>
           </div>
         </div>
       </div>

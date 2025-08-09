@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatTime, formatTimeRange, supabaseUtils } from '@/lib/utils'
+import { formatTime, formatTimeRange, supabaseUtils, formatParticipantsDisplay } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
 import { SessionForm } from '@/components/session-form'
@@ -58,13 +58,13 @@ export default function EditSessionsPage() {
 
   // Global block state
   const [showGlobalBlockModal, setShowGlobalBlockModal] = useState(false)
-  const [selectedTimeSlotForGlobalBlock, setSelectedTimeSlotForGlobalBlock] = useState<DayTimeSlot | null>(null)
-  const [globalBlockType, setGlobalBlockType] = useState('tea_break')
-  const [globalBlockDescription, setGlobalBlockDescription] = useState('')
+  const [globalBlockType, setGlobalBlockType] = useState('registration')
+  const [globalBlockTitle, setGlobalBlockTitle] = useState('')
   const [globalBlockStartTime, setGlobalBlockStartTime] = useState('')
   const [globalBlockEndTime, setGlobalBlockEndTime] = useState('')
+  const [selectedDayForGlobalBlock, setSelectedDayForGlobalBlock] = useState<string>('')
 
-  // Search state
+  // Search state (removed from main interface)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Session[]>([])
 
@@ -395,12 +395,14 @@ export default function EditSessionsPage() {
         title: formData.title,
         session_type: sessionType,
         day_id: selectedDayData.id,
-        stage_id: formData.stage_id,
-        time_slot_id: formData.time_slot_id,
+        stage_id: formData.stage_id || selectedHallForSession || null,
+        time_slot_id: formData.time_slot_id || selectedTimeSlotForSession || null,
         topic: formData.topic,
         description: formData.description,
         is_parallel_meal: formData.is_parallel_meal,
-        parallel_meal_type: formData.parallel_meal_type
+        parallel_meal_type: formData.parallel_meal_type,
+        custom_start_time: formData.custom_start_time || null,
+        custom_end_time: formData.custom_end_time || null
       }
 
       let sessionId: string
@@ -426,7 +428,7 @@ export default function EditSessionsPage() {
         return
       }
 
-      // Handle dynamic participants
+      // Handle participants (both single fields and dynamic arrays)
       if (sessionId) {
         // Delete existing participants for this session
         await supabase
@@ -434,14 +436,14 @@ export default function EditSessionsPage() {
           .delete()
           .eq('session_id', sessionId)
 
-        // Add new participants from dynamic arrays
+        // Add new participants from dynamic arrays and single fields
         const participantsToAdd: Array<{
           session_id: string;
           speaker_id: string;
           role: string;
         }> = []
         
-        // Add speakers
+        // Add speakers (dynamic array)
         if (formData.speakers && formData.speakers.length > 0) {
           formData.speakers.forEach((speaker: any) => {
             if (speaker.id) {
@@ -454,7 +456,12 @@ export default function EditSessionsPage() {
           })
         }
 
-        // Add moderators
+        // Single speaker field
+        if (formData.speaker_id) {
+          participantsToAdd.push({ session_id: sessionId, speaker_id: formData.speaker_id, role: 'speaker' })
+        }
+
+        // Add moderators (dynamic array)
         if (formData.moderators && formData.moderators.length > 0) {
           formData.moderators.forEach((moderator: any) => {
             if (moderator.id) {
@@ -467,7 +474,12 @@ export default function EditSessionsPage() {
           })
         }
 
-        // Add chairpersons
+        // Single moderator field
+        if (formData.moderator_id) {
+          participantsToAdd.push({ session_id: sessionId, speaker_id: formData.moderator_id, role: 'moderator' })
+        }
+
+        // Add chairpersons (dynamic array)
         if (formData.chairpersons && formData.chairpersons.length > 0) {
           formData.chairpersons.forEach((chairperson: any) => {
             if (chairperson.id) {
@@ -477,6 +489,54 @@ export default function EditSessionsPage() {
                 role: 'chairperson'
               })
             }
+          })
+        }
+        // Panelists array (dynamic)
+        if (formData.panelists && formData.panelists.length > 0) {
+          formData.panelists.forEach((p: any) => {
+            if (p.id) participantsToAdd.push({ session_id: sessionId, speaker_id: p.id, role: 'panelist' })
+          })
+        }
+
+        // Experts array (dynamic)
+        if (formData.experts && formData.experts.length > 0) {
+          formData.experts.forEach((e: any) => {
+            if (e.id) participantsToAdd.push({ session_id: sessionId, speaker_id: e.id, role: 'expert' })
+          })
+        }
+
+
+        // Single chairperson field
+        if (formData.chairperson_id) {
+          participantsToAdd.push({ session_id: sessionId, speaker_id: formData.chairperson_id, role: 'chairperson' })
+        }
+
+        // Panelists array
+        if (formData.panelist_ids && formData.panelist_ids.length > 0) {
+          formData.panelist_ids.forEach((id: string) => {
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'panelist' })
+          })
+        }
+
+        // Workshop leads and assistants
+        if (formData.workshop_lead_ids && formData.workshop_lead_ids.length > 0) {
+          formData.workshop_lead_ids.forEach((id: string) => {
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'workshop_lead' })
+          })
+        }
+        if (formData.assistant_ids && formData.assistant_ids.length > 0) {
+          formData.assistant_ids.forEach((id: string) => {
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'assistant' })
+          })
+        }
+
+        // Discussion leader and presenters
+        if (formData.discussion_leader_id) {
+          participantsToAdd.push({ session_id: sessionId, speaker_id: formData.discussion_leader_id, role: 'discussion_leader' })
+        }
+        if (formData.presenter_ids && formData.presenter_ids.length > 0) {
+          formData.presenter_ids.forEach((id: string) => {
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'presenter' })
           })
         }
 
@@ -489,6 +549,37 @@ export default function EditSessionsPage() {
           if (participantError) {
             console.error('❌ Error saving participants:', participantError)
             alert('Session saved but there was an error saving participants.')
+          }
+        }
+
+        // Handle sub-sessions for "Session" type
+        if (sessionType === 'session' && formData.sub_sessions && formData.sub_sessions.length > 0) {
+          // For simplicity, replace existing sub-sessions
+          await supabase
+            .from('sub_sessions')
+            .delete()
+            .eq('parent_session_id', sessionId)
+
+          const rows = formData.sub_sessions
+            .filter((s: any) => s.title && s.start_time && s.end_time)
+            .map((s: any) => ({
+              parent_session_id: sessionId,
+              title: s.title,
+              speaker_id: s.speaker_id || null,
+              start_time: s.start_time,
+              end_time: s.end_time,
+              topic: s.topic || null,
+              sub_session_type: s.sub_session_type || 'lecture'
+            }))
+
+          if (rows.length > 0) {
+            const { error: subErr } = await supabase
+              .from('sub_sessions')
+              .insert(rows)
+            if (subErr) {
+              console.error('❌ Error saving sub-sessions:', subErr)
+              alert('Session saved but there was an error saving sub-talks.')
+            }
           }
         }
       }
@@ -802,36 +893,46 @@ export default function EditSessionsPage() {
     setEditingHallName('')
   }
 
-  const handleAddGlobalBlock = (timeSlot: DayTimeSlot) => {
-    setSelectedTimeSlotForGlobalBlock(timeSlot)
-    setGlobalBlockStartTime(timeSlot.start_time)
-    setGlobalBlockEndTime(timeSlot.end_time)
-    setGlobalBlockType('tea_break')
-    setGlobalBlockDescription('')
-    setShowGlobalBlockModal(true)
-  }
-
   const handleSubmitGlobalBlock = async () => {
-    if (!selectedTimeSlotForGlobalBlock) return
+    if (!selectedDayForGlobalBlock || !globalBlockTitle || !globalBlockStartTime || !globalBlockEndTime) {
+      alert('Please fill in all required fields')
+      return
+    }
 
     try {
-      // Update the time slot to be a global block
-      const { error } = await supabase
-        .from('day_time_slots')
-        .update({
-          is_break: true,
-          break_title: globalBlockType === 'custom' ? globalBlockDescription : globalBlockType
-        })
-        .eq('id', selectedTimeSlotForGlobalBlock.id)
+      const selectedDayData = days.find(d => d.name === selectedDayForGlobalBlock)
+      if (!selectedDayData) {
+        alert('Selected day not found')
+        return
+      }
 
-      if (error) {
-        console.error('❌ Error creating global block:', error)
+      // Create a new time slot for the global block
+      const { data: newTimeSlot, error: timeSlotError } = await supabase
+        .from('day_time_slots')
+        .insert({
+          day_id: selectedDayData.id,
+          start_time: globalBlockStartTime,
+          end_time: globalBlockEndTime,
+          slot_order: 999, // High order to appear at the end
+          is_break: true,
+          break_title: globalBlockTitle
+        })
+        .select()
+        .single()
+
+      if (timeSlotError) {
+        console.error('❌ Error creating global block:', timeSlotError)
         alert('Error creating global block. Please try again.')
         return
       }
 
       setShowGlobalBlockModal(false)
-      setSelectedTimeSlotForGlobalBlock(null)
+      setGlobalBlockType('registration')
+      setGlobalBlockTitle('')
+      setGlobalBlockStartTime('')
+      setGlobalBlockEndTime('')
+      setSelectedDayForGlobalBlock('')
+      
       await loadTimeSlots()
       console.log('✅ Global block created successfully')
       
@@ -843,11 +944,11 @@ export default function EditSessionsPage() {
 
   const handleCancelGlobalBlock = () => {
     setShowGlobalBlockModal(false)
-    setSelectedTimeSlotForGlobalBlock(null)
-    setGlobalBlockType('')
-    setGlobalBlockDescription('')
+    setGlobalBlockType('registration')
+    setGlobalBlockTitle('')
     setGlobalBlockStartTime('')
     setGlobalBlockEndTime('')
+    setSelectedDayForGlobalBlock('')
   }
 
   const handleDeleteGlobalBlock = async (timeSlot: DayTimeSlot) => {
@@ -904,7 +1005,7 @@ export default function EditSessionsPage() {
     setItemToDelete(null)
   }
 
-  // Search functionality
+  // Search functionality (kept for future use)
   const performSearch = (query: string) => {
     if (!query.trim()) {
       setSearchResults([])
@@ -1177,21 +1278,23 @@ export default function EditSessionsPage() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              {/* Search Bar */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search sessions..."
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
+              {/* Add Day Button */}
+              <button
+                onClick={() => setShowAddDayModal(true)}
+                className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+              >
+                <span>📅</span>
+                <span>Add Day</span>
+              </button>
+
+              {/* Add Hall Button */}
+              <button
+                onClick={() => setShowAddHallModal(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+              >
+                <span>🏛️</span>
+                <span>Add Hall</span>
+              </button>
               <RealtimeStatus />
             </div>
           </div>
@@ -1247,24 +1350,31 @@ export default function EditSessionsPage() {
               <span>🏛️</span>
               <span>Add Hall</span>
             </button>
+
+            {/* Global Block Button */}
+            <button
+              onClick={() => {
+                setSelectedDayForGlobalBlock(selectedDay || '')
+                setShowGlobalBlockModal(true)
+              }}
+              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+            >
+              <span>🌐</span>
+              <span>Global Block</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Timeline Table Layout */}
       {getHallsForSelectedDay().length > 0 ? (
-        <div className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto">
-        <div className="min-w-max">
+        <div className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto" style={{ scrollBehavior: 'smooth' }}>
+        <div className="min-w-max" style={{ scrollSnapType: 'x mandatory' }}>
             {/* Table Header */}
             <div className="bg-white border-b sticky top-0 z-40">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-50">
-                    {/* Time Column Header */}
-                    <th className="w-32 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 sticky left-0 z-50 text-left">
-                🕘 Time
-                    </th>
-              
               {/* Hall Column Headers */}
               {getHallsForSelectedDay().map((hall) => (
                       <th key={hall.id} className="w-64 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left">
@@ -1318,108 +1428,25 @@ export default function EditSessionsPage() {
                   </tr>
                 </thead>
                 <tbody>
-          {timeSlots.map((timeSlot, index) => (
+          {timeSlots.map((timeSlot) => (
                     <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                {/* Time Column - Sticky */}
-                      <td className="w-32 bg-gray-50 border-r border-gray-200 p-2 sticky left-0 z-30">
-                  {editingTimeSlot?.id === timeSlot.id ? (
-                    <div className="space-y-1">
-                      <input
-                        type="time"
-                        value={timeSlot.start_time}
-                        onChange={(e) => {
-                          const newTimeSlots = [...timeSlots]
-                          const newStartTime = e.target.value
-                          const newEndTime = calculateDefaultEndTime(newStartTime)
-                          
-                          newTimeSlots[index] = { 
-                            ...timeSlot, 
-                            start_time: newStartTime,
-                            end_time: newEndTime
-                          }
-                          
-                          // Auto-update previous time slot's end time if it exists
-                          if (index > 0) {
-                            newTimeSlots[index - 1] = { 
-                              ...newTimeSlots[index - 1], 
-                              end_time: newStartTime 
-                            }
-                          }
-                          
-                          setTimeSlots(newTimeSlots)
-                        }}
-                        className="w-full text-xs border rounded px-1 py-1"
-                      />
-                      <input
-                        type="time"
-                        value={timeSlot.end_time}
-                        onChange={(e) => {
-                          const newTimeSlots = [...timeSlots]
-                          newTimeSlots[index] = { 
-                            ...timeSlot, 
-                            end_time: e.target.value 
-                          }
-                          setTimeSlots(newTimeSlots)
-                        }}
-                        className="w-full text-xs border rounded px-1 py-1"
-                      />
-                      <div className="flex space-x-1">
-                        <button
-                          onClick={() => handleSaveTimeSlot(timeSlot.id, timeSlot.start_time, timeSlot.end_time)}
-                          className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => setEditingTimeSlot(null)}
-                          className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <div className="text-sm font-medium text-gray-900">
-                        {timeSlot.start_time}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {timeSlot.end_time}
-                      </div>
-                      <div className="flex space-x-1">
-                        <button
-                          onClick={() => handleEditTimeSlot(timeSlot)}
-                          className="text-xs text-blue-600 hover:text-blue-800"
-                          title="Edit time"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleAddGlobalBlock(timeSlot)}
-                          className="text-xs text-orange-600 hover:text-orange-800"
-                          title="Add Global Block"
-                        >
-                          Global Block
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                      </td>
-                      
                       {/* Check if this is a global block (break) */}
                       {timeSlot.is_break ? (
-                        <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-2 text-center group">
-                          <div className="text-sm font-medium text-orange-800">
-                            🔶 {timeSlot.break_title || 'Global Block'}
-                          </div>
-                          <div className="flex justify-center mt-1">
+                        <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-2 text-center group relative">
+                          {/* Delete Icon - Top Right */}
+                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <button
                               onClick={() => handleDeleteGlobalBlock(timeSlot)}
-                              className="text-xs text-red-600 hover:text-red-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="w-4 h-4 bg-red-600 text-white rounded text-xs flex items-center justify-center hover:bg-red-700 transition-colors"
                               title="Delete Global Block"
                             >
-                              🗑️ Delete
+                              🗑️
                             </button>
+                          </div>
+                          
+                          {/* Global Block Content */}
+                          <div className="text-sm font-medium text-orange-800 pr-6">
+                            🔶 {timeSlot.break_title || 'Global Block'}
                           </div>
                         </td>
                       ) : (
@@ -1428,57 +1455,59 @@ export default function EditSessionsPage() {
                   const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
                   
                   return (
-                            <td key={hall.id} className="w-64 border-r border-gray-200 p-1">
+                            <td key={hall.id} className="w-64 border-r border-gray-200 p-1" style={{ scrollSnapAlign: 'start' }}>
                       {session ? (
-                                <div className="bg-white border border-gray-200 rounded p-1 shadow-sm hover:shadow-md transition-shadow group">
-                                  {/* Uniform Session Block Structure */}
-                                  <div className="text-center space-y-0.5">
+                                <div className="bg-white border border-gray-200 rounded p-1 shadow-sm hover:shadow-md transition-shadow group relative">
+                                  {/* Action Icons - Top Right */}
+                                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                    <button
+                                      onClick={() => handleEditSession(session)}
+                                      className="w-4 h-4 bg-indigo-600 text-white rounded text-xs flex items-center justify-center hover:bg-indigo-700 transition-colors"
+                                      title="Edit session"
+                                    >
+                                      ✏️
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteSession(session.id)}
+                                      className="w-4 h-4 bg-red-600 text-white rounded text-xs flex items-center justify-center hover:bg-red-700 transition-colors"
+                                      title="Delete session"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </div>
+                                  
+                                  {/* Session Content - Centered with space for icons */}
+                                  <div className="text-center space-y-0.5 pr-8">
                                     {/* TYPE */}
-                                    <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-0.5">
+                                    <div className="text-xs font-medium text-gray-700 border-b border-gray-100 py-0.5">
                                       {getSessionTypeLabel(session.session_type)}
                                     </div>
                                     
                                     {/* TITLE */}
-                                    <div className="text-xs font-semibold text-gray-900 border-b border-gray-100 pb-0.5">
+                                    <div className="text-xs font-semibold text-gray-900 border-b border-gray-100 py-0.5">
                               {session.title}
                             </div>
                             
-                                    {/* SPEAKERS */}
-                                    {session.speakers && session.speakers.length > 0 && (
-                                      <div className="text-xs text-gray-600 border-b border-gray-100 pb-0.5">
-                                        {session.speakers.join(', ')}
+                                    {/* PARTICIPANTS S/M/C COMPACT */}
+                                    <div className="text-xs text-gray-600 py-0.5 min-h-[16px]">
+                                      {formatParticipantsDisplay(session)}
                               </div>
-                            )}
-                            
-                                    {/* MODERATORS */}
-                                    {session.moderators && session.moderators.length > 0 && (
-                                      <div className="text-xs text-gray-600 border-b border-gray-100 pb-0.5">
-                                        {session.moderators.join(', ')}
+
+                                    {/* Sub-talks preview (compact) */}
+                                    {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
+                                      <div className="text-[11px] text-gray-700 border-t border-gray-100 pt-1 space-y-0.5 text-left">
+                                        {(session as any).sub_sessions.slice(0, 4).map((st: any, idx: number) => (
+                                          <div key={st.id || idx} className="truncate">
+                                            <span className="text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)} • </span>
+                                            <span className="font-medium">{st.title}</span>
+                                            {st.speaker_name ? <span className="text-gray-500"> — {st.speaker_name}</span> : null}
                             </div>
+                                        ))}
+                                        {(session as any).sub_sessions.length > 4 && (
+                                          <div className="text-gray-400">+ {(session as any).sub_sessions.length - 4} more…</div>
                                     )}
-                                    
-                                    {/* CHAIRPERSONS */}
-                                    {session.chairpersons && session.chairpersons.length > 0 && (
-                                      <div className="text-xs text-gray-600 pb-0.5">
-                                        {session.chairpersons.join(', ')}
                               </div>
                             )}
-                            
-                            {/* Action Buttons */}
-                                    <div className="flex justify-center space-x-1 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => handleEditSession(session)}
-                                        className="text-xs bg-indigo-600 text-white px-1 py-0.5 rounded hover:bg-indigo-700"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSession(session.id)}
-                                        className="text-xs bg-red-600 text-white px-1 py-0.5 rounded hover:bg-red-700"
-                              >
-                                Delete
-                              </button>
-                            </div>
                           </div>
                         </div>
                       ) : (
@@ -1530,8 +1559,8 @@ export default function EditSessionsPage() {
             day_id: editingSession.day_id,
             stage_id: editingSession.stage_id,
             time_slot_id: editingSession.time_slot_id,
-            start_time: editingSession.start_time || '',
-            end_time: editingSession.end_time || '',
+            custom_start_time: editingSession.custom_start_time || editingSession.start_time || '',
+            custom_end_time: editingSession.custom_end_time || editingSession.end_time || '',
             description: editingSession.description || '',
             is_parallel_meal: editingSession.is_parallel_meal || false,
             parallel_meal_type: editingSession.parallel_meal_type || ''
@@ -1549,6 +1578,8 @@ export default function EditSessionsPage() {
           timeSlots={timeSlots}
           isAddingNewSession={!editingSession}
           speakers={speakers}
+          sessions={sessions}
+          selectedDay={selectedDay}
         />
       </Modal>
 
@@ -1749,8 +1780,8 @@ export default function EditSessionsPage() {
       {showGlobalBlockModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-medium text-gray-900">Add Global Block (All Halls)</h3>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-medium text-gray-900">Add Global Block</h3>
               <button
                 onClick={handleCancelGlobalBlock}
                 className="text-gray-400 hover:text-gray-600 text-xl font-bold"
@@ -1759,31 +1790,65 @@ export default function EditSessionsPage() {
               </button>
             </div>
             
-            <div className="p-6 space-y-4">
-              {/* Block Type Selection */}
+            <div className="p-4 space-y-3">
+              {/* Day Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Block Type
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Day *
+                </label>
+                <select
+                  value={selectedDayForGlobalBlock}
+                  onChange={(e) => setSelectedDayForGlobalBlock(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">Select Day</option>
+                  {days.map(day => (
+                    <option key={day.id} value={day.name}>
+                      {day.name} - {day.date}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Block Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Block Type *
                 </label>
                 <select
                   value={globalBlockType}
                   onChange={(e) => setGlobalBlockType(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 >
-                  <option value="registration">Registration</option>
-                  <option value="tea_break">Tea Break</option>
-                  <option value="lunch">Lunch</option>
-                  <option value="inauguration">Inauguration</option>
-                  <option value="valedictory">Valedictory</option>
-                  <option value="custom">Custom</option>
+                  <option value="registration">📝 Registration</option>
+                  <option value="tea_break">☕ Tea Break</option>
+                  <option value="lunch">🍽️ Lunch</option>
+                  <option value="coffee_break">☕ Coffee Break</option>
+                  <option value="inauguration">🎉 Inauguration</option>
+                  <option value="valedictory">🏆 Valedictory</option>
+                  <option value="custom">🏁 Custom Event</option>
                 </select>
               </div>
 
+              {/* Block Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Block Title *
+                </label>
+                <input
+                  type="text"
+                  value={globalBlockTitle}
+                  onChange={(e) => setGlobalBlockTitle(e.target.value)}
+                  placeholder="e.g., Registration, Lunch Break, etc."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
               {/* Time Range */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Time
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Time *
                   </label>
                   <input
                     type="time"
@@ -1793,8 +1858,8 @@ export default function EditSessionsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Time
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    End Time *
                   </label>
                   <input
                     type="time"
@@ -1805,35 +1870,19 @@ export default function EditSessionsPage() {
                 </div>
               </div>
 
-              {/* Optional Description */}
-              {globalBlockType === 'custom' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <input
-                    type="text"
-                    value={globalBlockDescription}
-                    onChange={(e) => setGlobalBlockDescription(e.target.value)}
-                    placeholder="Enter custom block name"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-              )}
-
               {/* Action Buttons */}
-              <div className="flex space-x-3 pt-4">
+              <div className="flex space-x-3 pt-3">
                 <button
                   onClick={handleSubmitGlobalBlock}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
                 >
-                  ADD
+                  Add Global Block
                 </button>
                 <button
                   onClick={handleCancelGlobalBlock}
                   className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
                 >
-                  CANCEL
+                  Cancel
                 </button>
               </div>
             </div>

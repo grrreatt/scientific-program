@@ -1,8 +1,8 @@
 export type SessionType = 
+  | 'session'
   | 'lecture'
   | 'panel'
   | 'symposium'
-  | 'workshop'
   | 'oration'
   | 'guest_lecture'
   | 'discussion'
@@ -14,8 +14,8 @@ export type Role =
   | 'moderator'
   | 'panelist'
   | 'chairperson'
-  | 'workshop_lead'
-  | 'assistant'
+  | 'workshop_lead' // kept for dedicated workshop domain
+  | 'assistant'     // kept for dedicated workshop domain
   | 'presenter'
   | 'introducer'
   | 'orator'
@@ -47,11 +47,17 @@ export interface Session {
   data?: any
   created_at?: string
   updated_at?: string
+  // New fields from Word files analysis
+  session_number?: number
+  status?: string
+  custom_start_time?: string
+  custom_end_time?: string
   // Joined fields from view
   start_time?: string
   end_time?: string
   day_name?: string
   stage_name?: string
+  session_display_name?: string
   // Participant fields
   speakers?: string[]
   moderators?: string[]
@@ -116,6 +122,23 @@ export interface SessionParticipant {
   created_at?: string
 }
 
+export interface SubSession {
+  id: string
+  parent_session_id: string
+  title: string
+  speaker_id?: string
+  start_time?: string
+  end_time?: string
+  topic?: string
+  sub_session_type: 'lecture' | 'discussion'
+  created_at?: string
+  updated_at?: string
+  // Joined fields
+  speaker_name?: string
+  speaker_title?: string
+  speaker_organization?: string
+}
+
 export interface SessionTypeConfig {
   id: string
   name: string
@@ -163,6 +186,9 @@ export interface SessionFormData {
   // Symposium specific
   symposium_subtalks?: SymposiumSubtalk[];
   
+  // Sub-sessions for Session type
+  sub_sessions?: SubSession[];
+  
   // Other custom fields
   custom_data?: Record<string, any>;
 }
@@ -189,4 +215,193 @@ export interface DashboardStats {
   total_stages: number;
   sessions_by_type: Record<SessionType, number>;
   upcoming_sessions: number;
+} 
+  created_at?: string
+
+}
+
+
+
+export interface SessionParticipant {
+
+  id: string
+
+  session_id: string
+
+  speaker_id: string
+
+  role: string
+
+  created_at?: string
+
+}
+
+
+export interface SubSession {
+  id: string
+  parent_session_id: string
+  title: string
+  speaker_id?: string
+  start_time?: string
+  end_time?: string
+  topic?: string
+  sub_session_type: 'lecture' | 'discussion'
+  created_at?: string
+  updated_at?: string
+  // Joined fields
+  speaker_name?: string
+  speaker_title?: string
+  speaker_organization?: string
+}
+
+
+export interface SessionTypeConfig {
+
+  id: string
+
+  name: string
+
+  fields: {
+
+    required: string[];
+
+    optional: string[];
+
+    roles: Role[];
+
+  }
+
+  created_at?: string
+
+}
+
+
+
+export interface SymposiumSubtalk {
+
+  id: string;
+
+  title: string;
+
+  speaker_id: string;
+
+  start_time: string;
+
+  end_time: string;
+
+  topic: string;
+
+}
+
+
+
+export interface SessionFormData {
+
+  title: string;
+
+  session_type: SessionType;
+
+  day_id: string;
+
+  stage_id: string;
+
+  start_time: string;
+
+  end_time: string;
+
+  topic?: string;
+
+  description?: string;
+
+  is_parallel_meal: boolean;
+
+  parallel_meal_type?: MealType;
+
+  
+
+  // Dynamic fields based on session type
+
+  speaker_id?: string;
+
+  chairperson_id?: string;
+
+  moderator_id?: string;
+
+  panelist_ids?: string[];
+
+  workshop_lead_ids?: string[];
+
+  assistant_ids?: string[];
+
+  capacity?: number;
+
+  introducer_id?: string;
+
+  presenter_ids?: string[];
+
+  discussion_leader_id?: string;
+
+  
+
+  // Symposium specific
+
+  symposium_subtalks?: SymposiumSubtalk[];
+
+  
+  // Sub-sessions for Session type
+  sub_sessions?: SubSession[];
+  
+
+  // Other custom fields
+
+  custom_data?: Record<string, any>;
+
+}
+
+
+
+export interface CSVExportRow {
+
+  session_name: string;
+
+  session_type: string;
+
+  day: string;
+
+  stage: string;
+
+  start_time: string;
+
+  end_time: string;
+
+  duration: string;
+
+  topic: string;
+
+  person_name: string;
+
+  role: string;
+
+  organization?: string;
+
+  email?: string;
+
+}
+
+
+
+export interface DashboardStats {
+
+  total_sessions: number;
+
+  total_speakers: number;
+
+  total_days: number;
+
+  total_stages: number;
+
+  sessions_by_type: Record<SessionType, number>;
+
+  upcoming_sessions: number;
+
 } 

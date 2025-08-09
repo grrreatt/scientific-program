@@ -608,24 +608,33 @@ export default function PublicProgramPage() {
                                     {session.title}
                                   </div>
                                   
-                                  {/* SPEAKERS */}
+                                  {/* Full role names for public view */}
                                   {session.speakers && session.speakers.length > 0 && (
                                     <div className="text-xs text-gray-600 border-b border-gray-100 pb-0.5">
-                                      {session.speakers.join(', ')}
+                                      <span className="font-medium text-gray-700">Speaker:</span> {session.speakers.join(', ')}
                                     </div>
                                   )}
-                                  
-                                  {/* MODERATORS */}
                                   {session.moderators && session.moderators.length > 0 && (
                                     <div className="text-xs text-gray-600 border-b border-gray-100 pb-0.5">
-                                      {session.moderators.join(', ')}
+                                      <span className="font-medium text-gray-700">Moderator:</span> {session.moderators.join(', ')}
                                     </div>
                                   )}
-                                  
-                                  {/* CHAIRPERSONS */}
                                   {session.chairpersons && session.chairpersons.length > 0 && (
                                     <div className="text-xs text-gray-600 pb-0.5">
-                                      {session.chairpersons.join(', ')}
+                                      <span className="font-medium text-gray-700">Chairperson:</span> {session.chairpersons.join(', ')}
+                                    </div>
+                                  )}
+
+                                  {/* Sub-talks (public view) */}
+                                  {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
+                                    <div className="text-[11px] text-gray-700 border-t border-gray-100 pt-1 space-y-0.5 text-left">
+                                      {(session as any).sub_sessions.map((st: any, idx: number) => (
+                                        <div key={st.id || idx} className="truncate">
+                                          <span className="text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)} • </span>
+                                          <span className="font-medium">{st.title}</span>
+                                          {st.speaker_name ? <span className="text-gray-500"> — {st.speaker_name}</span> : null}
+                                        </div>
+                                      ))}
                                     </div>
                                   )}
                                 </div>

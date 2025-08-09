@@ -3,6 +3,7 @@ import { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface RealtimeConfig {
   onSessionChange?: (payload: any) => void
+  // Reuse onSessionChange for sub-session and participant changes to trigger reloads
   onHallChange?: (payload: any) => void
   onDayChange?: (payload: any) => void
   onTimeSlotChange?: (payload: any) => void
@@ -50,6 +51,10 @@ class RealtimeService {
     
     // Subscribe to sessions
     this.subscribeToSessions(config.onSessionChange)
+    // Subscribe to sub-sessions (subtalks/discussion)
+    this.subscribeToSubSessions(config.onSessionChange)
+    // Subscribe to participants (chairperson etc.)
+    this.subscribeToParticipants(config.onSessionChange)
     
     // Subscribe to halls/stages
     this.subscribeToHalls(config.onHallChange)
@@ -120,6 +125,11 @@ class RealtimeService {
         console.log('📡 Halls subscription status:', status)
         if (status === 'SUBSCRIBED') {
           this.channels.set('halls', channel)
+          this.connectionStatus = 'connected'
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.connectionStatus = 'disconnected'
+        } else {
+          this.connectionStatus = 'connecting'
         }
       })
   }
@@ -145,6 +155,11 @@ class RealtimeService {
         console.log('📡 Days subscription status:', status)
         if (status === 'SUBSCRIBED') {
           this.channels.set('days', channel)
+          this.connectionStatus = 'connected'
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.connectionStatus = 'disconnected'
+        } else {
+          this.connectionStatus = 'connecting'
         }
       })
   }
@@ -170,6 +185,11 @@ class RealtimeService {
         console.log('📡 Time slots subscription status:', status)
         if (status === 'SUBSCRIBED') {
           this.channels.set('timeslots', channel)
+          this.connectionStatus = 'connected'
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.connectionStatus = 'disconnected'
+        } else {
+          this.connectionStatus = 'connecting'
         }
       })
   }
@@ -195,6 +215,59 @@ class RealtimeService {
         console.log('📡 Day Halls subscription status:', status)
         if (status === 'SUBSCRIBED') {
           this.channels.set('day_halls', channel)
+          this.connectionStatus = 'connected'
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.connectionStatus = 'disconnected'
+        } else {
+          this.connectionStatus = 'connecting'
+        }
+      })
+  }
+
+  private subscribeToSubSessions(onChange?: (payload: any) => void) {
+    const channel = supabase
+      .channel('sub-sessions-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'sub_sessions' },
+        (payload) => {
+          console.log('🔄 Sub-session change detected:', payload)
+          this.handleOptimisticUpdate('sub_sessions', payload)
+          onChange?.(payload)
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Sub-sessions subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          this.channels.set('sub_sessions', channel)
+          this.connectionStatus = 'connected'
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.connectionStatus = 'disconnected'
+        } else {
+          this.connectionStatus = 'connecting'
+        }
+      })
+  }
+
+  private subscribeToParticipants(onChange?: (payload: any) => void) {
+    const channel = supabase
+      .channel('participants-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'session_participants' },
+        (payload) => {
+          console.log('🔄 Participant change detected:', payload)
+          this.handleOptimisticUpdate('session_participants', payload)
+          onChange?.(payload)
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Participants subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          this.channels.set('session_participants', channel)
+          this.connectionStatus = 'connected'
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.connectionStatus = 'disconnected'
+        } else {
+          this.connectionStatus = 'connecting'
         }
       })
   }
