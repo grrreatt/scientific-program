@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
 
     const rows: Row[] = []
 
-    (sessions || []).forEach((session: any) => {
+    const sessionList = (sessions ?? []) as any[]
+    sessionList.forEach((session: any) => {
       const sessionTitle = session.title || ''
       const sessionTopic = session.topic || ''
       const sessionTime = formatTimeRange(session.start_time, session.end_time)
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
       })
 
       // Sub-sessions (sub-talks / discussion)
-      const subs = session.sub_sessions || []
+      const subs = (session.sub_sessions ?? []) as any[]
       subs.forEach((sub: any) => {
         const subSpeaker = sub.speakers?.name || ''
         if (!subSpeaker) return
