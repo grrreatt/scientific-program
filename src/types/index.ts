@@ -213,7 +213,7 @@ export interface DashboardStats {
   total_speakers: number;
   total_days: number;
   total_stages: number;
-  sessions_by_type: Record<SessionType, number>;
+  sessions_by_type: Record<string, number>;
   upcoming_sessions: number;
 } 
   created_at?: string
@@ -400,7 +400,7 @@ export interface DashboardStats {
 
   total_stages: number;
 
-  sessions_by_type: Record<SessionType, number>;
+  sessions_by_type: Record<string, number>;
 
   upcoming_sessions: number;
 
