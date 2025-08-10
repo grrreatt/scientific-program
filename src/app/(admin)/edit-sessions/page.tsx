@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { formatTime, formatTimeRange, supabaseUtils, formatParticipantsDisplay } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
@@ -75,6 +75,20 @@ export default function EditSessionsPage() {
       try { localStorage.setItem('selectedDay', dayName) } catch {}
     }
   }
+
+  // Scroll container and first hall ref for centering
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const firstHallHeaderRef = useRef<HTMLTableCellElement | null>(null)
+
+  // Center the first hall when day or halls change
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    const firstHall = firstHallHeaderRef.current
+    if (!container || !firstHall) return
+    const containerWidth = container.clientWidth
+    const targetLeft = firstHall.offsetLeft + firstHall.offsetWidth / 2 - containerWidth / 2
+    container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
+  }, [selectedDay, dayHalls.length])
 
   // Load all data from database
   const loadAllData = async () => {
@@ -1418,16 +1432,16 @@ export default function EditSessionsPage() {
 
       {/* Timeline Table Layout */}
       {getHallsForSelectedDay().length > 0 ? (
-        <div className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto" style={{ scrollBehavior: 'smooth' }}>
-        <div className="min-w-max" style={{ scrollSnapType: 'x mandatory' }}>
+        <div ref={scrollContainerRef} className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto" style={{ scrollBehavior: 'smooth' }}>
+        <div className="min-w-max transition-all duration-200 ease-in-out" style={{ scrollSnapType: 'x mandatory' }}>
             {/* Table Header */}
             <div className="bg-white border-b sticky top-0 z-40">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-50">
               {/* Hall Column Headers */}
-              {getHallsForSelectedDay().map((hall) => (
-                      <th key={hall.id} className="w-64 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left">
+              {getHallsForSelectedDay().map((hall, idx) => (
+                      <th ref={idx === 0 ? firstHallHeaderRef : undefined} key={hall.id} className="w-64 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left">
                   <div className="flex items-center justify-between">
                           {editingHall?.id === hall.id ? (
                             <div className="flex items-center space-x-2 flex-1">
