@@ -13,6 +13,7 @@ export type Role =
   | 'speaker'
   | 'moderator'
   | 'panelist'
+  | 'expert'
   | 'chairperson'
   | 'workshop_lead' // kept for dedicated workshop domain
   | 'assistant'     // kept for dedicated workshop domain
