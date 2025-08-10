@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { SESSION_TYPES, MEAL_TYPES } from '@/lib/constants'
 import { TimePicker } from '@/components/ui/time-picker'
 import { formatTime12h, parseTime12h, getSessionNumberDisplay, getSessionTitleSuggestions, getNextStartTime, calculateDuration } from '@/lib/utils'
@@ -139,13 +139,17 @@ export function SessionForm({
     custom_data: {}
   })
 
-  // Initialize form with provided initialData (hall, time slot, etc.)
+  // Initialize form with provided initialData (hall, time slot, etc.) only once on mount
+  const hasInitializedRef = useRef(false)
   useEffect(() => {
+    if (hasInitializedRef.current) return
     setFormData(prev => ({
       ...prev,
       ...initialData,
     }))
-  }, [initialData])
+    hasInitializedRef.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // When adding a new session from a grid click, pre-fill custom times from the selected time slot
   useEffect(() => {

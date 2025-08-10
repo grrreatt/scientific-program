@@ -1436,7 +1436,7 @@ export default function EditSessionsPage() {
       {/* Timeline Table Layout */}
       {getHallsForSelectedDay().length > 0 ? (
         <div ref={scrollContainerRef} className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto [scrollbar-width:thin]" style={{ scrollBehavior: 'smooth' }}>
-        <div className={`transition-all duration-200 ease-in-out ${getHallsForSelectedDay().length === 1 ? 'mx-auto' : 'min-w-max'}`} style={{ scrollSnapType: 'x mandatory', width: getHallsForSelectedDay().length === 1 ? '25vw' : undefined }}>
+        <div className={`transition-all duration-200 ease-in-out ${getHallsForSelectedDay().length === 1 ? 'mx-auto' : 'min-w-max'}`} style={{ scrollSnapType: 'x mandatory', width: getHallsForSelectedDay().length === 1 ? '40vw' : undefined }}>
             {/* Table Header */}
             <div className="bg-white border-b sticky top-0 z-40">
               <table className="w-full border-collapse">
