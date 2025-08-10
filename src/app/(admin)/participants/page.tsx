@@ -20,7 +20,6 @@ export default function ParticipantsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const [uploadType, setUploadType] = useState<'speakers' | 'moderators' | 'chairpersons'>('speakers')
   const [csvData, setCsvData] = useState<string>('')
   const [uploading, setUploading] = useState(false)
   const [previewData, setPreviewData] = useState<any[]>([])
@@ -259,10 +258,10 @@ export default function ParticipantsPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Participants Management
+                 Participants
               </h1>
               <p className="text-sm text-gray-600">
-                Manage speakers, moderators, and chairpersons for the conference
+                Master list for all people. Add names and emails once; assign roles later in sessions.
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -276,13 +275,13 @@ export default function ParticipantsPage() {
               <button
                 onClick={() => {
                   const link = document.createElement('a')
-                  link.href = '/api/download-template?type=speakers'
-                  link.download = 'speakers_template.csv'
+                  link.href = '/api/download-template?type=participants_master'
+                  link.download = 'participants_master_template.csv'
                   link.click()
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
               >
-                📥 Download Template
+                📥 Download Master Template
               </button>
               <button
                 onClick={() => setShowUploadModal(true)}
@@ -343,17 +342,17 @@ export default function ParticipantsPage() {
         {/* Speakers List */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">All Speakers</h2>
+            <h2 className="text-lg font-medium text-gray-900">All Participants</h2>
           </div>
           
           {speakers.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-500 text-lg mb-4">No speakers found</div>
+              <div className="text-gray-500 text-lg mb-4">No participants found</div>
               <button
                 onClick={() => setShowUploadModal(true)}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
               >
-                Upload First Speaker
+                Upload First Participant
               </button>
             </div>
           ) : (
@@ -419,63 +418,24 @@ export default function ParticipantsPage() {
       </div>
 
       {/* Upload Modal */}
-      <Modal
+  <Modal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         title="Upload Participants CSV"
         maxWidth="max-w-4xl"
       >
         <div className="space-y-6">
-          {/* Upload Type Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Type
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { key: 'speakers', label: 'Speakers', icon: '👥' },
-                { key: 'moderators', label: 'Moderators', icon: '🎤' },
-                { key: 'chairpersons', label: 'Chairpersons', icon: '🪑' }
-              ].map((type) => (
-                <div
-                  key={type.key}
-                  className={`relative rounded-lg border p-3 cursor-pointer ${
-                    uploadType === type.key
-                      ? 'border-indigo-500 bg-indigo-50'
-                      : 'border-gray-300 bg-white hover:border-gray-400'
-                  }`}
-                  onClick={() => setUploadType(type.key as any)}
-                >
-                  <div className="flex items-center">
-                    <input
-                      type="radio"
-                      name="uploadType"
-                      value={type.key}
-                      checked={uploadType === type.key}
-                      onChange={() => setUploadType(type.key as any)}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                    />
-                    <label className="ml-2 block text-sm font-medium text-gray-900">
-                      <span className="mr-2">{type.icon}</span>
-                      {type.label}
-                    </label>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* CSV Format Instructions */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h3 className="text-sm font-medium text-blue-900 mb-2">CSV Format Instructions</h3>
             <div className="text-sm text-blue-800 space-y-1">
-              <p><strong>Required columns:</strong> name</p>
-              <p><strong>Optional columns:</strong> email, title, organization, bio</p>
+              <p><strong>Required columns:</strong> name, email</p>
+              <p><strong>Optional columns:</strong> title, organization, bio</p>
               <p><strong>Example:</strong></p>
               <pre className="bg-white p-2 rounded text-xs overflow-x-auto">
-{`name,email,title,organization,bio
-"Dr. Sarah Johnson","sarah.johnson@university.edu","Professor","University of Medical Sciences","Expert in medical research"
-"Dr. Michael Chen","michael.chen@research.org","Research Director","National Research Institute","Leading researcher in biotechnology"`}
+{`name,email
+"Dr. Sarah Johnson","sarah.johnson@university.edu"
+"Dr. Michael Chen","michael.chen@research.org"`}
               </pre>
             </div>
           </div>
@@ -556,7 +516,7 @@ export default function ParticipantsPage() {
               disabled={uploading || !csvData.trim()}
               className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {uploading ? 'Uploading...' : 'Upload Speakers'}
+              {uploading ? 'Uploading...' : 'Upload Participants'}
             </button>
           </div>
         </div>

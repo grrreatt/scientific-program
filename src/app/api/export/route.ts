@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase/client'
-import { calculateDuration } from '@/lib/utils'
+import { calculateDuration, formatTimeCompact } from '@/lib/utils'
 
 export async function GET() {
   try {
@@ -28,7 +28,7 @@ export async function GET() {
     
     sessions?.forEach(session => {
       const dayName = session.day_name || 'Unknown Day'
-      const stageName = session.stage_name || 'Unknown Stage'
+      const stageName = session.stage_name || 'Unknown Hall'
       const duration = calculateDuration(session.start_time, session.end_time)
       
       // Handle participants
@@ -36,11 +36,15 @@ export async function GET() {
         session.session_participants.forEach((participant: any) => {
           csvRows.push({
             session_name: session.title,
+            sub_talk_title: '',
+            sub_talk_type: '',
             session_type: session.session_type,
             day: dayName,
-            stage: stageName,
+            hall: stageName,
             start_time: session.start_time,
             end_time: session.end_time,
+            start_time_12h: formatTimeCompact(session.start_time),
+            end_time_12h: formatTimeCompact(session.end_time),
             duration: duration,
             topic: session.topic || '',
             person_name: participant.speakers?.name || 'Unknown',
@@ -53,11 +57,15 @@ export async function GET() {
         // Session without participants
         csvRows.push({
           session_name: session.title,
+          sub_talk_title: '',
+          sub_talk_type: '',
           session_type: session.session_type,
           day: dayName,
-          stage: stageName,
+          hall: stageName,
           start_time: session.start_time,
           end_time: session.end_time,
+          start_time_12h: formatTimeCompact(session.start_time),
+          end_time_12h: formatTimeCompact(session.end_time),
           duration: duration,
           topic: session.topic || '',
           person_name: '',
@@ -71,12 +79,16 @@ export async function GET() {
       if (session.sub_sessions && session.sub_sessions.length > 0) {
         session.sub_sessions.forEach((sub: any) => {
           csvRows.push({
-            session_name: `${session.title} – ${sub.title}`,
-            session_type: `${session.session_type} / ${sub.sub_session_type || 'sub'}`,
+            session_name: session.title,
+            sub_talk_title: sub.title,
+            sub_talk_type: sub.sub_session_type || 'sub',
+            session_type: session.session_type,
             day: dayName,
-            stage: stageName,
+            hall: stageName,
             start_time: sub.start_time,
             end_time: sub.end_time,
+            start_time_12h: formatTimeCompact(sub.start_time),
+            end_time_12h: formatTimeCompact(sub.end_time),
             duration: calculateDuration(sub.start_time, sub.end_time),
             topic: sub.topic || '',
             person_name: sub.speakers?.name || '',
@@ -91,11 +103,15 @@ export async function GET() {
     // Convert to CSV format
     const headers = [
       'Session Name',
+      'Sub-talk Title',
+      'Sub-talk Type',
       'Session Type', 
       'Day',
-      'Stage',
+      'Hall',
       'Start Time',
       'End Time',
+      'Start Time (12h)',
+      'End Time (12h)',
       'Duration',
       'Topic',
       'Person Name',
@@ -108,11 +124,15 @@ export async function GET() {
       headers.join(','),
       ...csvRows.map(row => [
         `"${row.session_name}"`,
+        `"${row.sub_talk_title || ''}"`,
+        `"${row.sub_talk_type || ''}"`,
         `"${row.session_type}"`,
         `"${row.day}"`,
-        `"${row.stage}"`,
+        `"${row.hall}"`,
         `"${row.start_time}"`,
         `"${row.end_time}"`,
+        `"${row.start_time_12h}"`,
+        `"${row.end_time_12h}"`,
         `"${row.duration}"`,
         `"${row.topic}"`,
         `"${row.person_name}"`,
@@ -127,7 +147,7 @@ export async function GET() {
       status: 200,
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename="conference-program.csv"'
+        'Content-Disposition': 'attachment; filename="conference-program-final.csv"'
       }
     })
 

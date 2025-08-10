@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { formatTime, formatTimeRange, supabaseUtils, formatParticipantsDisplay } from '@/lib/utils'
+import { formatTime, formatTimeRange, supabaseUtils, formatParticipantsDisplay, formatTimeRangeCompact } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
 import { SessionForm } from '@/components/session-form'
@@ -1543,39 +1543,38 @@ export default function EditSessionsPage() {
                                     </button>
                                   </div>
                                   
-                                  {/* Session Content - Centered with space for icons */}
+                                  {/* Session Content with Time at Top - Centered with space for icons */}
                                   <div className="text-center space-y-0.5 pr-8">
-                                    {/* TYPE */}
-                                    <div className="text-xs font-medium text-gray-700 border-b border-gray-100 py-0.5">
-                                      {getSessionTypeLabel(session.session_type)}
+                                    {/* TIME RANGE (bold) */}
+                                    <div className="text-xs font-bold text-gray-900">
+                                      {formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
                                     </div>
-                                    
-                                    {/* TITLE */}
-                                    <div className="text-xs font-semibold text-gray-900 border-b border-gray-100 py-0.5">
-                              {session.title}
-                            </div>
-                            
-                                    {/* PARTICIPANTS S/M/C COMPACT */}
-                                    <div className="text-xs text-gray-600 py-0.5 min-h-[16px]">
+                                    {/* TITLE (larger) */}
+                                    <div className="text-sm font-semibold text-gray-900">
+                                      {session.title}
+                                    </div>
+                                    {/* PARTICIPANTS COMPACT S/M/C/P/E */}
+                                    <div className="text-xs text-gray-600 min-h-[16px]">
                                       {formatParticipantsDisplay(session)}
-                              </div>
-
-                                    {/* Sub-talks preview (compact) */}
+                                    </div>
+                                    {/* TOPIC (optional) */}
+                                    {session.topic ? (
+                                      <div className="text-[11px] text-gray-600">Topic: {session.topic}</div>
+                                    ) : null}
+                                    {/* Sub-talks list (compact, admin abbreviations) */}
                                     {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
                                       <div className="text-[11px] text-gray-700 border-t border-gray-100 pt-1 space-y-0.5 text-left">
-                                        {(session as any).sub_sessions.slice(0, 4).map((st: any, idx: number) => (
+                                        <div className="font-medium text-gray-800 mb-0.5">Sub-talks:</div>
+                                        {(session as any).sub_sessions.map((st: any, idx: number) => (
                                           <div key={st.id || idx} className="truncate">
                                             <span className="text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)} • </span>
                                             <span className="font-medium">{st.title}</span>
-                                            {st.speaker_name ? <span className="text-gray-500"> — {st.speaker_name}</span> : null}
-                            </div>
+                                            {st.speaker_name ? <span className="text-gray-500"> — S: {st.speaker_name}</span> : null}
+                                          </div>
                                         ))}
-                                        {(session as any).sub_sessions.length > 4 && (
-                                          <div className="text-gray-400">+ {(session as any).sub_sessions.length - 4} more…</div>
+                                      </div>
                                     )}
-                              </div>
-                            )}
-                          </div>
+                                  </div>
                         </div>
                       ) : (
                         <div className="h-full flex items-center justify-center">

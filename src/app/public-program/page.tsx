@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { formatTime, formatTimeRange, calculateDuration, supabaseUtils } from '@/lib/utils'
+import { formatTime, formatTimeRange, calculateDuration, supabaseUtils, formatTimeRangeCompact } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { supabase } from '@/lib/supabase/client'
 import realtimeService from '@/lib/supabase/realtime'
@@ -594,43 +594,45 @@ export default function PublicProgramPage() {
                           <td key={hall.id} className="w-64 border-r border-gray-200 p-1">
                             {session ? (
                               <div className="bg-white border border-gray-200 rounded p-1 shadow-sm">
-                                {/* Uniform Session Block Structure */}
+                                {/* Public Session Block with Time at Top */}
                                 <div className="text-center space-y-0.5">
-                                  {/* TYPE */}
-                                  <div className="text-xs font-medium text-gray-700 border-b border-gray-100 pb-0.5">
-                                    {getSessionTypeLabel(session.session_type)}
+                                  {/* TIME RANGE (bold) */}
+                                  <div className="text-xs font-bold text-gray-900">
+                                    {formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
                                   </div>
-                                  
-                                  {/* TITLE */}
-                                  <div className="text-xs font-semibold text-gray-900 border-b border-gray-100 pb-0.5">
+                                  {/* TITLE (larger) */}
+                                  <div className="text-sm font-semibold text-gray-900">
                                     {session.title}
                                   </div>
-                                  
                                   {/* Full role names for public view */}
                                   {session.speakers && session.speakers.length > 0 && (
-                                    <div className="text-xs text-gray-600 border-b border-gray-100 pb-0.5">
-                                      <span className="font-medium text-gray-700">Speaker:</span> {session.speakers.join(', ')}
+                                    <div className="text-xs text-gray-700">
+                                      <span className="font-medium">Speaker:</span> {session.speakers.join(', ')}
                                     </div>
                                   )}
                                   {session.moderators && session.moderators.length > 0 && (
-                                    <div className="text-xs text-gray-600 border-b border-gray-100 pb-0.5">
-                                      <span className="font-medium text-gray-700">Moderator:</span> {session.moderators.join(', ')}
+                                    <div className="text-xs text-gray-700">
+                                      <span className="font-medium">Moderator:</span> {session.moderators.join(', ')}
                                     </div>
                                   )}
                                   {session.chairpersons && session.chairpersons.length > 0 && (
-                                    <div className="text-xs text-gray-600 pb-0.5">
-                                      <span className="font-medium text-gray-700">Chairperson:</span> {session.chairpersons.join(', ')}
+                                    <div className="text-xs text-gray-700">
+                                      <span className="font-medium">Chairperson:</span> {session.chairpersons.join(', ')}
                                     </div>
                                   )}
-
+                                  {/* Topic */}
+                                  {session.topic ? (
+                                    <div className="text-[11px] text-gray-600">Topic: {session.topic}</div>
+                                  ) : null}
                                   {/* Sub-talks (public view) */}
                                   {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
                                     <div className="text-[11px] text-gray-700 border-t border-gray-100 pt-1 space-y-0.5 text-left">
+                                      <div className="font-medium text-gray-800 mb-0.5">Sub-talks:</div>
                                       {(session as any).sub_sessions.map((st: any, idx: number) => (
                                         <div key={st.id || idx} className="truncate">
                                           <span className="text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)} • </span>
                                           <span className="font-medium">{st.title}</span>
-                                          {st.speaker_name ? <span className="text-gray-500"> — {st.speaker_name}</span> : null}
+                                          {st.speaker_name ? <span className="text-gray-500"> — Speaker: {st.speaker_name}</span> : null}
                                         </div>
                                       ))}
                                     </div>

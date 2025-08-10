@@ -36,6 +36,22 @@ export function formatTimeRange(startTime: string, endTime: string): string {
   return `${formattedStart} - ${formattedEnd}`
 }
 
+// Compact 12-hour time format without space and with lowercase am/pm, e.g., 08:30am
+export function formatTimeCompact(time: string): string {
+  if (!time) return ''
+  const [h, m] = time.split(':')
+  const hours = parseInt(h, 10)
+  const minutes = parseInt(m || '0', 10)
+  const period = hours >= 12 ? 'pm' : 'am'
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12
+  return `${String(displayHour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}${period}`
+}
+
+export function formatTimeRangeCompact(startTime: string, endTime: string): string {
+  if (!startTime || !endTime) return ''
+  return `${formatTimeCompact(startTime)}-${formatTimeCompact(endTime)}`
+}
+
 export function calculateDuration(startTime: string, endTime: string): string {
   if (!startTime || !endTime) return ''
   
@@ -73,6 +89,14 @@ export const supabaseUtils = {
       .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
       .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
 
+    const panelists = participants
+      .filter((p: any) => p.role === 'panelist')
+      .map((p: any) => p.speakers?.name || 'Unknown Panelist')
+
+    const experts = participants
+      .filter((p: any) => p.role === 'expert')
+      .map((p: any) => p.speakers?.name || 'Unknown Expert')
+
     // Sub-sessions (sub-talks)
     const subSessionsRaw = session.sub_sessions || []
     const subSessions = subSessionsRaw.map((st: any) => ({
@@ -97,6 +121,8 @@ export const supabaseUtils = {
       speakers,
       moderators,
       chairpersons,
+      panelists,
+      experts,
       sub_sessions: subSessions
     }
   },

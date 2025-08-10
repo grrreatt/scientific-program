@@ -8,6 +8,13 @@ export async function GET(request: NextRequest) {
   let filename = ''
 
   switch (type) {
+    case 'participants_master':
+      filename = 'participants_master_template.csv'
+      csvContent = `name,email
+"Dr. Sarah Johnson","sarah.johnson@university.edu"
+"Dr. Michael Chen","michael.chen@research.org"
+"Dr. Emily Rodriguez","emily.rodriguez@hospital.com"`
+      break
     case 'speakers':
       filename = 'speakers_template.csv'
       csvContent = `name,email,title,organization,bio
