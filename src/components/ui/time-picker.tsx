@@ -58,7 +58,7 @@ export function TimePicker({ value, onChange, label, required = false, className
       <div className={`flex items-center space-x-2 time-picker-container ${disabled ? 'opacity-60' : ''}`}>
         {/* Hour Select */}
         <select
-          value={hour}
+          value={hour || '08'}
           onChange={(e) => setHour(e.target.value)}
           className="w-16 block pl-3 pr-8 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md time-picker-select"
           required={required}
@@ -78,7 +78,7 @@ export function TimePicker({ value, onChange, label, required = false, className
 
         {/* Minute Select */}
         <select
-          value={minute}
+          value={minute || '00'}
           onChange={(e) => setMinute(e.target.value)}
           className="w-16 block pl-3 pr-8 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md time-picker-select"
           required={required}

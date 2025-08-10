@@ -832,7 +832,7 @@ export function SessionForm({
 
     return (
       <div className="space-y-3">
-        <h4 className="text-sm font-medium text-gray-900">Participants</h4>
+          <h4 className="text-sm font-medium text-gray-900">Participants</h4>
 
         {/* Compact Participant Display */}
         <div className="space-y-2">
@@ -1190,37 +1190,41 @@ export function SessionForm({
         {/* Removed preview/info card to keep form minimal */}
         
         <div className="grid grid-cols-1 gap-3">
-          {/* Session Title with suggestions */}
-              <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Session Title *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-              placeholder={currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${formData.title || currentSessionType==='session' ? 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500' : 'border-red-300 focus:ring-red-300 focus:border-red-400'}`}
-              required={currentSessionType !== 'session'}
-            />
-            {/* keep suggestions implicit via placeholder */}
-              </div>
-
-          {/* Topic: hidden for Lecture/Talk; optional for Session, required otherwise */}
+          {/* Session Title with suggestions (hidden for lecture/talk) */}
           {currentSessionType !== 'lecture' && (
-            <div>
+              <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Topic {currentSessionType !== 'session' && <span className="text-red-500">*</span>}
+                Session Title *
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
+                placeholder={currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${formData.title || currentSessionType==='session' ? 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500' : 'border-red-300 focus:ring-red-300 focus:border-red-400'}`}
+                required={currentSessionType !== 'session'}
+              />
+              </div>
+          )}
+
+          {/* Topic: for lecture = Talk Title, required; for session optional/hidden logic remains */}
+          {(currentSessionType === 'lecture' || currentSessionType !== 'session') && (
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {currentSessionType === 'lecture' ? 'Talk Title *' : 'Topic '}
+                {currentSessionType !== 'session' && currentSessionType !== 'lecture' && (
+                  <span className="text-red-500">*</span>
+                )}
               </label>
               <input
                 type="text"
                 value={formData.topic}
                 onChange={(e) => handleInputChange('topic', e.target.value)}
-                placeholder="Enter topic"
+                placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : 'Enter topic'}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                required={currentSessionType !== 'session'}
+                required={currentSessionType === 'lecture' || currentSessionType !== 'session'}
               />
-            </div>
+              </div>
           )}
 
           {/* Time Range - Always visible */}
