@@ -576,19 +576,23 @@ export function SessionForm({
             </div>
             <div>
               <label htmlFor={`subtalk-speaker-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
-                Speaker Name
+                Speaker
               </label>
-              <input
-                type="text"
+              <select
                 id={`subtalk-speaker-${index}`}
-                value={subtalk.speaker_name}
+                value={(subtalk as any).speaker_id || ''}
                 onChange={(e) => {
                   const newSubtalks = [...subtalks];
-                  newSubtalks[index].speaker_name = e.target.value;
+                  (newSubtalks[index] as any).speaker_id = e.target.value;
                   setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
                 }}
-                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
-              />
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3 text-gray-900"
+              >
+                <option value="">Select Speaker</option>
+                {speakers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <TimePicker
@@ -627,7 +631,7 @@ export function SessionForm({
                   newSubtalks[index].topic = e.target.value;
                   setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
                 }}
-                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3 text-gray-900"
               />
             </div>
             {/* Description removed for de-clutter */}

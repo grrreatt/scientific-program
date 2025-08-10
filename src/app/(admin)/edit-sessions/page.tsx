@@ -1916,19 +1916,21 @@ export default function EditSessionsPage() {
                 </select>
               </div>
 
-              {/* Block Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Block Title *
-                </label>
-                <input
-                  type="text"
-                  value={globalBlockTitle}
-                  onChange={(e) => setGlobalBlockTitle(e.target.value)}
-                  placeholder="e.g., Registration, Lunch Break, etc."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
+              {/* Block Title (only for custom) */}
+              {globalBlockType === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Block Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={globalBlockTitle}
+                    onChange={(e) => setGlobalBlockTitle(e.target.value)}
+                    placeholder="Enter custom title"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              )}
 
               {/* Time Range */}
               <div className="grid grid-cols-2 gap-3">
