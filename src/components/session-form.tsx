@@ -1009,7 +1009,7 @@ export function SessionForm({
     const coveredMinutes = getCoveredMinutes()
     const coverageOk = sessionMinutes > 0 && coveredMinutes === sessionMinutes
 
-    return (
+  return (
       <div className="space-y-4">
         {/* Actions */}
         <div className="flex items-center gap-4 flex-wrap">
@@ -1223,7 +1223,7 @@ export function SessionForm({
         
         <div className="grid grid-cols-1 gap-3">
           {/* Session Title with suggestions */}
-          <div>
+              <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Session Title *
             </label>
@@ -1236,10 +1236,10 @@ export function SessionForm({
               required={currentSessionType !== 'session'}
             />
             {/* keep suggestions implicit via placeholder */}
-          </div>
+              </div>
 
           {/* Topic (kept, but optional for Session) */}
-          <div>
+              <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Topic *
             </label>
@@ -1251,7 +1251,7 @@ export function SessionForm({
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               required={currentSessionType !== 'session'}
             />
-          </div>
+              </div>
 
           {/* Time Range - Always visible */}
           <div className="grid grid-cols-2 gap-3">
@@ -1270,7 +1270,7 @@ export function SessionForm({
                 label="End Time"
                 required
               />
-            </div>
+          </div>
           </div>
         </div>
       </div>
@@ -1297,14 +1297,14 @@ export function SessionForm({
             }
             return null
           })}
-      </div>
+        </div>
       )}
 
       {/* Simplified Session flow */}
       {currentSessionType === 'session' && (
         <div className="space-y-3">
           {renderSessionSimplifiedFlow()}
-        </div>
+      </div>
       )}
 
       {/* Dynamic Participants Section (hidden for simplified Session flow) */}
@@ -1345,7 +1345,7 @@ export function SessionForm({
               Delete Session
             </button>
           )}
-        </div>
+              </div>
         {/* Right: Cancel / Save */}
         <div className="flex space-x-3">
         <button

@@ -27,11 +27,17 @@ export function TimePicker({ value, onChange, label, required = false, className
       setHour(displayHour.toString())
       setMinute(displayMinute)
       setPeriod(isPM ? 'pm' : 'am')
+    } else {
+      // When empty, display placeholder-like defaults but don't emit change
+      setHour('')
+      setMinute('')
+      setPeriod('am')
     }
   }, [value])
 
   // Update parent when local state changes
   useEffect(() => {
+    if (!hour || !minute) return
     let hourNum = parseInt(hour)
     if (period === 'pm' && hourNum !== 12) {
       hourNum += 12
@@ -60,6 +66,9 @@ export function TimePicker({ value, onChange, label, required = false, className
           required={required}
           disabled={disabled}
         >
+          <option value="" disabled hidden>
+            HH
+          </option>
           {hours.map(h => (
             <option key={h} value={h.toString()}>
               {h}
@@ -77,6 +86,9 @@ export function TimePicker({ value, onChange, label, required = false, className
           required={required}
           disabled={disabled}
         >
+          <option value="" disabled hidden>
+            MM
+          </option>
           {minutes.map(m => (
             <option key={m} value={m}>
               {m}

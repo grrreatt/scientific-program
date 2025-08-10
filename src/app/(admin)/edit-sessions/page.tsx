@@ -1315,8 +1315,8 @@ export default function EditSessionsPage() {
             </div>
             {/* Global Search */}
             <div className="flex items-center space-x-2">
-              <input
-                value={searchQuery}
+                <input
+                  value={searchQuery}
                 onChange={(e)=> setSearchQuery(e.target.value)}
                 placeholder="Search title, topic, speaker, hall…"
                 className="px-3 py-1.5 border rounded-md text-sm"
@@ -1436,7 +1436,7 @@ export default function EditSessionsPage() {
       {/* Timeline Table Layout */}
       {getHallsForSelectedDay().length > 0 ? (
         <div ref={scrollContainerRef} className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto [scrollbar-width:thin]" style={{ scrollBehavior: 'smooth' }}>
-        <div className="min-w-max transition-all duration-200 ease-in-out" style={{ scrollSnapType: 'x mandatory' }}>
+        <div className={`transition-all duration-200 ease-in-out ${getHallsForSelectedDay().length === 1 ? 'mx-auto' : 'min-w-max'}`} style={{ scrollSnapType: 'x mandatory', width: getHallsForSelectedDay().length === 1 ? '25vw' : undefined }}>
             {/* Table Header */}
             <div className="bg-white border-b sticky top-0 z-40">
               <table className="w-full border-collapse">
@@ -1444,7 +1444,7 @@ export default function EditSessionsPage() {
                   <tr className="bg-gray-50">
               {/* Hall Column Headers */}
               {getHallsForSelectedDay().map((hall, idx) => (
-                      <th ref={idx === 0 ? firstHallHeaderRef : undefined} key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left">
+                      <th ref={idx === 0 ? firstHallHeaderRef : undefined} key={hall.id} className={`${getHallsForSelectedDay().length === 1 ? 'w-full' : 'w-80'} bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left`}>
                   <div className="flex items-center justify-between">
                           {editingHall?.id === hall.id ? (
                             <div className="flex items-center space-x-2 flex-1">
@@ -1522,26 +1522,26 @@ export default function EditSessionsPage() {
                   const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
                   
                   return (
-                            <td key={hall.id} className="w-80 border-r border-gray-200 p-2" style={{ scrollSnapAlign: 'start' }}>
+                            <td key={hall.id} className={`${getHallsForSelectedDay().length === 1 ? 'w-full' : 'w-80'} border-r border-gray-200 p-2`} style={{ scrollSnapAlign: 'start' }}>
                       {session ? (
                                 <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow group relative border-l-4 border-teal-400">
                                   {/* Action Icons - Top Right */}
                                   <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                    <button
-                                      onClick={() => handleEditSession(session)}
+                              <button
+                                onClick={() => handleEditSession(session)}
                                       className="w-4 h-4 bg-indigo-600 text-white rounded text-xs flex items-center justify-center hover:bg-indigo-700 transition-colors"
                                       title="Edit session"
-                                    >
+                              >
                                       ✏️
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteSession(session.id)}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSession(session.id)}
                                       className="w-4 h-4 bg-red-600 text-white rounded text-xs flex items-center justify-center hover:bg-red-700 transition-colors"
                                       title="Delete session"
-                                    >
+                              >
                                       🗑️
-                                    </button>
-                                  </div>
+                              </button>
+                            </div>
                                   
                                   {/* Session Content with Time at Top - aligned like reference */}
                                   <div className="text-left space-y-1 pr-8">
@@ -1574,7 +1574,7 @@ export default function EditSessionsPage() {
                                         ))}
                                       </div>
                                     )}
-                                  </div>
+                          </div>
                         </div>
                       ) : (
                         <div className="h-full flex items-center justify-center">
