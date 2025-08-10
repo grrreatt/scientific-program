@@ -946,6 +946,25 @@ export default function EditSessionsPage() {
         return
       }
 
+      // Determine title: only require custom; otherwise infer from type label
+      const typeToTitle: Record<string, string> = {
+        registration: 'Registration',
+        tea_break: 'Tea Break',
+        lunch: 'Lunch',
+        coffee_break: 'Coffee Break',
+        inauguration: 'Inauguration',
+        valedictory: 'Valedictory',
+        custom: globalBlockTitle?.trim() || 'Custom Block'
+      }
+      const finalTitle = globalBlockType === 'custom' ? (globalBlockTitle?.trim() || 'Custom Block') : (typeToTitle[globalBlockType] || 'Break')
+
+      // Compute next slot order for the day to avoid conflicts
+      const { data: existingSlots } = await supabase
+        .from('day_time_slots')
+        .select('slot_order')
+        .eq('day_id', selectedDayData.id)
+      const nextOrder = (existingSlots?.reduce((m: number, s: any) => Math.max(m, s.slot_order || 0), 0) || 0) + 1
+
       // Create a new time slot for the global block
       const { data: newTimeSlot, error: timeSlotError } = await supabase
         .from('day_time_slots')
@@ -953,9 +972,9 @@ export default function EditSessionsPage() {
           day_id: selectedDayData.id,
           start_time: globalBlockStartTime,
           end_time: globalBlockEndTime,
-          slot_order: 999, // High order to appear at the end
+          slot_order: nextOrder,
           is_break: true,
-          break_title: globalBlockTitle || null
+          break_title: finalTitle
         })
         .select()
         .single()
@@ -1919,7 +1938,7 @@ export default function EditSessionsPage() {
                   </label>
                   <input
                     type="time"
-                    value={globalBlockStartTime}
+                    value={globalBlockStartTime || '08:00'}
                     onChange={(e) => setGlobalBlockStartTime(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
@@ -1930,7 +1949,7 @@ export default function EditSessionsPage() {
                   </label>
                   <input
                     type="time"
-                    value={globalBlockEndTime}
+                    value={globalBlockEndTime || '09:00'}
                     onChange={(e) => setGlobalBlockEndTime(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   />
