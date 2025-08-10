@@ -1051,8 +1051,8 @@ export function SessionForm({
               const absoluteIndex = formData.sub_sessions.findIndex(ss => ss === st)
               const isFirst = index === 0
               return (
-                <div key={absoluteIndex} className="grid grid-cols-12 gap-2 md:gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-200">
-                  <div className="col-span-3 min-w-[150px]">
+                <div key={absoluteIndex} className="grid grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-200">
+                  <div className="col-span-3 min-w-[160px]">
                     <TimePicker
                       value={isFirst ? formData.custom_start_time : st.start_time}
                       onChange={(t) => updateSubSession(absoluteIndex, 'start_time', t)}
@@ -1062,7 +1062,7 @@ export function SessionForm({
                       disabled={isFirst}
                     />
                   </div>
-                  <div className="col-span-3 min-w-[150px]">
+                  <div className="col-span-3 min-w-[160px]">
                     <TimePicker
                       value={st.end_time}
                       onChange={(t) => updateSubSession(absoluteIndex, 'end_time', t)}
@@ -1243,8 +1243,9 @@ export function SessionForm({
               </div>
 
           {/* Time Range - Always visible */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <div className="text-[11px] text-gray-500">Select session start</div>
               <TimePicker
                 value={formData.custom_start_time}
                 onChange={(t) => handleInputChange('custom_start_time', t)}
@@ -1252,7 +1253,8 @@ export function SessionForm({
                 required
               />
             </div>
-            <div>
+            <div className="space-y-1">
+              <div className="text-[11px] text-gray-500">Select session end</div>
               <TimePicker
                 value={formData.custom_end_time}
                 onChange={(t) => handleInputChange('custom_end_time', t)}

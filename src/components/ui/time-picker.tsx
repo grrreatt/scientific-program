@@ -18,26 +18,24 @@ export function TimePicker({ value, onChange, label, required = false, className
 
   // Parse initial value
   useEffect(() => {
-    if (value) {
-      const [hours, minutes] = value.split(':').map(Number)
-      const isPM = hours >= 12
-      const displayHour = hours % 12 || 12
-      const displayMinute = minutes.toString().padStart(2, '0')
-      
-      setHour(displayHour.toString())
-      setMinute(displayMinute)
-      setPeriod(isPM ? 'pm' : 'am')
-    } else {
-      // When empty, display placeholder-like defaults but don't emit change
-      setHour('')
-      setMinute('')
+    if (!value) {
+      // Default visible state: 12:00 AM
+      setHour('12')
+      setMinute('00')
       setPeriod('am')
+      return
     }
+    const [hours, minutes] = value.split(':').map(Number)
+    const isPM = hours >= 12
+    const displayHour = hours % 12 || 12
+    const displayMinute = minutes.toString().padStart(2, '0')
+    setHour(displayHour.toString())
+    setMinute(displayMinute)
+    setPeriod(isPM ? 'pm' : 'am')
   }, [value])
 
   // Update parent when local state changes
   useEffect(() => {
-    if (!hour || !minute) return
     let hourNum = parseInt(hour)
     if (period === 'pm' && hourNum !== 12) {
       hourNum += 12
