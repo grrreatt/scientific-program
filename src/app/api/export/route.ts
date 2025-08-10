@@ -3,6 +3,10 @@ import { supabase } from '@/lib/supabase/client'
 import { calculateDuration, formatTimeCompact } from '@/lib/utils'
 import * as XLSX from 'xlsx'
 
+// Ensure Node.js runtime (needed for xlsx and Buffer)
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     // Fetch all sessions with related data using the sessions_with_times view
