@@ -1,6 +1,4 @@
-// Central type definitions used across the app. This file had duplicate blocks
-// and stray tokens causing TS compile errors during builds. Cleaned and
-// consolidated to a single source of truth.
+// Central type definitions used across the app (single source of truth)
 
 export type SessionType =
   | 'session'
@@ -206,6 +204,7 @@ export interface DashboardStats {
   sessions_by_type: Record<string, number>
   upcoming_sessions: number
 }
+
 
 export type SessionType = 
   | 'session'
