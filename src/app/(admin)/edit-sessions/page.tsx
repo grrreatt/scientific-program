@@ -1329,6 +1329,30 @@ export default function EditSessionsPage() {
                       ❌
                     </button>
                   )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const newName = prompt('Edit day name', day.name) || day.name
+                      const newDate = prompt('Edit day date (YYYY-MM-DD)', day.date) || day.date
+                      ;(async () => {
+                        try {
+                          const { error } = await supabase
+                            .from('conference_days')
+                            .update({ name: newName, date: newDate })
+                            .eq('id', day.id)
+                          if (error) throw error
+                          await loadAllData()
+                        } catch (e) {
+                          console.error('Error updating day:', e)
+                          alert('Failed to update day')
+                        }
+                      })()
+                    }}
+                    className="ml-2 text-xs text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Edit day"
+                  >
+                    ✏️
+                  </button>
                 </button>
               ))}
             </div>

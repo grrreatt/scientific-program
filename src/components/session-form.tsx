@@ -1040,7 +1040,7 @@ export function SessionForm({
               const absoluteIndex = formData.sub_sessions.findIndex(ss => ss === st)
               const isFirst = index === 0
               return (
-                <div key={absoluteIndex} className="grid grid-cols-12 gap-4 items-center bg-gray-50 p-4 rounded-md border border-gray-200">
+                <div key={absoluteIndex} className="grid grid-cols-12 gap-2 md:gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-200">
                   <div className="col-span-3 min-w-[150px]">
                     <TimePicker
                       value={isFirst ? formData.custom_start_time : st.start_time}
@@ -1064,7 +1064,7 @@ export function SessionForm({
                     <select
                       value={st.speaker_id}
                       onChange={(e) => updateSubSession(absoluteIndex, 'speaker_id', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select Speaker</option>
                       {speakers.map(s => (
@@ -1078,7 +1078,7 @@ export function SessionForm({
                       type="text"
                       value={st.topic}
                       onChange={(e) => updateSubSession(absoluteIndex, 'topic', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
                       placeholder="Topic (optional)"
                     />
                   </div>
@@ -1151,7 +1151,7 @@ export function SessionForm({
             'oration',
             'guest_lecture',
             'discussion',
-            'break',
+            // 'break' removed; use Global Block for breaks/meals
             'other'
           ].filter(key => SESSION_TYPES[key]).map((key) => {
             const type = SESSION_TYPES[key]
@@ -1271,7 +1271,7 @@ export function SessionForm({
 
       {/* Simplified Session flow */}
       {currentSessionType === 'session' && (
-      <div className="space-y-4">
+        <div className="space-y-3">
           {renderSessionSimplifiedFlow()}
         </div>
       )}

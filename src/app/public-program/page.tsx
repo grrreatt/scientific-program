@@ -474,16 +474,14 @@ export default function PublicProgramPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b print:shadow-none">
+      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-sm border-b print:shadow-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center">
             <div className="text-center flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-extrabold drop-shadow-sm">
                 APCON 2025
               </h1>
-              <p className="mt-2 text-lg text-gray-600">
-                3 - 11 Dec, 2025
-              </p>
+              <p className="mt-1 text-sm opacity-90">3 - 11 Dec, 2025</p>
             </div>
             <div className="flex items-center space-x-3">
               {/* Search Bar */}
@@ -493,10 +491,10 @@ export default function PublicProgramPage() {
                   placeholder="Search sessions..."
                   value={searchQuery}
                   onChange={handleSearchChange}
-                  className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-64 pl-10 pr-4 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-300 text-gray-900"
                 />
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
@@ -504,7 +502,7 @@ export default function PublicProgramPage() {
               <RealtimeStatus />
               <button
                 onClick={() => window.print()}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 print:hidden"
+                className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md shadow-sm bg-white/90 text-gray-800 hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-300 print:hidden"
               >
                 🖨️ Print Program
               </button>
@@ -541,7 +539,7 @@ export default function PublicProgramPage() {
           <h2 className="text-2xl font-bold text-gray-900 print:text-xl">
             {selectedDay}
           </h2>
-          <p className="mt-1 text-gray-600 print:text-sm">
+          <p className="mt-1 text-indigo-600 print:text-sm">
             {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
           </p>
         </div>
@@ -553,13 +551,13 @@ export default function PublicProgramPage() {
               <thead>
                 <tr className="bg-gray-50">
                   {/* Time Column Header */}
-                  <th className="w-32 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 sticky left-0 z-50 text-left">
+                   <th className="w-32 bg-indigo-50 border-r border-indigo-100 p-2 font-semibold text-sm text-indigo-800 sticky left-0 z-50 text-left">
                     🕘 Time
                   </th>
                   
                   {/* Hall Column Headers */}
                   {getHallsForSelectedDay().map((hall) => (
-                    <th key={hall.id} className="w-64 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left">
+                     <th key={hall.id} className="w-64 bg-indigo-50 border-r border-indigo-100 p-2 font-semibold text-sm text-indigo-800 text-left">
                       🏛️ {hall.name}
                     </th>
                   ))}
