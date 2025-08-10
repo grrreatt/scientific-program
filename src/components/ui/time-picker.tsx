@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 
 interface TimePickerProps {
   value: string
@@ -9,119 +9,58 @@ interface TimePickerProps {
   required?: boolean
   className?: string
   disabled?: boolean
+  stepMinutes?: number // interval between times
+  from?: string // inclusive start HH:MM
+  to?: string // inclusive end HH:MM
 }
 
-export function TimePicker({ value, onChange, label, required = false, className = '', disabled = false }: TimePickerProps) {
-  const [hour, setHour] = useState('10')
-  const [minute, setMinute] = useState('00')
-  const [period, setPeriod] = useState<'am' | 'pm'>('am')
-
-  // Parse initial value
-  useEffect(() => {
-    if (!value) {
-      // Default visible state: 10:00 AM
-      setHour('10')
-      setMinute('00')
-      setPeriod('am')
-      return
+export function TimePicker({
+  value,
+  onChange,
+  label,
+  required = false,
+  className = '',
+  disabled = false,
+  stepMinutes = 30,
+  from = '06:00',
+  to = '23:30',
+}: TimePickerProps) {
+  const options = useMemo(() => {
+    const list: string[] = []
+    const [fromH, fromM] = from.split(':').map(Number)
+    const [toH, toM] = to.split(':').map(Number)
+    let cur = new Date(2000, 0, 1, fromH, fromM, 0, 0)
+    const end = new Date(2000, 0, 1, toH, toM, 0, 0)
+    while (cur <= end) {
+      const hh = String(cur.getHours()).padStart(2, '0')
+      const mm = String(cur.getMinutes()).padStart(2, '0')
+      list.push(`${hh}:${mm}`)
+      cur = new Date(cur.getTime() + stepMinutes * 60000)
     }
-    const [hours, minutes] = value.split(':').map(Number)
-    const isPM = hours >= 12
-    const displayHour = hours % 12 || 12
-    const displayMinute = minutes.toString().padStart(2, '0')
-    setHour(displayHour.toString())
-    setMinute(displayMinute)
-    setPeriod(isPM ? 'pm' : 'am')
-  }, [value])
-
-  // Update parent when local state changes
-  useEffect(() => {
-    let hourNum = parseInt(hour)
-    if (period === 'pm' && hourNum !== 12) {
-      hourNum += 12
-    } else if (period === 'am' && hourNum === 12) {
-      hourNum = 0
-    }
-    
-    const timeString = `${hourNum.toString().padStart(2, '0')}:${minute}`
-    onChange(timeString)
-  }, [hour, minute, period, onChange])
-
-  const hours = Array.from({ length: 12 }, (_, i) => i + 1)
-  const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'))
+    return list
+  }, [stepMinutes, from, to])
 
   return (
     <div className={className}>
       <label className="block text-sm font-medium text-gray-700 mb-2">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      <div className={`flex items-center space-x-2 time-picker-container ${disabled ? 'opacity-60' : ''}`}>
-        {/* Hour Select */}
-        <select
-          value={hour || '08'}
-          onChange={(e) => setHour(e.target.value)}
-          className="w-16 block pl-3 pr-8 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md time-picker-select"
-          required={required}
-          disabled={disabled}
-        >
-          <option value="" disabled hidden>
-            HH
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3 text-gray-900"
+        required={required}
+        disabled={disabled}
+      >
+        <option value="" disabled hidden>
+          Select time
+        </option>
+        {options.map((t) => (
+          <option key={t} value={t}>
+            {t}
           </option>
-          {hours.map(h => (
-            <option key={h} value={h.toString()}>
-              {h}
-            </option>
-          ))}
-        </select>
-
-        <span className="text-gray-500 font-medium">:</span>
-
-        {/* Minute Select */}
-        <select
-          value={minute || '00'}
-          onChange={(e) => setMinute(e.target.value)}
-          className="w-16 block pl-3 pr-8 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md time-picker-select"
-          required={required}
-          disabled={disabled}
-        >
-          <option value="" disabled hidden>
-            MM
-          </option>
-          {minutes.map(m => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-
-        {/* AM/PM Toggle */}
-        <div className="flex border border-gray-300 rounded-md overflow-hidden am-pm-toggle">
-          <button
-            type="button"
-            onClick={() => !disabled && setPeriod('am')}
-            className={`px-3 py-2 text-sm font-medium transition-colors ${
-              period === 'am'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            disabled={disabled}
-          >
-            AM
-          </button>
-          <button
-            type="button"
-            onClick={() => !disabled && setPeriod('pm')}
-            className={`px-3 py-2 text-sm font-medium transition-colors ${
-              period === 'pm'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            disabled={disabled}
-          >
-            PM
-          </button>
-        </div>
-      </div>
+        ))}
+      </select>
     </div>
   )
-} 
+}
