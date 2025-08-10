@@ -1444,7 +1444,7 @@ export default function EditSessionsPage() {
                   <tr className="bg-gray-50">
               {/* Hall Column Headers */}
               {getHallsForSelectedDay().map((hall, idx) => (
-                      <th ref={idx === 0 ? firstHallHeaderRef : undefined} key={hall.id} className="w-64 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left">
+                      <th ref={idx === 0 ? firstHallHeaderRef : undefined} key={hall.id} className="w-80 bg-gray-50 border-r border-gray-200 p-2 font-semibold text-sm text-gray-700 text-left">
                   <div className="flex items-center justify-between">
                           {editingHall?.id === hall.id ? (
                             <div className="flex items-center space-x-2 flex-1">
@@ -1522,9 +1522,9 @@ export default function EditSessionsPage() {
                   const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
                   
                   return (
-                            <td key={hall.id} className="w-64 border-r border-gray-200 p-1" style={{ scrollSnapAlign: 'start' }}>
+                            <td key={hall.id} className="w-80 border-r border-gray-200 p-2" style={{ scrollSnapAlign: 'start' }}>
                       {session ? (
-                                <div className="bg-white border border-gray-200 rounded p-1 shadow-sm hover:shadow-md transition-shadow group relative">
+                                <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow group relative border-l-4 border-teal-400">
                                   {/* Action Icons - Top Right */}
                                   <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                     <button
@@ -1543,11 +1543,11 @@ export default function EditSessionsPage() {
                                     </button>
                                   </div>
                                   
-                                  {/* Session Content with Time at Top - Centered with space for icons */}
-                                  <div className="text-center space-y-0.5 pr-8">
+                                  {/* Session Content with Time at Top - aligned like reference */}
+                                  <div className="text-left space-y-1 pr-8">
                                     {/* TIME RANGE (bold) */}
-                                    <div className="text-xs font-bold text-gray-900">
-                                      {formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
+                                    <div className="text-xs font-semibold text-gray-800">
+                                      <span className="mr-1">🕘</span>{formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
                                     </div>
                                     {/* TITLE (larger) */}
                                     <div className="text-sm font-semibold text-gray-900">
