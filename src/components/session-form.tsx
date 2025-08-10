@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { generateId } from '@/lib/utils'
 import { SESSION_TYPES, MEAL_TYPES } from '@/lib/constants'
 import { TimePicker } from '@/components/ui/time-picker'
 import { formatTime12h, parseTime12h, getSessionNumberDisplay, getSessionTitleSuggestions, getNextStartTime, calculateDuration } from '@/lib/utils'
@@ -255,6 +256,7 @@ export function SessionForm({
     setFormData(prev => ({
       ...prev,
       sub_sessions: [...(prev.sub_sessions || []), {
+        id: generateId(),
         title: `Talk ${nextIndex}`,
         speaker_id: '',
         start_time: suggestedStartTime,
@@ -265,11 +267,11 @@ export function SessionForm({
     }))
   }
 
-  const updateSubSession = (index: number, field: string, value: any) => {
+  const updateSubSession = (id: string | undefined, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      sub_sessions: prev.sub_sessions.map((subSession, i) => 
-        i === index ? { ...subSession, [field]: value } : subSession
+      sub_sessions: prev.sub_sessions.map((subSession) => 
+        subSession.id === id ? { ...subSession, [field]: value } : subSession
       )
     }))
   }
@@ -676,13 +678,13 @@ export function SessionForm({
         ) : (
           <div className="space-y-2">
             {subSessions.map((st, index) => (
-              <div key={index} className="grid grid-cols-12 gap-2 items-end bg-gray-50 p-2 rounded">
+              <div key={st.id || index} className="grid grid-cols-12 gap-2 items-end bg-gray-50 p-2 rounded">
                 <div className="col-span-3">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
                   <input
                     type="text"
                     value={st.title}
-                    onChange={(e) => updateSubSession(index, 'title', e.target.value)}
+                    onChange={(e) => updateSubSession(st.id, 'title', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                     placeholder={`Talk ${index + 1}`}
                   />
@@ -691,7 +693,7 @@ export function SessionForm({
                   <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
                   <select
                     value={st.sub_session_type}
-                    onChange={(e) => updateSubSession(index, 'sub_session_type', e.target.value)}
+                    onChange={(e) => updateSubSession(st.id, 'sub_session_type', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                   >
                     <option value="lecture">Lecture/Talk</option>
@@ -702,7 +704,7 @@ export function SessionForm({
                   <label className="block text-xs font-medium text-gray-700 mb-1">Speaker</label>
                   <select
                     value={st.speaker_id}
-                    onChange={(e) => updateSubSession(index, 'speaker_id', e.target.value)}
+                    onChange={(e) => updateSubSession(st.id, 'speaker_id', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                   >
                     <option value="">Select Speaker</option>
@@ -714,7 +716,7 @@ export function SessionForm({
                 <div className="col-span-2">
                   <TimePicker
                     value={st.start_time}
-                    onChange={(t) => updateSubSession(index, 'start_time', t)}
+                    onChange={(t) => updateSubSession(st.id, 'start_time', t)}
                     label="Start"
                     required
                   />
@@ -722,7 +724,7 @@ export function SessionForm({
                 <div className="col-span-2">
                   <TimePicker
                     value={st.end_time}
-                    onChange={(t) => updateSubSession(index, 'end_time', t)}
+                    onChange={(t) => updateSubSession(st.id, 'end_time', t)}
                     label="End"
                     required
                   />
@@ -732,7 +734,7 @@ export function SessionForm({
                   <input
                     type="text"
                     value={st.topic}
-                    onChange={(e) => updateSubSession(index, 'topic', e.target.value)}
+                    onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                     placeholder="Topic (optional)"
                   />
@@ -740,7 +742,7 @@ export function SessionForm({
                 <div className="col-span-1 flex justify-end">
                   <button
                     type="button"
-                    onClick={() => removeSubSession(index)}
+                    onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
                     className="text-red-600 hover:text-red-800 text-xs"
                   >
                     ×
@@ -1027,14 +1029,13 @@ export function SessionForm({
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-gray-900">Subtalks</h4>
             {subTalks.map((st, index) => {
-              const absoluteIndex = formData.sub_sessions.findIndex(ss => ss === st)
               const isFirst = index === 0
               return (
-                <div key={absoluteIndex} className="grid grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-200">
+                <div key={st.id || index} className="grid grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-200">
                   <div className="col-span-3 min-w-[160px]">
                     <TimePicker
                       value={isFirst ? formData.custom_start_time : st.start_time}
-                      onChange={(t) => updateSubSession(absoluteIndex, 'start_time', t)}
+                      onChange={(t) => updateSubSession(st.id, 'start_time', t)}
                       label="Start"
                       required
                       // lock first start to session start for gentle guidance
@@ -1044,7 +1045,7 @@ export function SessionForm({
                   <div className="col-span-3 min-w-[160px]">
                     <TimePicker
                       value={st.end_time}
-                      onChange={(t) => updateSubSession(absoluteIndex, 'end_time', t)}
+                      onChange={(t) => updateSubSession(st.id, 'end_time', t)}
                       label="End"
                       required
                     />
@@ -1053,7 +1054,7 @@ export function SessionForm({
                     <label className="block text-xs font-medium text-gray-700 mb-1">Speaker</label>
                     <select
                       value={st.speaker_id}
-                      onChange={(e) => updateSubSession(absoluteIndex, 'speaker_id', e.target.value)}
+                      onChange={(e) => updateSubSession(st.id, 'speaker_id', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Select Speaker</option>
@@ -1067,7 +1068,7 @@ export function SessionForm({
                     <input
                       type="text"
                       value={st.topic}
-                      onChange={(e) => updateSubSession(absoluteIndex, 'topic', e.target.value)}
+                      onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
                       placeholder="Topic (optional)"
                     />
@@ -1075,7 +1076,7 @@ export function SessionForm({
                   <div className="col-span-1 flex justify-end items-center">
                     <button
                       type="button"
-                      onClick={() => removeSubSession(absoluteIndex)}
+                      onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
                       className="text-red-600 hover:text-red-800 text-sm"
                     >
                       ×
