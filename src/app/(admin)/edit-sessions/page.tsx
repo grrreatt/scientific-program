@@ -1310,14 +1310,17 @@ export default function EditSessionsPage() {
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="text-center flex-1">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Conference Program Editor
-              </h1>
-              <p className="text-sm text-gray-600">
-                {selectedDay} Schedule - {halls.length} Halls • {timeSlots.length} Time Slots
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Conference Program Editor</h1>
+              <p className="text-sm text-gray-600">{selectedDay} Schedule - {halls.length} Halls • {timeSlots.length} Time Slots</p>
             </div>
-            <div className="flex items-center space-x-4">
+            {/* Global Search */}
+            <div className="flex items-center space-x-2">
+              <input
+                value={searchQuery}
+                onChange={(e)=> setSearchQuery(e.target.value)}
+                placeholder="Search title, topic, speaker, hall…"
+                className="px-3 py-1.5 border rounded-md text-sm"
+              />
               {/* Add Day Button */}
               <button
                 onClick={() => setShowAddDayModal(true)}
@@ -1432,7 +1435,7 @@ export default function EditSessionsPage() {
 
       {/* Timeline Table Layout */}
       {getHallsForSelectedDay().length > 0 ? (
-        <div ref={scrollContainerRef} className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto" style={{ scrollBehavior: 'smooth' }}>
+        <div ref={scrollContainerRef} className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto [scrollbar-width:thin]" style={{ scrollBehavior: 'smooth' }}>
         <div className="min-w-max transition-all duration-200 ease-in-out" style={{ scrollSnapType: 'x mandatory' }}>
             {/* Table Header */}
             <div className="bg-white border-b sticky top-0 z-40">

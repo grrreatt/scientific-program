@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { SESSION_TYPES, MEAL_TYPES } from '@/lib/constants'
 import { TimePicker } from '@/components/ui/time-picker'
 import { formatTime12h, parseTime12h, getSessionNumberDisplay, getSessionTitleSuggestions, getNextStartTime, calculateDuration } from '@/lib/utils'
@@ -90,6 +90,7 @@ export function SessionForm({
   const [currentSessionType, setCurrentSessionType] = useState(sessionType)
   const [showParticipantDropdown, setShowParticipantDropdown] = useState(false)
   const [participantSearchTerms, setParticipantSearchTerms] = useState<Record<string, string>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -168,6 +169,16 @@ export function SessionForm({
       ...prev,
       [field]: value
     }))
+    // live validation
+    if ((field === 'custom_start_time' || field === 'custom_end_time') && formData.custom_start_time && formData.custom_end_time) {
+      const start = new Date(`2000-01-01T${field === 'custom_start_time' ? value : formData.custom_start_time}`)
+      const end = new Date(`2000-01-01T${field === 'custom_end_time' ? value : formData.custom_end_time}`)
+      if (end <= start) {
+        setErrors(prev => ({ ...prev, time: 'End time must be after start time' }))
+      } else {
+        setErrors(prev => { const { time, ...rest } = prev; return rest })
+      }
+    }
   }
 
   const handleArrayChange = (field: string, index: number, value: string) => {
@@ -293,6 +304,44 @@ export function SessionForm({
       (s.name || '').toLowerCase().includes(term) || (s.email || '').toLowerCase().includes(term)
     )
   }
+
+  // time conflict detection for selected participants (basic)
+  const participantConflicts = useMemo(() => {
+    const conflicts: Array<{ roleKey: string; index: number; speakerId: string }> = []
+    const sessionStart = formData.custom_start_time
+    const sessionEnd = formData.custom_end_time
+    if (!sessionStart || !sessionEnd) return conflicts
+    const sStart = new Date(`2000-01-01T${sessionStart}`).getTime()
+    const sEnd = new Date(`2000-01-01T${sessionEnd}`).getTime()
+    const selectedIds = [
+      ...(formData.speakers || []).map(x => ({ key: 'speakers', id: x.id })),
+      ...(formData.moderators || []).map(x => ({ key: 'moderators', id: x.id })),
+      ...(formData.chairpersons || []).map(x => ({ key: 'chairpersons', id: x.id })),
+      ...(formData.panelists || []).map(x => ({ key: 'panelists', id: x.id })),
+      ...(formData.experts || []).map(x => ({ key: 'experts', id: x.id })),
+    ].filter(x => x.id)
+    selectedIds.forEach(({ key, id }, idx) => {
+      // look through provided sessions prop for collisions on same day
+      (sessions || []).forEach((sess: any) => {
+        if (sess.day_name !== selectedDay) return
+        const hasId = [
+          ...(sess.speakers_ids || []),
+          ...(sess.moderators_ids || []),
+          ...(sess.chairpersons_ids || []),
+          ...(sess.panelists_ids || []),
+          ...(sess.experts_ids || [])
+        ].includes(id)
+        if (!hasId) return
+        const otherStart = new Date(`2000-01-01T${sess.start_time || sess.custom_start_time || ''}`).getTime()
+        const otherEnd = new Date(`2000-01-01T${sess.end_time || sess.custom_end_time || ''}`).getTime()
+        if (!isNaN(otherStart) && !isNaN(otherEnd)) {
+          const overlap = otherStart < sEnd && sStart < otherEnd
+          if (overlap) conflicts.push({ roleKey: key, index: idx, speakerId: id })
+        }
+      })
+    })
+    return conflicts
+  }, [formData.custom_start_time, formData.custom_end_time, formData.speakers, formData.moderators, formData.chairpersons, formData.panelists, formData.experts, sessions, selectedDay])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -831,19 +880,26 @@ export function SessionForm({
               <div key={key} className="space-y-1">
                 <div className="flex items-center space-x-1">
                   <span className="text-xs text-gray-500">{icon} {label}s:</span>
+                  {/* Quick add buttons */}
+                  <button type="button" onClick={() => addParticipant(key)} className="text-[11px] text-indigo-600 hover:text-indigo-800">+ {label}</button>
               </div>
                 <div className="space-y-1">
                   {participants.map((participant, index) => {
                     const rowKey = `${key}-${index}`
-                    const searchTerm = ''
+                    const searchTerm = participantSearchTerms[rowKey] || ''
                     return (
-                      <div key={index} className="flex items-center space-x-2 bg-gray-50 rounded px-2 py-1">
+                      <div key={index} className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1">
+                      <input
+                        value={searchTerm}
+                        onChange={(e)=> setParticipantSearchTerms(prev => ({...prev, [rowKey]: e.target.value }))}
+                        placeholder="Type 2-3 chars…"
+                        className="w-40 px-2 py-1 border rounded text-xs"
+                      />
                       <select
                         value={participant.id}
                           onChange={(e) => updateParticipant(key as any, index, e.target.value)}
                           onKeyDown={(e:any)=>{
-                            const term = (e.target as HTMLSelectElement).value
-                            const filtered = getSortedSpeakers(term)
+                            if (e.key === 'Enter') { addParticipant(key); }
                             // no-op: filtered influences options below via searchTerm state
                           }}
                           className="flex-1 block pl-2 pr-8 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded"
@@ -851,10 +907,14 @@ export function SessionForm({
                           <option value="">Select {label}</option>
                           {getSortedSpeakers(searchTerm).map(speaker => (
                           <option key={speaker.id} value={speaker.id}>
-                              {speaker.name} {speaker.title ? `(${speaker.title})` : ''}
+                              {speaker.name}{speaker.email ? ` (${speaker.email})` : ''}
                           </option>
                         ))}
                       </select>
+                      {/* Conflict indicator */}
+                      {participant.id && participantConflicts.some(c => c.speakerId === participant.id) && (
+                        <span className="text-[11px] text-amber-600">⚠️ conflict</span>
+                      )}
                       <button
                         type="button"
                           onClick={() => removeArrayItem(key as any, index)}
@@ -1090,8 +1150,17 @@ export function SessionForm({
 
         {/* Coverage indicator */}
         {formData.custom_start_time && formData.custom_end_time && (
-          <div className={`text-xs ${coverageOk ? 'text-green-600' : 'text-amber-600'}`}>
-            Covered {coveredMinutes} min of {sessionMinutes} min
+          <div>
+            <div className={`text-xs mb-1 ${coverageOk ? 'text-green-600' : 'text-amber-600'}`}>
+              Covered {coveredMinutes} min of {sessionMinutes} min
+            </div>
+            {/* completeness bar: title + time + >=1 speaker for non-session types; "session" completeness is time only */}
+            <div className="h-1 bg-gray-200 rounded">
+              <div
+                className={`h-1 rounded ${((formData.title || currentSessionType==='session') && formData.custom_start_time && formData.custom_end_time && (formData.speakers?.some(s=>s.id) || currentSessionType==='session')) ? 'bg-green-500 w-full' : 'bg-amber-500 w-2/3'}`}
+              />
+            </div>
+            {errors.time && <div className="text-[11px] text-red-600 mt-1">{errors.time}</div>}
           </div>
         )}
       </div>
@@ -1163,7 +1232,7 @@ export function SessionForm({
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
               placeholder={currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${formData.title || currentSessionType==='session' ? 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500' : 'border-red-300 focus:ring-red-300 focus:border-red-400'}`}
               required={currentSessionType !== 'session'}
             />
             {/* keep suggestions implicit via placeholder */}
