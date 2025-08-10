@@ -68,6 +68,14 @@ export default function EditSessionsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Session[]>([])
 
+  // Persist selected day across reloads
+  const selectDay = (dayName: string) => {
+    setSelectedDay(dayName)
+    if (typeof window !== 'undefined') {
+      try { localStorage.setItem('selectedDay', dayName) } catch {}
+    }
+  }
+
   // Load all data from database
   const loadAllData = async () => {
     setLoading(true)
@@ -90,9 +98,23 @@ export default function EditSessionsPage() {
 
       setDays(daysData || [])
       
-      // Set selected day to first day if available
-      if (daysData && daysData.length > 0 && !selectedDay) {
-        setSelectedDay(daysData[0].name)
+      // Restore previously selected day or choose first
+      if (daysData && daysData.length > 0) {
+        let next = selectedDay
+        if (!next) {
+          let persisted: string | null = null
+          if (typeof window !== 'undefined') {
+            try { persisted = localStorage.getItem('selectedDay') } catch {}
+          }
+          if (persisted && daysData.some(d => d.name === persisted)) {
+            next = persisted
+          } else {
+            next = daysData[0].name
+          }
+        } else if (!daysData.some(d => d.name === next)) {
+          next = daysData[0].name
+        }
+        if (next !== selectedDay) selectDay(next)
       }
 
       // Load halls
@@ -385,6 +407,7 @@ export default function EditSessionsPage() {
     setIsSubmitting(true)
     
     try {
+      const prevSelectedDay = selectedDay
       const selectedDayData = days.find(d => d.name === selectedDay)
       if (!selectedDayData) {
         alert('Selected day not found!')
@@ -586,6 +609,7 @@ export default function EditSessionsPage() {
 
       handleCloseModal()
       await loadAllData()
+      if (prevSelectedDay) selectDay(prevSelectedDay)
       console.log('✅ Session saved successfully')
       
     } catch (error) {
@@ -627,7 +651,8 @@ export default function EditSessionsPage() {
 
   const handleAddDay = async (date: Date) => {
     const dayName = newDayName.trim() || `Day ${days.length + 1}`
-    const dateString = date.toISOString().split('T')[0]
+    // Local date string to avoid UTC offset issues
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
     
     try {
       // First, create the day
@@ -637,7 +662,7 @@ export default function EditSessionsPage() {
           name: dayName,
           date: dateString
         })
-        .select('id')
+        .select('id, name')
         .single()
 
       if (dayError) {
@@ -668,6 +693,7 @@ export default function EditSessionsPage() {
       setSelectedDate(null)
       setNewDayName('')
       await loadAllData()
+      if (newDay?.name) selectDay(newDay.name)
       console.log('✅ Day added successfully with halls')
       
     } catch (error) {
@@ -894,8 +920,8 @@ export default function EditSessionsPage() {
   }
 
   const handleSubmitGlobalBlock = async () => {
-    if (!selectedDayForGlobalBlock || !globalBlockTitle || !globalBlockStartTime || !globalBlockEndTime) {
-      alert('Please fill in all required fields')
+    if (!selectedDayForGlobalBlock || !globalBlockStartTime || !globalBlockEndTime) {
+      alert('Please select day and time')
       return
     }
 
@@ -915,7 +941,7 @@ export default function EditSessionsPage() {
           end_time: globalBlockEndTime,
           slot_order: 999, // High order to appear at the end
           is_break: true,
-          break_title: globalBlockTitle
+          break_title: globalBlockTitle || null
         })
         .select()
         .single()
@@ -1309,7 +1335,7 @@ export default function EditSessionsPage() {
               {days.map((day) => (
                 <button
                   key={day.id}
-                  onClick={() => setSelectedDay(day.name)}
+                  onClick={() => selectDay(day.name)}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center space-x-2 group ${
                     selectedDay === day.name
                       ? 'bg-indigo-100 text-indigo-700'
@@ -1596,6 +1622,7 @@ export default function EditSessionsPage() {
           sessionType={editingSession?.session_type || 'lecture'}
           onSubmit={handleSubmitSession}
           onCancel={handleCloseModal}
+          onDelete={editingSession ? () => handleDeleteSession(editingSession.id) : undefined}
           isSubmitting={isSubmitting}
           days={days}
           halls={getHallsForSelectedDay()}

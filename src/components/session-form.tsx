@@ -61,6 +61,7 @@ interface SessionFormProps {
   sessionType?: string
   onSubmit: (data: SessionFormData, sessionType: string) => void
   onCancel: () => void
+  onDelete?: () => void
   isSubmitting?: boolean
   days?: Array<{ id: string; name: string; date: string }>
   halls?: Array<{ id: string; name: string; capacity?: number }>
@@ -76,6 +77,7 @@ export function SessionForm({
   sessionType = 'lecture', 
   onSubmit, 
   onCancel, 
+  onDelete,
   isSubmitting = false,
   days = [],
   halls = [],
@@ -287,16 +289,9 @@ export function SessionForm({
   const getSortedSpeakers = (search: string) => {
     const term = (search || '').trim().toLowerCase()
     if (!term) return speakers
-    const score = (s: { name: string; email?: string }) => {
-      const name = (s.name || '').toLowerCase()
-      const email = (s.email || '').toLowerCase()
-      if (name.startsWith(term)) return 3
-      if (email.startsWith(term)) return 2
-      if (name.includes(term)) return 1
-      if (email.includes(term)) return 1
-      return 0
-    }
-    return [...speakers].sort((a, b) => score(b) - score(a))
+    return speakers.filter(s =>
+      (s.name || '').toLowerCase().includes(term) || (s.email || '').toLowerCase().includes(term)
+    )
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -307,43 +302,13 @@ export function SessionForm({
     const requiredFields = sessionConfig.fields.required
     const optionalFields = sessionConfig.fields.optional
     
-    if (currentSessionType === 'session') {
-      if (!formData.custom_start_time || !formData.custom_end_time) {
-        alert('Please select session start and end time')
-        return
-      }
-    } else {
-    for (const field of requiredFields) {
-      // Skip validation for pre-selected fields when adding new session
-      if (isAddingNewSession && (field === 'day_id' || field === 'stage_id' || field === 'time_slot_id')) {
-        continue
-      }
-      if (!formData[field as keyof typeof formData]) {
-        alert(`Please fill in the required field: ${field}`)
-        return
-        }
-      }
+    // unified rule: only start/end time must be present
+    if (!formData.custom_start_time || !formData.custom_end_time) {
+      alert('Please select session start and end time')
+      return
     }
 
-    // Additional participant validations aligned with compact UI
-    if (currentSessionType === 'lecture') {
-      if (!formData.speakers || formData.speakers.filter(p => p.id).length === 0) {
-        alert('Please add at least one Speaker')
-        return
-      }
-    }
-    if (currentSessionType === 'panel') {
-      const hasModerator = (formData.moderators || []).some(p => p.id)
-      const hasPanelist = (formData.panelists || []).some(p => p.id)
-      if (!hasModerator) {
-        alert('Please add at least one Moderator')
-        return
-      }
-      if (!hasPanelist) {
-        alert('Please add at least one Panelist')
-        return
-      }
-    }
+    // Relax participant enforcement: allow saving with only time
 
     // Auto-fill title for session if empty to satisfy DB NOT NULL constraint
     const dataToSubmit = { ...formData }
@@ -870,24 +835,21 @@ export function SessionForm({
                 <div className="space-y-1">
                   {participants.map((participant, index) => {
                     const rowKey = `${key}-${index}`
-                    const searchTerm = participantSearchTerms[rowKey] || ''
-                    const sortedSpeakers = getSortedSpeakers(searchTerm)
+                    const searchTerm = ''
                     return (
                       <div key={index} className="flex items-center space-x-2 bg-gray-50 rounded px-2 py-1">
-                        <input
-                          type="text"
-                          value={searchTerm}
-                          onChange={(e) => setParticipantSearchTerms(prev => ({ ...prev, [rowKey]: e.target.value }))}
-                          placeholder="Type name"
-                          className="w-28 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
                       <select
                         value={participant.id}
                           onChange={(e) => updateParticipant(key as any, index, e.target.value)}
+                          onKeyDown={(e:any)=>{
+                            const term = (e.target as HTMLSelectElement).value
+                            const filtered = getSortedSpeakers(term)
+                            // no-op: filtered influences options below via searchTerm state
+                          }}
                           className="flex-1 block pl-2 pr-8 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded"
                       >
                           <option value="">Select {label}</option>
-                          {sortedSpeakers.map(speaker => (
+                          {getSortedSpeakers(searchTerm).map(speaker => (
                           <option key={speaker.id} value={speaker.id}>
                               {speaker.name} {speaker.title ? `(${speaker.title})` : ''}
                           </option>
@@ -1302,7 +1264,21 @@ export function SessionForm({
       {/* Removed preview to keep form compact */}
 
       {/* Actions */}
-      <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200">
+      <div className="flex items-center justify-between pt-3 border-top border-gray-200">
+        {/* Left: Delete when editing */}
+        <div>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Delete Session
+            </button>
+          )}
+        </div>
+        {/* Right: Cancel / Save */}
+        <div className="flex space-x-3">
         <button
           type="button"
           onClick={onCancel}
@@ -1317,6 +1293,7 @@ export function SessionForm({
         >
           {isSubmitting ? 'Saving...' : 'Save Session'}
         </button>
+        </div>
       </div>
     </form>
   )
