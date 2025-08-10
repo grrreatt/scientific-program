@@ -421,10 +421,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Link
               href="/edit-sessions"
               className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
@@ -441,21 +438,7 @@ export default function DashboardPage() {
               </div>
             </Link>
 
-            <Link
-              href="/sessions"
-              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
-            >
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">Sessions List</p>
-                <p className="text-sm text-gray-500">View all sessions</p>
-              </div>
-            </Link>
+            
 
             <Link
               href="/speakers/new"
@@ -494,9 +477,9 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-700">Per-person schedule download has been removed. Use Global Export to download everyone’s schedules.</p>
             </div>
 
-            <Link
-              href="/export"
-              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+            <a
+              href="/api/export"
+              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400"
             >
               <div className="flex-shrink-0">
                 <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -505,10 +488,10 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">Export Data</p>
-                <p className="text-sm text-gray-500">Download CSV</p>
+                <p className="text-sm font-medium text-gray-900">Export Schedules</p>
+                <p className="text-sm text-gray-500">Excel by Day</p>
               </div>
-            </Link>
+            </a>
 
             {/* Export all people schedules */}
             <button

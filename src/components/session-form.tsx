@@ -832,28 +832,7 @@ export function SessionForm({
 
     return (
       <div className="space-y-3">
-        {/* Participant Management Toolbar */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <h4 className="text-sm font-medium text-gray-900">Participants</h4>
-          <div className="flex items-center flex-wrap gap-2">
-            {participantTypes.map(({ key, label, icon }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => addParticipant(key)}
-                className="inline-flex items-center px-2 py-1 border border-gray-300 text-xs font-medium rounded hover:bg-gray-50"
-                title={`Add ${label}`}
-              >
-                <span className="mr-1">{icon}</span> Add {label}
-                {formData[key]?.length ? (
-                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-700 px-1.5 text-[10px]">
-                    {formData[key].length}
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-        </div>
+        <h4 className="text-sm font-medium text-gray-900">Participants</h4>
 
         {/* Compact Participant Display */}
         <div className="space-y-2">
@@ -1227,20 +1206,22 @@ export function SessionForm({
             {/* keep suggestions implicit via placeholder */}
               </div>
 
-          {/* Topic (kept, but optional for Session) */}
-              <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Topic *
-            </label>
-            <input
-              type="text"
-              value={formData.topic}
-              onChange={(e) => handleInputChange('topic', e.target.value)}
-              placeholder="Enter session topic"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-              required={currentSessionType !== 'session'}
-            />
-              </div>
+          {/* Topic: hidden for Lecture/Talk; optional for Session, required otherwise */}
+          {currentSessionType !== 'lecture' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Topic {currentSessionType !== 'session' && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                type="text"
+                value={formData.topic}
+                onChange={(e) => handleInputChange('topic', e.target.value)}
+                placeholder="Enter topic"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                required={currentSessionType !== 'session'}
+              />
+            </div>
+          )}
 
           {/* Time Range - Always visible */}
           <div className="grid grid-cols-2 gap-4">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase/client'
 import { calculateDuration, formatTimeCompact } from '@/lib/utils'
+import * as XLSX from 'xlsx'
 
 export async function GET() {
   try {
@@ -23,131 +24,90 @@ export async function GET() {
       throw sessionsError
     }
 
-    // Transform data for CSV export
-    const csvRows: any[] = []
+    // Transform data into flat rows and group by day for Excel sheets
+    const rowsByDay: Record<string, any[]> = {}
     
     sessions?.forEach(session => {
       const dayName = session.day_name || 'Unknown Day'
       const stageName = session.stage_name || 'Unknown Hall'
       const duration = calculateDuration(session.start_time, session.end_time)
+      const timeRange12h = `${formatTimeCompact(session.start_time)}-${formatTimeCompact(session.end_time)}`
       
       // Handle participants
       if (session.session_participants && session.session_participants.length > 0) {
         session.session_participants.forEach((participant: any) => {
-          csvRows.push({
-            session_name: session.title,
-            sub_talk_title: '',
-            sub_talk_type: '',
-            session_type: session.session_type,
-            day: dayName,
-            hall: stageName,
-            start_time: session.start_time,
-            end_time: session.end_time,
-            start_time_12h: formatTimeCompact(session.start_time),
-            end_time_12h: formatTimeCompact(session.end_time),
-            duration: duration,
-            topic: session.topic || '',
-            person_name: participant.speakers?.name || 'Unknown',
+          const row = {
+            name: participant.speakers?.name || 'Unknown',
+            email: participant.speakers?.email || '',
+            session: session.title,
+            session_topic: session.topic || '',
             role: participant.role,
-            organization: participant.speakers?.organization || '',
-            email: participant.speakers?.email || ''
-          })
+            time: timeRange12h,
+            talk_topic: '',
+            hall: stageName,
+            day: dayName,
+          }
+          rowsByDay[dayName] = rowsByDay[dayName] || []
+          rowsByDay[dayName].push(row)
         })
       } else {
         // Session without participants
-        csvRows.push({
-          session_name: session.title,
-          sub_talk_title: '',
-          sub_talk_type: '',
-          session_type: session.session_type,
-          day: dayName,
-          hall: stageName,
-          start_time: session.start_time,
-          end_time: session.end_time,
-          start_time_12h: formatTimeCompact(session.start_time),
-          end_time_12h: formatTimeCompact(session.end_time),
-          duration: duration,
-          topic: session.topic || '',
-          person_name: '',
+        const row = {
+          name: '',
+          email: '',
+          session: session.title,
+          session_topic: session.topic || '',
           role: '',
-          organization: '',
-          email: ''
-        })
+          time: timeRange12h,
+          talk_topic: '',
+          hall: stageName,
+          day: dayName,
+        }
+        rowsByDay[dayName] = rowsByDay[dayName] || []
+        rowsByDay[dayName].push(row)
       }
 
       // Include sub-sessions (each row for the sub-talk speaker if present)
       if (session.sub_sessions && session.sub_sessions.length > 0) {
         session.sub_sessions.forEach((sub: any) => {
-          csvRows.push({
-            session_name: session.title,
-            sub_talk_title: sub.title,
-            sub_talk_type: sub.sub_session_type || 'sub',
-            session_type: session.session_type,
-            day: dayName,
-            hall: stageName,
-            start_time: sub.start_time,
-            end_time: sub.end_time,
-            start_time_12h: formatTimeCompact(sub.start_time),
-            end_time_12h: formatTimeCompact(sub.end_time),
-            duration: calculateDuration(sub.start_time, sub.end_time),
-            topic: sub.topic || '',
-            person_name: sub.speakers?.name || '',
+          const subTime = `${formatTimeCompact(sub.start_time)}-${formatTimeCompact(sub.end_time)}`
+          const row = {
+            name: sub.speakers?.name || '',
+            email: sub.speakers?.email || '',
+            session: session.title,
+            session_topic: session.topic || '',
             role: sub.speakers?.name ? 'speaker' : '',
-            organization: sub.speakers?.organization || '',
-            email: sub.speakers?.email || ''
-          })
+            time: subTime,
+            talk_topic: sub.title || '',
+            hall: stageName,
+            day: dayName,
+          }
+          rowsByDay[dayName] = rowsByDay[dayName] || []
+          rowsByDay[dayName].push(row)
         })
       }
     })
 
-    // Convert to CSV format
-    const headers = [
-      'Session Name',
-      'Sub-talk Title',
-      'Sub-talk Type',
-      'Session Type', 
-      'Day',
-      'Hall',
-      'Start Time',
-      'End Time',
-      'Start Time (12h)',
-      'End Time (12h)',
-      'Duration',
-      'Topic',
-      'Person Name',
-      'Role',
-      'Organization',
-      'Email'
-    ]
+    // Build an Excel workbook with one sheet per day
+    const workbook = XLSX.utils.book_new()
+    const orderedDays = Object.keys(rowsByDay).sort()
+    const columnsOrder = ['name','email','session','session_topic','role','time','talk_topic','hall','day']
+    orderedDays.forEach(day => {
+      const rows = rowsByDay[day]
+      const sheet = XLSX.utils.json_to_sheet(rows, { header: columnsOrder })
+      // Set header names nicer
+      XLSX.utils.sheet_add_aoa(sheet, [[
+        'Name','Email','Session','Session Topic','Role','Time','Topic of Talk','Hall','Day'
+      ]], { origin: 'A1' })
+      XLSX.utils.book_append_sheet(workbook, sheet, day.substring(0, 31))
+    })
 
-    const csvContent = [
-      headers.join(','),
-      ...csvRows.map(row => [
-        `"${row.session_name}"`,
-        `"${row.sub_talk_title || ''}"`,
-        `"${row.sub_talk_type || ''}"`,
-        `"${row.session_type}"`,
-        `"${row.day}"`,
-        `"${row.hall}"`,
-        `"${row.start_time}"`,
-        `"${row.end_time}"`,
-        `"${row.start_time_12h}"`,
-        `"${row.end_time_12h}"`,
-        `"${row.duration}"`,
-        `"${row.topic}"`,
-        `"${row.person_name}"`,
-        `"${row.role}"`,
-        `"${row.organization}"`,
-        `"${row.email}"`
-      ].join(','))
-    ].join('\n')
-
-    // Return CSV file
-    return new NextResponse(csvContent, {
+    const wbout = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' })
+    return new NextResponse(Buffer.from(wbout), {
       status: 200,
       headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename="conference-program-final.csv"'
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': 'attachment; filename="schedules_by_day.xlsx"'
       }
     })
 
