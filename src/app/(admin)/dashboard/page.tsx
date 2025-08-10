@@ -489,70 +489,9 @@ export default function DashboardPage() {
               </div>
             </Link>
 
-            {/* Per-person export */}
-            <div className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex flex-col space-y-3">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">Download Person Schedule</p>
-                  <p className="text-sm text-gray-500">Enter name to export (Excel/CSV)</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  value={personName}
-                  onChange={(e) => setPersonName(e.target.value)}
-                  placeholder="Type part of the name..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <select
-                  value={exportFormat}
-                  onChange={(e) => setExportFormat(e.target.value as any)}
-                  className="px-2 py-2 border border-gray-300 rounded-md text-sm"
-                >
-                  <option value="xlsx">Excel</option>
-                  <option value="csv">CSV</option>
-                </select>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  onClick={async () => {
-                    if (!personName.trim()) {
-                      alert('Please enter a name to export')
-                      return
-                    }
-                    setExporting(true)
-                    try {
-                      const url = `/api/export/person?name=${encodeURIComponent(personName.trim())}&format=${exportFormat}`
-                      const res = await fetch(url)
-                      if (!res.ok) {
-                        const data = await res.json().catch(() => ({}))
-                        throw new Error(data.error || 'Export failed')
-                      }
-                      const blob = await res.blob()
-                      const a = document.createElement('a')
-                      a.href = URL.createObjectURL(blob)
-                      a.download = `person-schedule-${personName.trim()}.${exportFormat}`
-                      document.body.appendChild(a)
-                      a.click()
-                      document.body.removeChild(a)
-                    } catch (err: any) {
-                      alert(err.message || 'Failed to export')
-                    } finally {
-                      setExporting(false)
-                    }
-                  }}
-                  disabled={exporting}
-                  className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 disabled:bg-gray-400"
-                >
-                  {exporting ? 'Preparing...' : 'Download'}
-                </button>
-              </div>
+            {/* Per-person export removed; use global export below */}
+            <div className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm">
+              <p className="text-sm text-gray-700">Per-person schedule download has been removed. Use Global Export to download everyone’s schedules.</p>
             </div>
 
             <Link
