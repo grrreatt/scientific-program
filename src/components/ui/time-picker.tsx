@@ -12,15 +12,15 @@ interface TimePickerProps {
 }
 
 export function TimePicker({ value, onChange, label, required = false, className = '', disabled = false }: TimePickerProps) {
-  const [hour, setHour] = useState('12')
+  const [hour, setHour] = useState('10')
   const [minute, setMinute] = useState('00')
   const [period, setPeriod] = useState<'am' | 'pm'>('am')
 
   // Parse initial value
   useEffect(() => {
     if (!value) {
-      // Default visible state: 12:00 AM
-      setHour('12')
+      // Default visible state: 10:00 AM
+      setHour('10')
       setMinute('00')
       setPeriod('am')
       return

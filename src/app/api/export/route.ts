@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
+import { createClient } from '@supabase/supabase-js'
 import { calculateDuration, formatTimeCompact } from '@/lib/utils'
 import * as XLSX from 'xlsx'
 
@@ -9,6 +9,14 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
+    // Server-side Supabase client (no session persistence)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase env vars missing')
+    }
+    const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+
     // Fetch all sessions with related data using the sessions_with_times view
     const { data: sessions, error: sessionsError } = await supabase
       .from('sessions_with_times')
@@ -115,10 +123,10 @@ export async function GET() {
       }
     })
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Export error:', error)
     return NextResponse.json(
-      { error: 'Failed to export data' },
+      { error: 'Failed to export data', detail: error?.message || String(error) },
       { status: 500 }
     )
   }
