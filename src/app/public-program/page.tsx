@@ -550,14 +550,9 @@ export default function PublicProgramPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-gray-50">
-                  {/* Time Column Header */}
-                   <th className="w-32 bg-indigo-50 border-r border-indigo-100 p-2 font-semibold text-sm text-indigo-800 sticky left-0 z-50 text-left">
-                    🕘 Time
-                  </th>
-                  
-                  {/* Hall Column Headers */}
+                  {/* Hall Column Headers only */}
                   {getHallsForSelectedDay().map((hall) => (
-                     <th key={hall.id} className="w-64 bg-indigo-50 border-r border-indigo-100 p-2 font-semibold text-sm text-indigo-800 text-left">
+                    <th key={hall.id} className="w-64 bg-indigo-50 border-r border-indigo-100 p-2 font-semibold text-sm text-indigo-800 text-left">
                       🏛️ {hall.name}
                     </th>
                   ))}
@@ -566,18 +561,6 @@ export default function PublicProgramPage() {
               <tbody>
                 {timeSlots.map((timeSlot) => (
                   <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                    {/* Time Column - Sticky */}
-                    <td className="w-32 bg-gray-50 border-r border-gray-200 p-2 sticky left-0 z-30">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-gray-900">
-                          {timeSlot.start_time}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {timeSlot.end_time}
-                        </div>
-                      </div>
-                    </td>
-                    
                     {/* Check if this is a global block (break) */}
                     {timeSlot.is_break ? (
                       <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-2 text-center">
@@ -586,10 +569,9 @@ export default function PublicProgramPage() {
                         </div>
                       </td>
                     ) : (
-                      /* Hall Columns */
+                      /* Hall Columns only */
                       getHallsForSelectedDay().map((hall) => {
                         const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
-                        
                         return (
                           <td key={hall.id} className="w-64 border-r border-gray-200 p-1">
                             {session ? (
