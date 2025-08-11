@@ -940,7 +940,8 @@ export default function EditSessionsPage() {
     }
 
     try {
-      const selectedDayData = days.find(d => d.name === selectedDayForGlobalBlock)
+      // selectedDayForGlobalBlock now stores the day id
+      const selectedDayData = days.find(d => d.id === selectedDayForGlobalBlock)
       if (!selectedDayData) {
         alert('Selected day not found')
         return
@@ -977,11 +978,10 @@ export default function EditSessionsPage() {
           break_title: finalTitle
         })
         .select()
-        .single()
 
       if (timeSlotError) {
         console.error('❌ Error creating global block:', timeSlotError)
-        alert('Error creating global block. Please try again.')
+        alert(`Error creating global block: ${timeSlotError.message || 'Please try again.'}`)
         return
       }
 
@@ -997,7 +997,7 @@ export default function EditSessionsPage() {
       
     } catch (error) {
       console.error('❌ Error creating global block:', error)
-      alert('Error creating global block. Please try again.')
+      alert(`Error creating global block: ${error?.message || 'Please try again.'}`)
     }
   }
 
@@ -1889,7 +1889,7 @@ export default function EditSessionsPage() {
                 >
                   <option value="">Select Day</option>
                   {days.map(day => (
-                    <option key={day.id} value={day.name}>
+                    <option key={day.id} value={day.id}>
                       {day.name} - {day.date}
                     </option>
                   ))}
