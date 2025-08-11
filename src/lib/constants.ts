@@ -5,7 +5,8 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
     id: 'session',
     name: 'Session',
     fields: {
-      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id'],
+      // Title is optional for Session type in the form
+      required: ['topic', 'day_id', 'stage_id', 'time_slot_id'],
       optional: ['description', 'sub_sessions'],
       roles: []
     }

@@ -662,7 +662,7 @@ export function SessionForm({
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-900">Sub-talks {currentSessionType === 'symposium' && <span className="text-gray-500 text-xs">(optional)</span>}</h3>
+          <h3 className="text-sm font-medium text-gray-900">Sub-talks</h3>
           <button
             type="button"
             onClick={addSubSession}
@@ -700,7 +700,7 @@ export function SessionForm({
                   </select>
                 </div>
                 <div className="col-span-3">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Speaker</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Speaker *</label>
                   <select
                     value={st.speaker_id}
                     onChange={(e) => updateSubSession(st.id, 'speaker_id', e.target.value)}
@@ -735,7 +735,7 @@ export function SessionForm({
                     value={st.topic}
                     onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
                     className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                    placeholder="Topic (optional)"
+                    placeholder="Enter topic"
                   />
                 </div>
                 <div className="col-span-1 flex justify-end">
@@ -1034,61 +1034,69 @@ export function SessionForm({
                   key={st.id || index}
                   role="group"
                   aria-label={`Subtalk ${index + 1}`}
-                  className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-200 overflow-visible"
+                  className="space-y-3 bg-gray-50 p-3 rounded-md border border-gray-200 overflow-visible"
                 >
-                  <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
-                    <TimePicker
-                      value={isFirst ? formData.custom_start_time : st.start_time}
-                      onChange={(t) => updateSubSession(st.id, 'start_time', t)}
-                      label="Start"
-                      required
-                      idBase={`subtalk-${st.id || index}-start`}
-                      ariaDescribedById={`subtalk-${st.id || index}-help`}
-                    />
+                  {/* Row 1: Time */}
+                  <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center">
+                    <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
+                      <TimePicker
+                        value={isFirst ? formData.custom_start_time : st.start_time}
+                        onChange={(t) => updateSubSession(st.id, 'start_time', t)}
+                        label="Start"
+                        required
+                        idBase={`subtalk-${st.id || index}-start`}
+                        ariaDescribedById={`subtalk-${st.id || index}-help`}
+                      />
+                    </div>
+                    <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
+                      <TimePicker
+                        value={st.end_time}
+                        onChange={(t) => updateSubSession(st.id, 'end_time', t)}
+                        label="End"
+                        required
+                        idBase={`subtalk-${st.id || index}-end`}
+                        ariaDescribedById={`subtalk-${st.id || index}-help`}
+                      />
+                    </div>
                   </div>
-                  <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
-                    <TimePicker
-                      value={st.end_time}
-                      onChange={(t) => updateSubSession(st.id, 'end_time', t)}
-                      label="End"
-                      required
-                      idBase={`subtalk-${st.id || index}-end`}
-                      ariaDescribedById={`subtalk-${st.id || index}-help`}
-                    />
+
+                  {/* Row 2: Speaker and Topic */}
+                  <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center">
+                    <div className="sm:col-span-3 min-w-[180px] relative focus-within:z-10">
+                      <Combobox
+                        label="Speaker *"
+                        idBase={`subtalk-${st.id || index}-speaker`}
+                        value={st.speaker_id}
+                        onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
+                        options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                        ariaDescribedById={`subtalk-${st.id || index}-help`}
+                      />
+                    </div>
+                    <div className="sm:col-span-2 min-w-[180px] relative">
+                      <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
+                      <input
+                        id={`subtalk-${st.id || index}-topic`}
+                        type="text"
+                        value={st.topic}
+                        onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
+                        className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Enter topic"
+                        aria-describedby={`subtalk-${st.id || index}-help`}
+                      />
+                    </div>
+                    <div className="sm:col-span-1 flex justify-end items-center">
+                      <button
+                        type="button"
+                        onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
+                        className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
+                        aria-label={`Remove subtalk ${index + 1}`}
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
-                  <div className="sm:col-span-3 min-w-[180px] relative focus-within:z-10">
-                    <Combobox
-                      label="Speaker"
-                      idBase={`subtalk-${st.id || index}-speaker`}
-                      value={st.speaker_id}
-                      onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
-                      options={speakers.map(s => ({ value: s.id, label: s.name }))}
-                      ariaDescribedById={`subtalk-${st.id || index}-help`}
-                    />
-                  </div>
-                  <div className="sm:col-span-2 min-w-[180px] relative">
-                    <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
-                    <input
-                      id={`subtalk-${st.id || index}-topic`}
-                      type="text"
-                      value={st.topic}
-                      onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
-                      className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Topic (optional)"
-                      aria-describedby={`subtalk-${st.id || index}-help`}
-                    />
-                  </div>
-                  <div className="sm:col-span-1 flex justify-end items-center">
-                    <button
-                      type="button"
-                      onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
-                      className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
-                      aria-label={`Remove subtalk ${index + 1}`}
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div id={`subtalk-${st.id || index}-help`} className="sr-only">Subtalk row {index + 1} controls: Start, End, Speaker, Topic, Remove</div>
+
+                  <div id={`subtalk-${st.id || index}-help`} className="sr-only">Subtalk {index + 1} controls: Start, End, Speaker, Topic, Remove</div>
                 </div>
               )
             })}
@@ -1200,21 +1208,21 @@ export function SessionForm({
         {/* Removed preview/info card to keep form minimal */}
         
         <div className="grid grid-cols-1 gap-3">
-          {/* Session Title with suggestions (hidden for lecture/talk) */}
+          {/* Session Title with suggestions (hidden for lecture/talk). No '(optional)' labels anywhere */}
           {currentSessionType !== 'lecture' && (
-              <div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Session Title *
+                {currentSessionType === 'session' ? 'Session Title' : 'Session Title *'}
               </label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
                 placeholder={currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${formData.title || currentSessionType==='session' ? 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500' : 'border-red-300 focus:ring-red-300 focus:border-red-400'}`}
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${currentSessionType !== 'session' && !formData.title ? 'border-red-300 focus:ring-red-300 focus:border-red-400' : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'}`}
                 required={currentSessionType !== 'session'}
               />
-              </div>
+            </div>
           )}
 
           {/* Topic / Talk Title: show for all types. For lecture: required. For session: optional label as Session Topic. */}
@@ -1226,7 +1234,7 @@ export function SessionForm({
               type="text"
               value={formData.topic}
               onChange={(e) => handleInputChange('topic', e.target.value)}
-              placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : currentSessionType === 'session' ? 'Enter session topic (optional)' : 'Enter topic'}
+              placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : currentSessionType === 'session' ? 'Enter session topic' : 'Enter topic'}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
               required={currentSessionType === 'lecture'}
             />
