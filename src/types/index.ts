@@ -130,6 +130,8 @@ export interface SubSession {
   parent_session_id: string
   title: string
   speaker_id?: string
+  chairperson_id?: string
+  expert_ids?: string[]
   start_time?: string
   end_time?: string
   topic?: string

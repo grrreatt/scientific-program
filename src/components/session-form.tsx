@@ -264,6 +264,8 @@ export function SessionForm({
         id: generateId(),
         title: `Talk ${nextIndex}`,
         speaker_id: '',
+        chairperson_id: '',
+        expert_ids: [],
         start_time: suggestedStartTime,
         end_time: '',
         topic: '',
@@ -1060,8 +1062,8 @@ export function SessionForm({
                     </div>
                   </div>
 
-                  {/* Row 2: Speaker and Topic */}
-                  <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center">
+                  {/* Row 2: Speaker + Chairperson/Experts + Topic */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                     <div className="sm:col-span-3 min-w-[180px] relative focus-within:z-10">
                       <Combobox
                         label="Speaker *"
@@ -1072,7 +1074,56 @@ export function SessionForm({
                         ariaDescribedById={`subtalk-${st.id || index}-help`}
                       />
                     </div>
-                    <div className="sm:col-span-2 min-w-[180px] relative">
+                    <div className="sm:col-span-3 min-w-[160px]">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Chairperson</label>
+                      <select
+                        value={(st as any).chairperson_id || ''}
+                        onChange={(e) => updateSubSession(st.id, 'chairperson_id', e.target.value)}
+                        className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="">Select</option>
+                        {speakers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="sm:col-span-3 min-w-[200px]">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Experts</label>
+                      <div className="space-y-1">
+                        {((st as any).expert_ids || []).map((id: string, i: number) => (
+                          <div key={i} className="flex gap-2">
+                            <select
+                              className="flex-1 h-9 px-3 border border-gray-300 rounded text-sm"
+                              value={id}
+                              onChange={(e) => {
+                                const next = ([...((st as any).expert_ids || [])]);
+                                next[i] = e.target.value;
+                                updateSubSession(st.id, 'expert_ids', next)
+                              }}
+                            >
+                              <option value="">Select</option>
+                              {speakers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            </select>
+                            <button
+                              type="button"
+                              className="text-red-600 text-sm"
+                              onClick={() => {
+                                const next = ([...((st as any).expert_ids || [])]).filter((_: string, idx: number) => idx !== i)
+                                updateSubSession(st.id, 'expert_ids', next)
+                              }}
+                            >×</button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          className="text-indigo-600 text-xs"
+                          onClick={() => {
+                            const next = ([...((st as any).expert_ids || [])]);
+                            next.push('');
+                            updateSubSession(st.id, 'expert_ids', next)
+                          }}
+                        >+ Add Expert</button>
+                      </div>
+                    </div>
+                    <div className="sm:col-span-3 min-w-[180px] relative">
                       <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
                       <input
                         id={`subtalk-${st.id || index}-topic`}

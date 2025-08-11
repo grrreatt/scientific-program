@@ -603,6 +603,8 @@ export default function EditSessionsPage() {
               parent_session_id: sessionId,
               title: s.title,
               speaker_id: s.speaker_id || null,
+              chairperson_id: (s as any).chairperson_id || null,
+              expert_ids: (s as any).expert_ids && (s as any).expert_ids.length ? (s as any).expert_ids.filter(Boolean) : null,
               start_time: s.start_time,
               end_time: s.end_time,
               topic: s.topic || null,

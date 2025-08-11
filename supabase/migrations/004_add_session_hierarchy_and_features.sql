@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS sub_sessions (
   parent_session_id UUID REFERENCES sessions(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   speaker_id UUID REFERENCES speakers(id),
+  chairperson_id UUID REFERENCES speakers(id),
+  expert_ids UUID[],
   start_time TIME,
   end_time TIME,
   topic TEXT,
