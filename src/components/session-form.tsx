@@ -1211,25 +1211,20 @@ export function SessionForm({
               </div>
           )}
 
-          {/* Topic: for lecture = Talk Title, required; for session optional/hidden logic remains */}
-          {(currentSessionType === 'lecture' || currentSessionType !== 'session') && (
-              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {currentSessionType === 'lecture' ? 'Talk Title *' : 'Topic '}
-                {currentSessionType !== 'session' && currentSessionType !== 'lecture' && (
-                  <span className="text-red-500">*</span>
-                )}
-              </label>
-              <input
-                type="text"
-                value={formData.topic}
-                onChange={(e) => handleInputChange('topic', e.target.value)}
-                placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : 'Enter topic'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                required={currentSessionType === 'lecture' || currentSessionType !== 'session'}
-              />
-              </div>
-          )}
+          {/* Topic / Talk Title: show for all types. For lecture: required. For session: optional label as Session Topic. */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {currentSessionType === 'lecture' ? 'Talk Title *' : currentSessionType === 'session' ? 'Session Topic' : 'Topic'}
+            </label>
+            <input
+              type="text"
+              value={formData.topic}
+              onChange={(e) => handleInputChange('topic', e.target.value)}
+              placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : currentSessionType === 'session' ? 'Enter session topic (optional)' : 'Enter topic'}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              required={currentSessionType === 'lecture'}
+            />
+          </div>
 
           {/* Time Range - Always visible */}
           <div className="grid grid-cols-2 gap-4">
@@ -1296,7 +1291,7 @@ export function SessionForm({
                 <option key={s.id} value={s.id}>{s.name}{s.email ? ` (${s.email})` : ''}</option>
               ))}
             </select>
-          </div>
+      </div>
         </div>
       )}
 
