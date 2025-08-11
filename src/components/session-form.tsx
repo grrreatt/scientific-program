@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { generateId } from '@/lib/utils'
 import { SESSION_TYPES, MEAL_TYPES } from '@/lib/constants'
 import { TimePicker } from '@/components/ui/time-picker'
+import { Combobox } from '@/components/ui/combobox'
 import { formatTime12h, parseTime12h, getSessionNumberDisplay, getSessionTitleSuggestions, getNextStartTime, calculateDuration } from '@/lib/utils'
 
 interface SessionFormData {
@@ -1067,19 +1068,14 @@ export function SessionForm({
                     />
                   </div>
                   <div className="sm:col-span-3 min-w-[180px] relative focus-within:z-10">
-                    <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-speaker`}>Speaker</label>
-                    <select
-                      id={`subtalk-${st.id || index}-speaker`}
+                    <Combobox
+                      label="Speaker"
+                      idBase={`subtalk-${st.id || index}-speaker`}
                       value={st.speaker_id}
-                      onChange={(e) => updateSubSession(st.id, 'speaker_id', e.target.value)}
-                      className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
-                      aria-describedby={`subtalk-${st.id || index}-help`}
-                    >
-                      <option value="">Select Speaker</option>
-                      {speakers.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
+                      onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
+                      options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                      ariaDescribedById={`subtalk-${st.id || index}-help`}
+                    />
                   </div>
                   <div className="sm:col-span-2 min-w-[180px] relative">
                     <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
