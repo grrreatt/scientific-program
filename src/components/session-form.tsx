@@ -1042,8 +1042,6 @@ export function SessionForm({
                       onChange={(t) => updateSubSession(st.id, 'start_time', t)}
                       label="Start"
                       required
-                      // lock first start to session start for gentle guidance
-                      disabled={isFirst}
                       idBase={`subtalk-${st.id || index}-start`}
                       ariaDescribedById={`subtalk-${st.id || index}-help`}
                     />
