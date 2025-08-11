@@ -988,8 +988,8 @@ export default function EditSessionsPage() {
       setShowGlobalBlockModal(false)
       setGlobalBlockType('registration')
       setGlobalBlockTitle('')
-      setGlobalBlockStartTime('')
-      setGlobalBlockEndTime('')
+      setGlobalBlockStartTime('08:00')
+      setGlobalBlockEndTime('09:00')
       setSelectedDayForGlobalBlock('')
       
       await loadTimeSlots()

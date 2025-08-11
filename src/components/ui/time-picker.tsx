@@ -21,9 +21,9 @@ export function TimePicker({
   required = false,
   className = '',
   disabled = false,
-  stepMinutes = 30,
-  from = '06:00',
-  to = '23:30',
+  stepMinutes = 1,
+  from = '00:00',
+  to = '23:59',
 }: TimePickerProps) {
   const options = useMemo(() => {
     const list: string[] = []

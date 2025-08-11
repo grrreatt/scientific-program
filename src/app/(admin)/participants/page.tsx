@@ -199,7 +199,8 @@ export default function ParticipantsPage() {
   const deleteAllSpeakers = async () => {
     const ok = window.confirm('Delete ALL participants? This cannot be undone.')
     if (!ok) return
-    const { error } = await supabase.from('speakers').delete().neq('id', '')
+    // Use a safe filter that matches all rows without type casting issues
+    const { error } = await supabase.from('speakers').delete().not('id', 'is', null)
     if (error) {
       alert('Failed to delete all: ' + error.message)
       return
