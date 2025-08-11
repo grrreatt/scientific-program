@@ -58,6 +58,7 @@ export async function GET() {
             talk_topic: '',
             hall: stageName,
             day: dayName,
+            type: session.session_type,
           }
           rowsByDay[dayName] = rowsByDay[dayName] || []
           rowsByDay[dayName].push(row)
@@ -74,6 +75,7 @@ export async function GET() {
           talk_topic: '',
           hall: stageName,
           day: dayName,
+          type: session.session_type,
         }
         rowsByDay[dayName] = rowsByDay[dayName] || []
         rowsByDay[dayName].push(row)
@@ -93,6 +95,7 @@ export async function GET() {
             talk_topic: sub.title || '',
             hall: stageName,
             day: dayName,
+            type: session.session_type,
           }
           rowsByDay[dayName] = rowsByDay[dayName] || []
           rowsByDay[dayName].push(row)
@@ -103,13 +106,13 @@ export async function GET() {
     // Build an Excel workbook with one sheet per day
     const workbook = XLSX.utils.book_new()
     const orderedDays = Object.keys(rowsByDay).sort()
-    const columnsOrder = ['name','email','session','session_topic','role','time','talk_topic','hall','day']
+    const columnsOrder = ['name','email','session','session_topic','role','time','talk_topic','hall','day','type']
     orderedDays.forEach(day => {
       const rows = rowsByDay[day]
       const sheet = XLSX.utils.json_to_sheet(rows, { header: columnsOrder })
       // Set header names nicer
       XLSX.utils.sheet_add_aoa(sheet, [[
-        'Name','Email','Session','Session Topic','Role','Time','Topic of Talk','Hall','Day'
+        'Name','Email','Session','Session Topic','Role','Time','Topic of Talk','Hall','Day','Type'
       ]], { origin: 'A1' })
       XLSX.utils.book_append_sheet(workbook, sheet, day.substring(0, 31))
     })
