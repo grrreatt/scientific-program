@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { Combobox } from '@/components/ui/combobox'
 
 interface WorkshopForm {
   title: string
@@ -98,12 +99,18 @@ export default function EditWorkshopPage({ params }: { params: { id: string } })
           <label className="text-sm font-medium">Leads</label>
           <div className="space-y-2 mt-1">
             {form.leads.map((id, i) => (
-              <div key={i} className="flex gap-2">
-                <select className="flex-1 border rounded px-3 py-2" value={id} onChange={e => setForm({ ...form, leads: form.leads.map((v, idx) => idx === i ? e.target.value : v) })}>
-                  <option value="">Select</option>
-                  {speakers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <button className="text-red-600" onClick={() => setForm({ ...form, leads: form.leads.filter((_, idx) => idx !== i) })}>×</button>
+              <div key={i} className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <Combobox
+                    label="Lead"
+                    idBase={`workshop-lead-${i}`}
+                    value={id}
+                    onChange={(val) => setForm({ ...form, leads: form.leads.map((v, idx) => idx === i ? val : v) })}
+                    options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                    allowFreeText
+                  />
+                </div>
+                <button className="text-red-600 h-11 px-2" onClick={() => setForm({ ...form, leads: form.leads.filter((_, idx) => idx !== i) })}>×</button>
               </div>
             ))}
             <button className="text-indigo-600" onClick={() => setForm({ ...form, leads: [...form.leads, ''] })}>+ Add Lead</button>
@@ -113,12 +120,18 @@ export default function EditWorkshopPage({ params }: { params: { id: string } })
           <label className="text-sm font-medium">Assistants</label>
           <div className="space-y-2 mt-1">
             {form.assistants.map((id, i) => (
-              <div key={i} className="flex gap-2">
-                <select className="flex-1 border rounded px-3 py-2" value={id} onChange={e => setForm({ ...form, assistants: form.assistants.map((v, idx) => idx === i ? e.target.value : v) })}>
-                  <option value="">Select</option>
-                  {speakers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <button className="text-red-600" onClick={() => setForm({ ...form, assistants: form.assistants.filter((_, idx) => idx !== i) })}>×</button>
+              <div key={i} className="flex gap-2 items-start">
+                <div className="flex-1">
+                  <Combobox
+                    label="Assistant"
+                    idBase={`workshop-assistant-${i}`}
+                    value={id}
+                    onChange={(val) => setForm({ ...form, assistants: form.assistants.map((v, idx) => idx === i ? val : v) })}
+                    options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                    allowFreeText
+                  />
+                </div>
+                <button className="text-red-600 h-11 px-2" onClick={() => setForm({ ...form, assistants: form.assistants.filter((_, idx) => idx !== i) })}>×</button>
               </div>
             ))}
             <button className="text-indigo-600" onClick={() => setForm({ ...form, assistants: [...form.assistants, ''] })}>+ Add Assistant</button>
