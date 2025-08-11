@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 interface TimePickerProps {
   value: string
@@ -9,6 +9,13 @@ interface TimePickerProps {
   required?: boolean
   className?: string
   disabled?: boolean
+  idBase?: string
+  ariaDescribedById?: string
+  ariaInvalid?: boolean
+  /**
+   * On small screens, prefer a single native input type="time" for better mobile UX
+   */
+  useNativeOnMobile?: boolean
 }
 
 function to12HourParts(value: string): { hour: string; minute: string; period: 'AM' | 'PM' } {
@@ -37,6 +44,10 @@ export function TimePicker({
   required = false,
   className = '',
   disabled = false,
+  idBase,
+  ariaDescribedById,
+  ariaInvalid,
+  useNativeOnMobile = true,
 }: TimePickerProps) {
   const initial = to12HourParts(value)
   const [hour, setHour] = useState<string>(initial.hour)
@@ -51,8 +62,8 @@ export function TimePicker({
     setPeriod(next.period)
   }, [value])
 
-  const hours = Array.from({ length: 12 }, (_, i) => String(i + 1))
-  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
+  const hours = useMemo(() => Array.from({ length: 12 }, (_, i) => String(i + 1)), [])
+  const minutes = useMemo(() => Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')), [])
 
   const handlePartChange = (next: Partial<{ hour: string; minute: string; period: 'AM' | 'PM' }>) => {
     const newHour = next.hour !== undefined ? next.hour : hour
@@ -68,31 +79,59 @@ export function TimePicker({
     }
   }
 
+  const hourId = idBase ? `${idBase}-hour` : undefined
+  const minuteId = idBase ? `${idBase}-minute` : undefined
+  const periodId = idBase ? `${idBase}-period` : undefined
+
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor={hourId}>
         {label} {required && <span className="text-red-500">*</span>}
       </label>
-      <div className="flex items-center gap-2">
+
+      {/* Native mobile-friendly input (optional) */}
+      {useNativeOnMobile && (
+        <div className="sm:hidden">
+          <input
+            type="time"
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            required={required}
+            disabled={disabled}
+            aria-invalid={ariaInvalid}
+            aria-describedby={ariaDescribedById}
+            className="block w-full h-11 border border-gray-300 rounded-md px-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+        </div>
+      )}
+
+      {/* Custom tri-select control for desktop/tablet */}
+      <div className="hidden sm:flex items-center gap-2 isolate relative z-0">
         <select
+          id={hourId}
           value={hour}
           onChange={(e) => handlePartChange({ hour: e.target.value })}
-          className="w-20 block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3 text-gray-900"
+          className="w-20 h-11 block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm px-3 text-gray-900 pointer-events-auto"
           disabled={disabled}
           required={required}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedById}
         >
           <option value="" hidden>HH</option>
           {hours.map((h) => (
             <option key={h} value={h}>{h}</option>
           ))}
         </select>
-        <span className="text-gray-500">:</span>
+        <span className="text-gray-500" aria-hidden>:</span>
         <select
+          id={minuteId}
           value={minute}
           onChange={(e) => handlePartChange({ minute: e.target.value })}
-          className="w-24 block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3 text-gray-900"
+          className="w-24 h-11 block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm px-3 text-gray-900 pointer-events-auto"
           disabled={disabled}
           required={required}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedById}
         >
           <option value="" hidden>MM</option>
           {minutes.map((m) => (
@@ -100,10 +139,13 @@ export function TimePicker({
           ))}
         </select>
         <select
+          id={periodId}
           value={period}
           onChange={(e) => handlePartChange({ period: e.target.value as 'AM' | 'PM' })}
-          className="w-24 block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3 text-gray-900"
+          className="w-24 h-11 block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm px-3 text-gray-900 pointer-events-auto"
           disabled={disabled}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedById}
         >
           <option value="AM">AM</option>
           <option value="PM">PM</option>

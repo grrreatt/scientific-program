@@ -175,13 +175,17 @@ export function SessionForm({
       [field]: value
     }))
     // live validation
-    if ((field === 'custom_start_time' || field === 'custom_end_time') && formData.custom_start_time && formData.custom_end_time) {
-      const start = new Date(`2000-01-01T${field === 'custom_start_time' ? value : formData.custom_start_time}`)
-      const end = new Date(`2000-01-01T${field === 'custom_end_time' ? value : formData.custom_end_time}`)
-      if (end <= start) {
-        setErrors(prev => ({ ...prev, time: 'End time must be after start time' }))
-      } else {
-        setErrors(prev => { const { time, ...rest } = prev; return rest })
+    if ((field === 'custom_start_time' || field === 'custom_end_time')) {
+      const startStr = field === 'custom_start_time' ? value : formData.custom_start_time
+      const endStr = field === 'custom_end_time' ? value : formData.custom_end_time
+      if (startStr && endStr) {
+        const start = new Date(`2000-01-01T${startStr}`)
+        const end = new Date(`2000-01-01T${endStr}`)
+        if (end <= start) {
+          setErrors(prev => ({ ...prev, time: 'End time must be after start time' }))
+        } else {
+          setErrors(prev => { const { time, ...rest } = prev; return rest })
+        }
       }
     }
   }
@@ -1034,8 +1038,13 @@ export function SessionForm({
             {subTalks.map((st, index) => {
               const isFirst = index === 0
               return (
-                <div key={st.id || index} className="grid grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-200">
-                  <div className="col-span-3 min-w-[160px]">
+                <div
+                  key={st.id || index}
+                  role="group"
+                  aria-label={`Subtalk ${index + 1}`}
+                  className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-md border border-gray-200 overflow-visible"
+                >
+                  <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
                     <TimePicker
                       value={isFirst ? formData.custom_start_time : st.start_time}
                       onChange={(t) => updateSubSession(st.id, 'start_time', t)}
@@ -1043,22 +1052,28 @@ export function SessionForm({
                       required
                       // lock first start to session start for gentle guidance
                       disabled={isFirst}
+                      idBase={`subtalk-${st.id || index}-start`}
+                      ariaDescribedById={`subtalk-${st.id || index}-help`}
                     />
                   </div>
-                  <div className="col-span-3 min-w-[160px]">
+                  <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
                     <TimePicker
                       value={st.end_time}
                       onChange={(t) => updateSubSession(st.id, 'end_time', t)}
                       label="End"
                       required
+                      idBase={`subtalk-${st.id || index}-end`}
+                      ariaDescribedById={`subtalk-${st.id || index}-help`}
                     />
                   </div>
-                  <div className="col-span-3 min-w-[180px]">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Speaker</label>
+                  <div className="sm:col-span-3 min-w-[180px] relative focus-within:z-10">
+                    <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-speaker`}>Speaker</label>
                     <select
+                      id={`subtalk-${st.id || index}-speaker`}
                       value={st.speaker_id}
                       onChange={(e) => updateSubSession(st.id, 'speaker_id', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                      className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                      aria-describedby={`subtalk-${st.id || index}-help`}
                     >
                       <option value="">Select Speaker</option>
                       {speakers.map(s => (
@@ -1066,25 +1081,29 @@ export function SessionForm({
                       ))}
                     </select>
                   </div>
-                  <div className="col-span-2 min-w-[180px]">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Topic</label>
+                  <div className="sm:col-span-2 min-w-[180px] relative">
+                    <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
                     <input
+                      id={`subtalk-${st.id || index}-topic`}
                       type="text"
                       value={st.topic}
                       onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                      className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
                       placeholder="Topic (optional)"
+                      aria-describedby={`subtalk-${st.id || index}-help`}
                     />
                   </div>
-                  <div className="col-span-1 flex justify-end items-center">
+                  <div className="sm:col-span-1 flex justify-end items-center">
                     <button
                       type="button"
                       onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
-                      className="text-red-600 hover:text-red-800 text-sm"
+                      className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
+                      aria-label={`Remove subtalk ${index + 1}`}
                     >
                       ×
                     </button>
                   </div>
+                  <div id={`subtalk-${st.id || index}-help`} className="sr-only">Subtalk row {index + 1} controls: Start, End, Speaker, Topic, Remove</div>
                 </div>
               )
             })}
@@ -1095,13 +1114,14 @@ export function SessionForm({
         {discussion && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-gray-900">Discussion</h4>
-            <div className="grid grid-cols-6 gap-2 items-end bg-gray-50 p-2 rounded">
+            <div className="grid grid-cols-1 sm:grid-cols-6 gap-2 items-end bg-gray-50 p-2 rounded overflow-visible">
               <div className="col-span-3">
                 <TimePicker
                   value={discussion.start_time}
                   onChange={(t) => updateDiscussionTime('start_time', t)}
                   label="Start"
                   required
+                  idBase="discussion-start"
                 />
               </div>
               <div className="col-span-3">
@@ -1111,6 +1131,7 @@ export function SessionForm({
                   label="End (Session End)"
                   required
                   disabled
+                  idBase="discussion-end"
                 />
               </div>
             </div>
@@ -1235,6 +1256,8 @@ export function SessionForm({
                 onChange={(t) => handleInputChange('custom_start_time', t)}
                 label="Start Time"
                 required
+                idBase="session-start"
+                ariaInvalid={Boolean(errors.time)}
               />
             </div>
             <div className="space-y-1">
@@ -1244,9 +1267,15 @@ export function SessionForm({
                 onChange={(t) => handleInputChange('custom_end_time', t)}
                 label="End Time"
                 required
+                idBase="session-end"
+                ariaInvalid={Boolean(errors.time)}
+                ariaDescribedById={errors.time ? 'session-time-error' : undefined}
               />
           </div>
           </div>
+          {errors.time && (
+            <div id="session-time-error" className="text-[11px] text-red-600">{errors.time}</div>
+          )}
         </div>
       </div>
 
