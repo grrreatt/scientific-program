@@ -384,69 +384,64 @@ export function SessionForm({
     const value = formData[fieldName as keyof typeof formData]
     
     if (type === 'select') {
+      const peopleFields = new Set([
+        'speaker_id',
+        'chairperson_id',
+        'moderator_id',
+        'discussion_leader_id',
+        'introducer_id'
+      ])
+      const isPeopleSelect = peopleFields.has(fieldName)
       return (
         <div key={fieldName} className="w-full">
-          <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
-            {label} {required && <span className="text-red-500">*</span>}
-          </label>
-          <select
-            id={fieldName}
-            value={value as string}
-            onChange={(e) => handleInputChange(fieldName, e.target.value)}
-            required={required}
-            className="w-full block pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-          >
-            <option value="">Select {label}</option>
-            {fieldName === 'day_id' && days.map(day => (
-              <option key={day.id} value={day.id}>
-                {day.name} - {day.date}
-              </option>
-            ))}
-            {fieldName === 'stage_id' && halls.map(hall => (
-              <option key={hall.id} value={hall.id}>
-                {hall.name} {hall.capacity ? `(${hall.capacity} capacity)` : ''}
-              </option>
-            ))}
-            {fieldName === 'time_slot_id' && timeSlots.map(slot => (
-              <option key={slot.id} value={slot.id}>
-                {slot.start_time} - {slot.end_time} {slot.is_break ? `(${slot.break_title || 'Break'})` : ''}
-              </option>
-            ))}
-            {fieldName === 'speaker_id' && speakers.map(speaker => (
-              <option key={speaker.id} value={speaker.id}>
-                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
-              </option>
-            ))}
-            {fieldName === 'chairperson_id' && speakers.map(speaker => (
-              <option key={speaker.id} value={speaker.id}>
-                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
-              </option>
-            ))}
-            {fieldName === 'moderator_id' && speakers.map(speaker => (
-              <option key={speaker.id} value={speaker.id}>
-                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
-              </option>
-            ))}
-            {fieldName === 'discussion_leader_id' && speakers.map(speaker => (
-              <option key={speaker.id} value={speaker.id}>
-                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
-              </option>
-            ))}
-            {fieldName === 'introducer_id' && speakers.map(speaker => (
-              <option key={speaker.id} value={speaker.id}>
-                {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
-              </option>
-            ))}
-            {fieldName === 'meal_type' && (
-              <>
-                {MEAL_TYPES.map(meal => (
-                  <option key={meal.value} value={meal.value}>
-                    {meal.label}
+          {isPeopleSelect ? (
+            <Combobox
+              label={`${label}${required ? ' *' : ''}`}
+              idBase={fieldName}
+              value={(value as string) || ''}
+              onChange={(val) => handleInputChange(fieldName, val)}
+              options={speakers.map(s => ({ value: s.id, label: s.name }))}
+            />
+          ) : (
+            <>
+              <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
+                {label} {required && <span className="text-red-500">*</span>}
+              </label>
+              <select
+                id={fieldName}
+                value={value as string}
+                onChange={(e) => handleInputChange(fieldName, e.target.value)}
+                required={required}
+                className="w-full block pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+              >
+                <option value="">Select {label}</option>
+                {fieldName === 'day_id' && days.map(day => (
+                  <option key={day.id} value={day.id}>
+                    {day.name} - {day.date}
                   </option>
                 ))}
-              </>
-            )}
-          </select>
+                {fieldName === 'stage_id' && halls.map(hall => (
+                  <option key={hall.id} value={hall.id}>
+                    {hall.name} {hall.capacity ? `(${hall.capacity} capacity)` : ''}
+                  </option>
+                ))}
+                {fieldName === 'time_slot_id' && timeSlots.map(slot => (
+                  <option key={slot.id} value={slot.id}>
+                    {slot.start_time} - {slot.end_time} {slot.is_break ? `(${slot.break_title || 'Break'})` : ''}
+                  </option>
+                ))}
+                {fieldName === 'meal_type' && (
+                  <>
+                    {MEAL_TYPES.map(meal => (
+                      <option key={meal.value} value={meal.value}>
+                        {meal.label}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </>
+          )}
         </div>
       )
     }
@@ -513,19 +508,15 @@ export function SessionForm({
         </label>
         {values.map((value, index) => (
           <div key={index} className="flex items-center space-x-2 mb-2">
-            <select
-              value={value}
-              onChange={(e) => handleArrayChange(fieldName, index, e.target.value)}
-              required={required && index === 0}
-              className="flex-1 block pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-            >
-              <option value="">Select speaker</option>
-              {speakers.map(speaker => (
-                <option key={speaker.id} value={speaker.id}>
-                  {speaker.name} {speaker.title ? `(${speaker.title})` : ''} {speaker.organization ? `- ${speaker.organization}` : ''}
-                </option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <Combobox
+                label={index === 0 ? 'Assistant' : 'Assistant'}
+                idBase={`${fieldName}-${index}`}
+                value={value}
+                onChange={(val) => handleArrayChange(fieldName, index, val)}
+                options={speakers.map(s => ({ value: s.id, label: s.name }))}
+              />
+            </div>
             {values.length > 1 && (
               <button
                 type="button"
