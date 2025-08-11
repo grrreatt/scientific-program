@@ -491,7 +491,6 @@ export function SessionForm({
           id={fieldName}
           value={value as string}
           onChange={(e) => handleInputChange(fieldName, e.target.value)}
-          autoFocus={fieldName === 'title'}
           required={required}
           className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
         />
@@ -1283,9 +1282,9 @@ export function SessionForm({
 
       {/* Simplified Session flow */}
       {currentSessionType === 'session' && (
-        <div className="space-y-3">
+        <div className="space-y-3 will-change-auto">
           {renderSessionSimplifiedFlow()}
-      </div>
+        </div>
       )}
 
       {/* Dynamic Participants Section (hidden for simplified Session flow) */}

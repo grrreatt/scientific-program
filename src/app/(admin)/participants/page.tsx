@@ -41,7 +41,15 @@ export default function ParticipantsPage() {
         return
       }
 
-      setSpeakers(data || [])
+      // Deduplicate by lower(email) if present, else by name
+      const seen = new Set<string>()
+      const deduped = (data || []).filter((s: Speaker) => {
+        const key = (s.email ? s.email.toLowerCase() : `name:${(s.name || '').toLowerCase()}`)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      setSpeakers(deduped)
     } catch (error) {
       console.error('❌ Exception loading speakers:', error)
       setError('Failed to load speakers')
@@ -187,6 +195,18 @@ export default function ParticipantsPage() {
     }
   }
 
+  // Bulk delete all
+  const deleteAllSpeakers = async () => {
+    const ok = window.confirm('Delete ALL participants? This cannot be undone.')
+    if (!ok) return
+    const { error } = await supabase.from('speakers').delete().neq('id', '')
+    if (error) {
+      alert('Failed to delete all: ' + error.message)
+      return
+    }
+    await loadSpeakers()
+  }
+
   // Export speakers to CSV
   const exportSpeakersToCSV = () => {
     if (speakers.length === 0) {
@@ -271,6 +291,12 @@ export default function ParticipantsPage() {
                 className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
               >
                 📤 Export CSV
+              </button>
+              <button
+                onClick={deleteAllSpeakers}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                🗑️ Delete All
               </button>
               <button
                 onClick={() => {
