@@ -28,6 +28,7 @@ export default function EditWorkshopPage({ params }: { params: { id: string } })
   const [days, setDays] = useState<Array<{ id: string; name: string }>>([])
   const [halls, setHalls] = useState<Array<{ id: string; name: string }>>([])
   const [saving, setSaving] = useState(false)
+  const AnyCombobox: any = Combobox
 
   useEffect(() => {
     const load = async () => {
@@ -101,7 +102,7 @@ export default function EditWorkshopPage({ params }: { params: { id: string } })
             {form.leads.map((id, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <div className="flex-1">
-                  <Combobox
+                  <AnyCombobox
                     label="Lead"
                     idBase={`workshop-lead-${i}`}
                     value={id}
@@ -122,7 +123,7 @@ export default function EditWorkshopPage({ params }: { params: { id: string } })
             {form.assistants.map((id, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <div className="flex-1">
-                  <Combobox
+                  <AnyCombobox
                     label="Assistant"
                     idBase={`workshop-assistant-${i}`}
                     value={id}
