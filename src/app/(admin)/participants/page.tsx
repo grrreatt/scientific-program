@@ -105,7 +105,7 @@ export default function ParticipantsPage() {
     setPreviewData(parsed.slice(0, 5)) // Show first 5 rows as preview
   }
 
-  // Upload speakers to database
+  // Upload speakers to database (duplicate-safe and resilient)
   const uploadSpeakers = async () => {
     if (!csvData.trim()) {
       alert('Please provide CSV data')
@@ -116,44 +116,87 @@ export default function ParticipantsPage() {
     
     try {
       const parsedData = parseCSV(csvData)
-      
+
       if (parsedData.length === 0) {
         alert('No valid data found in CSV')
         return
       }
 
-      // Validate required fields
-      const requiredFields = ['name']
-      const missingFields = requiredFields.filter(field => 
-        !parsedData[0].hasOwnProperty(field)
-      )
-
-      if (missingFields.length > 0) {
-        alert(`Missing required fields: ${missingFields.join(', ')}`)
-        return
+      // Normalize and validate rows
+      const toRow = (row: any) => {
+        const email = (row.email || '').trim()
+        const normalizedEmail = email ? email.toLowerCase() : null
+        const role = (row.role_type || row.role || '').toString().trim().toLowerCase() || null
+        const phone = (row.phone || row.mobile || '').toString().trim() || null
+        return {
+          name: (row.name || '').toString().trim(),
+          email: normalizedEmail,
+          title: (row.title || '').toString().trim() || null,
+          organization: (row.organization || row.organisation || '').toString().trim() || null,
+          bio: (row.bio || '').toString().trim() || null,
+          role_type: role,
+          phone
+        }
       }
 
-      // Prepare data for insertion
-      const speakersToInsert = parsedData.map(row => ({
-        name: row.name,
-        email: row.email || null,
-        title: row.title || null,
-        organization: row.organization || null,
-        bio: row.bio || null
-      }))
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i
+      const normalized = parsedData.map(toRow)
 
-      // Insert into database
-      const { error } = await supabase
+      // Filter invalid rows (must have name; email optional but if present must be valid)
+      const invalid: any[] = []
+      const valid = normalized.filter(r => {
+        const okName = !!r.name
+        const okEmail = !r.email || emailRegex.test(r.email)
+        const ok = okName && okEmail
+        if (!ok) invalid.push(r)
+        return ok
+      })
+
+      // Deduplicate within CSV by lower(email) when email present; otherwise by name+org
+      const seen = new Set<string>()
+      const csvDeduped = valid.filter(r => {
+        const key = r.email ? `e:${r.email}` : `n:${(r.name || '').toLowerCase()}|${(r.organization || '').toLowerCase()}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+
+      // Fetch existing emails to avoid unique violation
+      const { data: existing, error: existingErr } = await supabase
         .from('speakers')
-        .insert(speakersToInsert)
-
-      if (error) {
-        console.error('❌ Error uploading speakers:', error)
-        alert(`Error uploading speakers: ${error.message}`)
+        .select('email')
+      if (existingErr) {
+        console.error('❌ Error loading existing people:', existingErr)
+        alert('Failed loading existing people. Please retry.')
         return
       }
+      const existingEmails = new Set<string>((existing || []).map((r: any) => (r.email || '').toLowerCase()).filter(Boolean))
 
-      alert(`✅ Successfully uploaded ${speakersToInsert.length} speakers!`)
+      const toInsert = csvDeduped.filter(r => !r.email || !existingEmails.has(r.email))
+      const skippedDuplicates = csvDeduped.filter(r => r.email && existingEmails.has(r.email))
+
+      // Insert in chunks to be safe with payload size
+      const chunkSize = 500
+      let inserted = 0
+      for (let i = 0; i < toInsert.length; i += chunkSize) {
+        const chunk = toInsert.slice(i, i + chunkSize)
+        if (chunk.length === 0) continue
+        const { error: insertErr } = await supabase.from('speakers').insert(chunk)
+        if (insertErr) {
+          console.error('❌ Insert error:', insertErr)
+          // best-effort: continue after skipping this chunk
+          continue
+        }
+        inserted += chunk.length
+      }
+
+      const summary = [
+        `Inserted: ${inserted}`,
+        `Skipped (existing email): ${skippedDuplicates.length}`,
+        `Invalid rows: ${invalid.length}`
+      ].join('\n')
+
+      alert(`✅ Upload complete\n\n${summary}`)
       setShowUploadModal(false)
       setCsvData('')
       setPreviewData([])
