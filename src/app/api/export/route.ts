@@ -17,23 +17,34 @@ export async function GET() {
     }
     const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
 
-    // Fetch all sessions with related data using the sessions_with_times view
+    // Fetch sessions and related ids, then fetch speakers in one go to build an id->speaker map
     const { data: sessions, error: sessionsError } = await supabase
       .from('sessions_with_times')
       .select(`
         *,
-        session_participants(
-          role,
-          speakers(name, email, organization)
-        ),
-        sub_sessions(
-          title, topic, start_time, end_time,
-          speakers(name, email, organization)
-        )
+        session_participants(role, speaker_id),
+        sub_sessions(id, title, topic, start_time, end_time, speaker_id, chairperson_id, expert_ids)
       `)
 
     if (sessionsError) {
       throw sessionsError
+    }
+
+    // Build speakers map for fast lookup
+    const uniqueIds = new Set<string>()
+    sessions?.forEach((s: any) => {
+      (s.session_participants || []).forEach((p: any) => p.speaker_id && uniqueIds.add(p.speaker_id))
+      ;(s.sub_sessions || []).forEach((sub: any) => {
+        if (sub.speaker_id) uniqueIds.add(sub.speaker_id)
+        if (sub.chairperson_id) uniqueIds.add(sub.chairperson_id)
+        ;(sub.expert_ids || []).forEach((id: string) => id && uniqueIds.add(id))
+      })
+    })
+    const idList = Array.from(uniqueIds)
+    const speakerMap: Record<string, { name: string; email?: string; organization?: string }> = {}
+    if (idList.length) {
+      const { data: spData } = await supabase.from('speakers').select('id,name,email,organization').in('id', idList)
+      spData?.forEach((sp: any) => { speakerMap[sp.id] = { name: sp.name, email: sp.email, organization: sp.organization } })
     }
 
     // Transform data into flat rows and group by day for Excel sheets
@@ -48,9 +59,10 @@ export async function GET() {
       // Handle participants
       if (session.session_participants && session.session_participants.length > 0) {
         session.session_participants.forEach((participant: any) => {
+          const sp = participant.speaker_id ? speakerMap[participant.speaker_id] : undefined
           const row = {
-            name: participant.speakers?.name || 'Unknown',
-            email: participant.speakers?.email || '',
+            name: sp?.name || 'Unknown',
+            email: sp?.email || '',
             session: session.title,
             session_topic: session.topic || '',
             role: participant.role,
@@ -81,24 +93,31 @@ export async function GET() {
         rowsByDay[dayName].push(row)
       }
 
-      // Include sub-sessions (each row for the sub-talk speaker if present)
+      // Include sub-sessions (speaker, chairperson, expert each as separate row if present)
       if (session.sub_sessions && session.sub_sessions.length > 0) {
         session.sub_sessions.forEach((sub: any) => {
           const subTime = `${formatTimeCompact(sub.start_time)}-${formatTimeCompact(sub.end_time)}`
-          const row = {
-            name: sub.speakers?.name || '',
-            email: sub.speakers?.email || '',
-            session: session.title,
-            session_topic: session.topic || '',
-            role: sub.speakers?.name ? 'speaker' : '',
-            time: subTime,
-            talk_topic: sub.title || '',
-            hall: stageName,
-            day: dayName,
-            type: session.session_type,
+          const pushRow = (spId: string | null, role: string) => {
+            if (!spId) return
+            const sp = speakerMap[spId] || {}
+            const row = {
+              name: sp.name || '',
+              email: sp.email || '',
+              session: session.title,
+              session_topic: session.topic || '',
+              role,
+              time: subTime,
+              talk_topic: sub.title || '',
+              hall: stageName,
+              day: dayName,
+              type: session.session_type,
+            }
+            rowsByDay[dayName] = rowsByDay[dayName] || []
+            rowsByDay[dayName].push(row)
           }
-          rowsByDay[dayName] = rowsByDay[dayName] || []
-          rowsByDay[dayName].push(row)
+          pushRow(sub.speaker_id || null, 'speaker')
+          pushRow(sub.chairperson_id || null, 'chairperson')
+          ;(sub.expert_ids || []).forEach((id: string) => pushRow(id, 'expert'))
         })
       }
     })

@@ -182,10 +182,10 @@ export function SessionForm({
       if (startStr && endStr) {
         const start = new Date(`2000-01-01T${startStr}`)
         const end = new Date(`2000-01-01T${endStr}`)
-        if (end <= start) {
-          setErrors(prev => ({ ...prev, time: 'End time must be after start time' }))
-        } else {
-          setErrors(prev => { const { time, ...rest } = prev; return rest })
+      if (end <= start) {
+        setErrors(prev => ({ ...prev, time: 'End time must be after start time' }))
+      } else {
+        setErrors(prev => { const { time, ...rest } = prev; return rest })
         }
       }
     }
@@ -407,42 +407,42 @@ export function SessionForm({
             />
           ) : (
             <>
-              <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
-                {label} {required && <span className="text-red-500">*</span>}
-              </label>
-              <select
-                id={fieldName}
-                value={value as string}
-                onChange={(e) => handleInputChange(fieldName, e.target.value)}
-                required={required}
-                className="w-full block pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
-              >
-                <option value="">Select {label}</option>
-                {fieldName === 'day_id' && days.map(day => (
-                  <option key={day.id} value={day.id}>
-                    {day.name} - {day.date}
+          <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
+            {label} {required && <span className="text-red-500">*</span>}
+          </label>
+          <select
+            id={fieldName}
+            value={value as string}
+            onChange={(e) => handleInputChange(fieldName, e.target.value)}
+            required={required}
+            className="w-full block pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-md"
+          >
+            <option value="">Select {label}</option>
+            {fieldName === 'day_id' && days.map(day => (
+              <option key={day.id} value={day.id}>
+                {day.name} - {day.date}
+              </option>
+            ))}
+            {fieldName === 'stage_id' && halls.map(hall => (
+              <option key={hall.id} value={hall.id}>
+                {hall.name} {hall.capacity ? `(${hall.capacity} capacity)` : ''}
+              </option>
+            ))}
+            {fieldName === 'time_slot_id' && timeSlots.map(slot => (
+              <option key={slot.id} value={slot.id}>
+                {slot.start_time} - {slot.end_time} {slot.is_break ? `(${slot.break_title || 'Break'})` : ''}
+              </option>
+            ))}
+            {fieldName === 'meal_type' && (
+              <>
+                {MEAL_TYPES.map(meal => (
+                  <option key={meal.value} value={meal.value}>
+                    {meal.label}
                   </option>
                 ))}
-                {fieldName === 'stage_id' && halls.map(hall => (
-                  <option key={hall.id} value={hall.id}>
-                    {hall.name} {hall.capacity ? `(${hall.capacity} capacity)` : ''}
-                  </option>
-                ))}
-                {fieldName === 'time_slot_id' && timeSlots.map(slot => (
-                  <option key={slot.id} value={slot.id}>
-                    {slot.start_time} - {slot.end_time} {slot.is_break ? `(${slot.break_title || 'Break'})` : ''}
-                  </option>
-                ))}
-                {fieldName === 'meal_type' && (
-                  <>
-                    {MEAL_TYPES.map(meal => (
-                      <option key={meal.value} value={meal.value}>
-                        {meal.label}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select>
+              </>
+            )}
+          </select>
             </>
           )}
         </div>
@@ -515,7 +515,7 @@ export function SessionForm({
               <Combobox
                 label={index === 0 ? 'Assistant' : 'Assistant'}
                 idBase={`${fieldName}-${index}`}
-                value={value}
+              value={value}
                 onChange={(val) => handleArrayChange(fieldName, index, val)}
                 options={speakers.map(s => ({ value: s.id, label: s.name }))}
                 allowFreeText
@@ -704,17 +704,13 @@ export function SessionForm({
                   </select>
                 </div>
                 <div className="col-span-3">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Speaker *</label>
-                  <select
+                  <Combobox
+                    label="Speaker"
+                    idBase={`subtalk-inline-${st.id || index}-speaker`}
                     value={st.speaker_id}
-                    onChange={(e) => updateSubSession(st.id, 'speaker_id', e.target.value)}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                  >
-                    <option value="">Select Speaker</option>
-                    {speakers.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
+                    options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                  />
                 </div>
                 <div className="col-span-2">
                   <TimePicker
@@ -1043,25 +1039,25 @@ export function SessionForm({
                   {/* Row 1: Time */}
                   <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center">
                     <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
-                      <TimePicker
-                        value={isFirst ? formData.custom_start_time : st.start_time}
-                        onChange={(t) => updateSubSession(st.id, 'start_time', t)}
-                        label="Start"
-                        required
+                    <TimePicker
+                      value={isFirst ? formData.custom_start_time : st.start_time}
+                      onChange={(t) => updateSubSession(st.id, 'start_time', t)}
+                      label="Start"
+                      required
                         idBase={`subtalk-${st.id || index}-start`}
                         ariaDescribedById={`subtalk-${st.id || index}-help`}
-                      />
-                    </div>
+                    />
+                  </div>
                     <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
-                      <TimePicker
-                        value={st.end_time}
-                        onChange={(t) => updateSubSession(st.id, 'end_time', t)}
-                        label="End"
-                        required
+                    <TimePicker
+                      value={st.end_time}
+                      onChange={(t) => updateSubSession(st.id, 'end_time', t)}
+                      label="End"
+                      required
                         idBase={`subtalk-${st.id || index}-end`}
                         ariaDescribedById={`subtalk-${st.id || index}-help`}
-                      />
-                    </div>
+                    />
+                  </div>
                   </div>
 
                   {/* Row 2: Speaker + Chairperson/Experts + Topic */}
@@ -1070,7 +1066,7 @@ export function SessionForm({
                       <Combobox
                         label="Speaker *"
                         idBase={`subtalk-${st.id || index}-speaker`}
-                        value={st.speaker_id}
+                      value={st.speaker_id}
                         onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
                         options={speakers.map(s => ({ value: s.id, label: s.name }))}
                         ariaDescribedById={`subtalk-${st.id || index}-help`}
@@ -1078,76 +1074,45 @@ export function SessionForm({
                       />
                     </div>
                     <div className="sm:col-span-3 min-w-[160px]">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Chairperson</label>
-                      <select
+                      <Combobox
+                        label="Chairperson"
+                        idBase={`subtalk-${st.id || index}-chairperson`}
                         value={(st as any).chairperson_id || ''}
-                        onChange={(e) => updateSubSession(st.id, 'chairperson_id', e.target.value)}
-                        className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="">Select</option>
-                        {speakers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                      </select>
+                        onChange={(val) => updateSubSession(st.id, 'chairperson_id', val)}
+                        options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                      />
                     </div>
                     <div className="sm:col-span-3 min-w-[200px]">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Experts</label>
-                      <div className="space-y-1">
-                        {((st as any).expert_ids || []).map((id: string, i: number) => (
-                          <div key={i} className="flex gap-2">
-                            <select
-                              className="flex-1 h-9 px-3 border border-gray-300 rounded text-sm"
-                              value={id}
-                              onChange={(e) => {
-                                const next = ([...((st as any).expert_ids || [])]);
-                                next[i] = e.target.value;
-                                updateSubSession(st.id, 'expert_ids', next)
-                              }}
-                            >
-                              <option value="">Select</option>
-                              {speakers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                            <button
-                              type="button"
-                              className="text-red-600 text-sm"
-                              onClick={() => {
-                                const next = ([...((st as any).expert_ids || [])]).filter((_: string, idx: number) => idx !== i)
-                                updateSubSession(st.id, 'expert_ids', next)
-                              }}
-                            >×</button>
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          className="text-indigo-600 text-xs"
-                          onClick={() => {
-                            const next = ([...((st as any).expert_ids || [])]);
-                            next.push('');
-                            updateSubSession(st.id, 'expert_ids', next)
-                          }}
-                        >+ Add Expert</button>
-                      </div>
+                      <Combobox
+                        label="Expert"
+                        idBase={`subtalk-${st.id || index}-expert`}
+                        value={(((st as any).expert_ids || [])[0]) || ''}
+                        onChange={(val) => updateSubSession(st.id, 'expert_ids', val ? [val] : [])}
+                        options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                      />
                     </div>
                     <div className="sm:col-span-3 min-w-[180px] relative">
                       <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
-                      <input
+                    <input
                         id={`subtalk-${st.id || index}-topic`}
-                        type="text"
-                        value={st.topic}
-                        onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
+                      type="text"
+                      value={st.topic}
+                      onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
                         className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
                         placeholder="Enter topic"
                         aria-describedby={`subtalk-${st.id || index}-help`}
-                      />
-                    </div>
+                    />
+                  </div>
                     <div className="sm:col-span-1 flex justify-end items-center">
-                      <button
-                        type="button"
-                        onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
+                    <button
+                      type="button"
+                      onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
                         className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
                         aria-label={`Remove subtalk ${index + 1}`}
-                      >
-                        ×
-                      </button>
-                    </div>
+                    >
+                      ×
+                    </button>
+                  </div>
                   </div>
 
                   <div id={`subtalk-${st.id || index}-help`} className="sr-only">Subtalk {index + 1} controls: Start, End, Speaker, Topic, Remove</div>
@@ -1264,7 +1229,7 @@ export function SessionForm({
         <div className="grid grid-cols-1 gap-3">
           {/* Session Title with suggestions (hidden for lecture/talk). No '(optional)' labels anywhere */}
           {currentSessionType !== 'lecture' && (
-            <div>
+              <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {currentSessionType === 'session' ? 'Session Title' : 'Session Title *'}
               </label>
@@ -1276,7 +1241,7 @@ export function SessionForm({
                 className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${currentSessionType !== 'session' && !formData.title ? 'border-red-300 focus:ring-red-300 focus:border-red-400' : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'}`}
                 required={currentSessionType !== 'session'}
               />
-            </div>
+              </div>
           )}
 
           {/* Topic / Talk Title: show for all types. For lecture: required. For session: optional label as Session Topic. */}
