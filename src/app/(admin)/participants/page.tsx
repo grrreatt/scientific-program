@@ -23,6 +23,8 @@ export default function ParticipantsPage() {
   const [csvData, setCsvData] = useState<string>('')
   const [uploading, setUploading] = useState(false)
   const [previewData, setPreviewData] = useState<any[]>([])
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<string>('')
 
   // Load speakers from database
   const loadSpeakers = async () => {
@@ -32,7 +34,7 @@ export default function ParticipantsPage() {
     try {
       const { data, error } = await supabase
         .from('speakers')
-        .select('*')
+        .select('id, name, email, title, organization, bio, role_type')
         .order('name', { ascending: true })
 
       if (error) {
@@ -287,6 +289,25 @@ export default function ParticipantsPage() {
             </div>
             <div className="flex items-center space-x-4">
               <RealtimeStatus />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name or email"
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+              />
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                <option value="">All Roles</option>
+                <option value="speaker">Speaker</option>
+                <option value="moderator">Moderator</option>
+                <option value="chairperson">Chairperson</option>
+                <option value="expert">Expert</option>
+                <option value="panelist">Panelist</option>
+              </select>
               <button
                 onClick={exportSpeakersToCSV}
                 className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
@@ -400,12 +421,22 @@ export default function ParticipantsPage() {
                       Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Role
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {speakers.map((speaker) => (
+                  {speakers
+                    .filter(s => {
+                      const q = search.trim().toLowerCase()
+                      const matchQuery = q.length === 0 || (s.name || '').toLowerCase().includes(q) || (s.email || '').toLowerCase().includes(q)
+                      const matchRole = !roleFilter || ((s as any).role_type || '').toLowerCase() === roleFilter.toLowerCase()
+                      return matchQuery && matchRole
+                    })
+                    .map((speaker) => (
                     <tr key={speaker.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
@@ -427,6 +458,11 @@ export default function ParticipantsPage() {
                           {speaker.email || '-'}
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {(speaker as any).role_type || '-'}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleDeleteSpeaker(speaker.id)}
@@ -435,7 +471,7 @@ export default function ParticipantsPage() {
                           Delete
                         </button>
                       </td>
-                    </tr>
+                  </tr>
                   ))}
                 </tbody>
               </table>
