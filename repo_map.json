@@ -1,0 +1,89 @@
+{
+  "pages": {
+    "admin_edit_sessions": "src/app/(admin)/edit-sessions/page.tsx",
+    "admin_participants": "src/app/(admin)/participants/page.tsx",
+    "public_program": "src/app/public-program/page.tsx",
+    "public_workshops": "src/app/public-workshops/page.tsx",
+    "dashboard": "src/app/(admin)/dashboard/page.tsx",
+    "api_export": "src/app/api/export/route.ts",
+    "api_download_template": "src/app/api/download-template/route.ts"
+  },
+  "components": {
+    "session_form": "src/components/session-form.tsx",
+    "ui": "src/components/ui/*"
+  },
+  "lib": {
+    "supabase_client": "src/lib/supabase/client.ts",
+    "realtime": "src/lib/supabase/realtime.ts",
+    "constants": "src/lib/constants.ts",
+    "utils": "src/lib/utils.ts",
+    "types": "src/types/index.ts"
+  },
+  "schema": {
+    "migrations": [
+      "supabase/migrations/001_initial_schema.sql",
+      "supabase/migrations/002_restructure_for_time_slots.sql",
+      "supabase/migrations/003_restructure_halls_per_day.sql",
+      "supabase/migrations/004_add_session_hierarchy_and_features.sql",
+      "supabase/migrations/005_schema_alignment.sql",
+      "supabase/migrations/006_full_reset_template.sql"
+    ],
+    "extra_sql": [
+      "supabase/sql/alter_sub_sessions_add_roles.sql"
+    ],
+    "tables": [
+      "conference_days",
+      "stages",
+      "day_halls",
+      "day_time_slots",
+      "sessions",
+      "session_participants",
+      "speakers",
+      "sub_sessions",
+      "session_types"
+    ],
+    "views": [
+      "sessions_with_times",
+      "halls_with_days",
+      "sessions_with_sub_sessions",
+      "sub_sessions_with_people"
+    ]
+  },
+  "data_flows": [
+    {
+      "name": "Save Session",
+      "ui": "src/components/session-form.tsx",
+      "state_owner": "src/app/(admin)/edit-sessions/page.tsx",
+      "writes": ["sessions", "session_participants", "sub_sessions"],
+      "realtime": ["sessions", "sub_sessions", "session_participants"],
+      "export_view": "sessions_with_times"
+    },
+    {
+      "name": "People Master",
+      "ui": "src/app/(admin)/participants/page.tsx",
+      "reads": ["speakers"],
+      "writes": ["speakers"]
+    },
+    {
+      "name": "Export",
+      "api": "src/app/api/export/route.ts",
+      "reads": ["sessions_with_times", "speakers"],
+      "outputs": [".xlsx"]
+    }
+  ],
+  "workshop_references": [
+    "src/app/(admin)/dashboard/page.tsx",
+    "src/app/public-workshops/page.tsx",
+    "src/lib/constants.ts",
+    "src/lib/utils.ts",
+    "src/types/index.ts",
+    "PROJECT_STRUCTURE.md"
+  ],
+  "env": {
+    "template": "env.example",
+    "client_env": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],
+    "server_env_optional": ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY"]
+  }
+}
+
+

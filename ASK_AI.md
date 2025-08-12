@@ -1,3 +1,16 @@
+Monk Mode Ops
+
+- Orchestrator:
+  - Quick status: `node tools/system_orchestrator.ts status`
+  - Targeted check: `node tools/system_orchestrator.ts run-check engine`
+
+- Docs:
+  - System summary: `SYSTEM_MASTER.md`
+  - Repo map: `repo_map.json`
+
+- CI Note:
+  - Do not run destructive SQL in production. Use test/dev env only.
+
 ## Scientific Program – Deep Context for Assistant Collaboration
 
 This document gives another AI assistant a complete, implementation-level briefing of the system so far. It covers architecture, data model, UI flows, realtime sync, validation rules, known constraints, and how to extend safely.
