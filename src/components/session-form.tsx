@@ -421,16 +421,20 @@ export function SessionForm({
       return (
         <div key={fieldName} className="w-full">
           {isPeopleSelect ? (
-            <Combobox
-              label={`${label}${required ? ' *' : ''}`}
-              idBase={fieldName}
-              value={(value as string) || ''}
-              onChange={(val) => handleInputChange(fieldName, val)}
-              options={speakers.map(s => ({ value: s.id, label: s.name }))}
-              allowFreeText
-              enableInlineAdd
-              onCreateOption={createPerson}
-            />
+            <div className="w-full">
+              <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
+                {label} {required && <span className="text-red-500">*</span>}
+              </label>
+              <input
+                id={fieldName}
+                type="text"
+                value={(value as string) || ''}
+                onChange={(e) => handleInputChange(fieldName, e.target.value)}
+                placeholder={`Type a name (new or existing)`}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+              />
+              <p className="text-xs text-gray-500 mt-1">You can type an existing name or a new person; it will be created on save.</p>
+            </div>
           ) : (
             <>
           <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
@@ -538,15 +542,13 @@ export function SessionForm({
         {values.map((value, index) => (
           <div key={index} className="flex items-center space-x-2 mb-2">
             <div className="flex-1">
-              <Combobox
-                label={index === 0 ? 'Assistant' : 'Assistant'}
-                idBase={`${fieldName}-${index}`}
-              value={value}
-                onChange={(val) => handleArrayChange(fieldName, index, val)}
-                options={speakers.map(s => ({ value: s.id, label: s.name }))}
-                allowFreeText
-                enableInlineAdd
-                onCreateOption={createPerson}
+              <label className="block text-sm font-medium text-gray-700 mb-1">{index === 0 ? 'Assistant' : 'Assistant'}</label>
+              <input
+                type="text"
+                value={value}
+                onChange={(val) => handleArrayChange(fieldName, index, (val.target as HTMLInputElement).value)}
+                placeholder="Type a name"
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
               />
             </div>
             {values.length > 1 && (
@@ -732,15 +734,13 @@ export function SessionForm({
                   </select>
                 </div>
                 <div className="col-span-3">
-                  <Combobox
-                    label="Speaker"
-                    idBase={`subtalk-inline-${st.id || index}-speaker`}
-                    value={st.speaker_id}
-                    onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
-                    options={speakers.map(s => ({ value: s.id, label: s.name }))}
-                    allowFreeText
-                    enableInlineAdd
-                    onCreateOption={createPerson}
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Speaker</label>
+                  <input
+                    type="text"
+                    value={st.speaker_id || ''}
+                    onChange={(e) => updateSubSession(st.id, 'speaker_id', e.target.value)}
+                    placeholder="Type a name"
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                   />
                 </div>
                 <div className="col-span-2">
@@ -1050,15 +1050,13 @@ export function SessionForm({
               {(formData.chairpersons || []).map((c: any, idx: number) => (
                 <div key={`chair-${idx}`} className="flex items-center gap-2">
                   <div className="flex-1 min-w-[200px]">
-                    <Combobox
-                      label={idx === 0 ? 'Chairperson' : 'Chairperson'}
-                      idBase={`session-chair-${idx}`}
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Chairperson</label>
+                    <input
+                      type="text"
                       value={c.id || ''}
-                      onChange={(val) => updateParticipant('chairpersons', idx, val)}
-                      options={speakers.map(s => ({ value: s.id, label: s.name }))}
-                      allowFreeText
-                      enableInlineAdd
-                      onCreateOption={createPerson}
+                      onChange={(e) => updateParticipant('chairpersons', idx, e.target.value)}
+                      placeholder="Type a name"
+                      className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                     />
                   </div>
                   <button
@@ -1132,43 +1130,34 @@ export function SessionForm({
                   {/* Row 2: Speaker + Chairperson */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                     <div className="sm:col-span-6 min-w-[180px] relative focus-within:z-10">
-                      <Combobox
-                        label="Speaker *"
-                        idBase={`subtalk-${st.id || index}-speaker`}
-                      value={st.speaker_id}
-                        onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
-                        options={speakers.map(s => ({ value: s.id, label: s.name }))}
-                        ariaDescribedById={`subtalk-${st.id || index}-help`}
-                        allowFreeText
-                        enableInlineAdd
-                        onCreateOption={createPerson}
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Speaker *</label>
+                      <input
+                        type="text"
+                        value={st.speaker_id}
+                        onChange={(e) => updateSubSession(st.id, 'speaker_id', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                        aria-describedby={`subtalk-${st.id || index}-help`}
                       />
                     </div>
                     <div className="sm:col-span-6 min-w-[180px]">
-                      <Combobox
-                        label="Chairperson"
-                        idBase={`subtalk-${st.id || index}-chairperson`}
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Chairperson</label>
+                      <input
+                        type="text"
                         value={(st as any).chairperson_id || ''}
-                        onChange={(val) => updateSubSession(st.id, 'chairperson_id', val)}
-                        options={speakers.map(s => ({ value: s.id, label: s.name }))}
-                        allowFreeText
-                        enableInlineAdd
-                        onCreateOption={createPerson}
+                        onChange={(e) => updateSubSession(st.id, 'chairperson_id', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                       />
                     </div>
                   </div>
                   {/* Row 3: Expert + Topic */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                     <div className="sm:col-span-6 min-w-[180px]">
-                      <Combobox
-                        label="Expert"
-                        idBase={`subtalk-${st.id || index}-expert`}
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Expert</label>
+                      <input
+                        type="text"
                         value={(((st as any).expert_ids || [])[0]) || ''}
-                        onChange={(val) => updateSubSession(st.id, 'expert_ids', val ? [val] : [])}
-                        options={speakers.map(s => ({ value: s.id, label: s.name }))}
-                        allowFreeText
-                        enableInlineAdd
-                        onCreateOption={createPerson}
+                        onChange={(e) => updateSubSession(st.id, 'expert_ids', e.target.value ? [e.target.value] : [])}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                       />
                     </div>
                     <div className="sm:col-span-6 min-w-[180px] relative">

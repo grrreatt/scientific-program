@@ -421,6 +421,23 @@ export default function EditSessionsPage() {
     setIsSubmitting(true)
     
     try {
+      const isUuid = (val: string) => /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(val || '')
+      const ensurePerson = async (nameOrId: string | null | undefined): Promise<string | null> => {
+        if (!nameOrId) return null
+        const raw = String(nameOrId).trim()
+        if (!raw) return null
+        if (isUuid(raw)) return raw
+        const existing = speakers.find(p => (p.name || '').toLowerCase() === raw.toLowerCase())
+        if (existing) return existing.id
+        // create new person
+        const { data, error } = await supabase.from('speakers').insert({ name: raw }).select('id, name').single()
+        if (error) {
+          console.error('❌ Failed to create person', error)
+          return null
+        }
+        setSpeakers(prev => [...prev, { id: data!.id, name: data!.name }])
+        return data!.id
+      }
       const prevSelectedDay = selectedDay
       const selectedDayData = days.find(d => d.name === selectedDay)
       if (!selectedDayData) {
@@ -492,31 +509,19 @@ export default function EditSessionsPage() {
         // Add speakers (dynamic array)
         if (formData.speakers && formData.speakers.length > 0) {
           formData.speakers.forEach((speaker: any) => {
-            if (speaker.id && typeof speaker.id === 'string' && !speaker.id.startsWith('temp:')) {
-              participantsToAdd.push({
-                session_id: sessionId,
-                speaker_id: speaker.id,
-                role: 'speaker'
-              })
-            }
+            const raw = speaker?.id
+            if (!raw) return
+            // raw may be a UUID or a typed name
+            // Resolution deferred; collect names to resolve after
           })
         }
 
-        // Single speaker field
-        if (formData.speaker_id && typeof formData.speaker_id === 'string' && !formData.speaker_id.startsWith('temp:')) {
-          participantsToAdd.push({ session_id: sessionId, speaker_id: formData.speaker_id, role: 'speaker' })
-        }
+        // We'll resolve single fields below as well
 
         // Add moderators (dynamic array)
         if (formData.moderators && formData.moderators.length > 0) {
           formData.moderators.forEach((moderator: any) => {
-            if (moderator.id && typeof moderator.id === 'string' && !moderator.id.startsWith('temp:')) {
-              participantsToAdd.push({
-                session_id: sessionId,
-                speaker_id: moderator.id,
-                role: 'moderator'
-              })
-            }
+            // collect for resolution
           })
         }
 
@@ -528,62 +533,85 @@ export default function EditSessionsPage() {
         // Add chairpersons (dynamic array)
         if (formData.chairpersons && formData.chairpersons.length > 0) {
           formData.chairpersons.forEach((chairperson: any) => {
-            if (chairperson.id && typeof chairperson.id === 'string' && !chairperson.id.startsWith('temp:')) {
-              participantsToAdd.push({
-                session_id: sessionId,
-                speaker_id: chairperson.id,
-                role: 'chairperson'
-              })
-            }
+            // collect for resolution
           })
         }
         // Panelists array (dynamic)
         if (formData.panelists && formData.panelists.length > 0) {
           formData.panelists.forEach((p: any) => {
-            if (p.id && typeof p.id === 'string' && !p.id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: p.id, role: 'panelist' })
+            // collect for resolution
           })
         }
 
         // Experts array (dynamic)
         if (formData.experts && formData.experts.length > 0) {
           formData.experts.forEach((e: any) => {
-            if (e.id && typeof e.id === 'string' && !e.id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: e.id, role: 'expert' })
+            // collect for resolution
           })
         }
 
 
         // Single chairperson field
-        if (formData.chairperson_id && typeof formData.chairperson_id === 'string' && !formData.chairperson_id.startsWith('temp:')) {
-          participantsToAdd.push({ session_id: sessionId, speaker_id: formData.chairperson_id, role: 'chairperson' })
+        // Resolve all role fields to IDs and build participants list
+        const resolveMany = async (items: any[], role: string) => {
+          for (const it of items || []) {
+            const raw = typeof it === 'string' ? it : it?.id
+            const id = await ensurePerson(raw)
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role })
+          }
         }
 
-        // Panelists array
-        if (formData.panelist_ids && formData.panelist_ids.length > 0) {
-          formData.panelist_ids.forEach((id: string) => {
-            if (id && typeof id === 'string' && !id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'panelist' })
-          })
+        await resolveMany(formData.speakers, 'speaker')
+        if (formData.speaker_id) {
+          const id = await ensurePerson(formData.speaker_id)
+          if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'speaker' })
         }
+        await resolveMany(formData.moderators, 'moderator')
+        if (formData.moderator_id) {
+          const id = await ensurePerson(formData.moderator_id)
+          if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'moderator' })
+        }
+        await resolveMany(formData.chairpersons, 'chairperson')
+        if (formData.chairperson_id) {
+          const id = await ensurePerson(formData.chairperson_id)
+          if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'chairperson' })
+        }
+        await resolveMany(formData.panelists, 'panelist')
+        if (formData.panelist_ids) {
+          for (const raw of formData.panelist_ids) {
+            const id = await ensurePerson(raw)
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'panelist' })
+          }
+        }
+        await resolveMany(formData.experts, 'expert')
+
+        // Panelists array
+        
 
         // Workshop leads and assistants
         if (formData.workshop_lead_ids && formData.workshop_lead_ids.length > 0) {
-          formData.workshop_lead_ids.forEach((id: string) => {
-            if (id && typeof id === 'string' && !id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'workshop_lead' })
-          })
+          for (const raw of formData.workshop_lead_ids) {
+            const id = await ensurePerson(raw)
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'workshop_lead' })
+          }
         }
         if (formData.assistant_ids && formData.assistant_ids.length > 0) {
-          formData.assistant_ids.forEach((id: string) => {
-            if (id && typeof id === 'string' && !id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'assistant' })
-          })
+          for (const raw of formData.assistant_ids) {
+            const id = await ensurePerson(raw)
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'assistant' })
+          }
         }
 
         // Discussion leader and presenters
-        if (formData.discussion_leader_id && typeof formData.discussion_leader_id === 'string' && !formData.discussion_leader_id.startsWith('temp:')) {
-          participantsToAdd.push({ session_id: sessionId, speaker_id: formData.discussion_leader_id, role: 'discussion_leader' })
+        if (formData.discussion_leader_id) {
+          const id = await ensurePerson(formData.discussion_leader_id)
+          if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'discussion_leader' })
         }
         if (formData.presenter_ids && formData.presenter_ids.length > 0) {
-          formData.presenter_ids.forEach((id: string) => {
-            if (id && typeof id === 'string' && !id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'presenter' })
-          })
+          for (const raw of formData.presenter_ids) {
+            const id = await ensurePerson(raw)
+            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'presenter' })
+          }
         }
 
         // Insert all participants
@@ -611,19 +639,48 @@ export default function EditSessionsPage() {
             .map((s: any) => ({
               parent_session_id: sessionId,
               title: s.title,
-              speaker_id: (typeof s.speaker_id === 'string' && !s.speaker_id.startsWith('temp:')) ? s.speaker_id : null,
-              chairperson_id: (typeof (s as any).chairperson_id === 'string' && !(s as any).chairperson_id.startsWith('temp:')) ? (s as any).chairperson_id : null,
-              expert_ids: (s as any).expert_ids && (s as any).expert_ids.length ? (s as any).expert_ids.filter((id: string) => !!id && typeof id === 'string' && !id.startsWith('temp:')) : null,
+              speaker_id: null,
+              chairperson_id: null,
+              expert_ids: null,
               start_time: s.start_time,
               end_time: s.end_time,
               topic: s.topic || null,
-              sub_session_type: s.sub_session_type || 'lecture'
+              sub_session_type: s.sub_session_type || 'lecture',
+              __speaker_raw: s.speaker_id,
+              __chair_raw: (s as any).chairperson_id,
+              __experts_raw: (s as any).expert_ids
             }))
 
-          if (rows.length > 0) {
-            const { error: subErr } = await supabase
-              .from('sub_sessions')
-              .insert(rows)
+          // Resolve names to ids and insert
+          const resolvedRows: any[] = []
+          for (const r of rows) {
+            const speakerId = await ensurePerson((r as any).__speaker_raw)
+            const chairId = await ensurePerson((r as any).__chair_raw)
+            let expertIds: string[] | null = null
+            const rawExperts = (r as any).__experts_raw || []
+            if (rawExperts && rawExperts.length) {
+              expertIds = []
+              for (const raw of rawExperts) {
+                const id = await ensurePerson(raw)
+                if (id) expertIds.push(id)
+              }
+              if (expertIds.length === 0) expertIds = null
+            }
+            resolvedRows.push({
+              parent_session_id: r.parent_session_id,
+              title: r.title,
+              speaker_id: speakerId,
+              chairperson_id: chairId,
+              expert_ids: expertIds,
+              start_time: r.start_time,
+              end_time: r.end_time,
+              topic: r.topic,
+              sub_session_type: r.sub_session_type
+            })
+          }
+
+          if (resolvedRows.length > 0) {
+            const { error: subErr } = await supabase.from('sub_sessions').insert(resolvedRows)
             if (subErr) {
               console.error('❌ Error saving sub-sessions:', subErr)
               alert('Session saved but there was an error saving sub-talks.')
@@ -635,6 +692,21 @@ export default function EditSessionsPage() {
       handleCloseModal()
       await loadAllData()
       if (prevSelectedDay) selectDay(prevSelectedDay)
+      // Force UI to show immediately by optimistic append if necessary
+      try {
+        const { data: latest, error: latestErr } = await supabase
+          .from('sessions')
+          .select(supabaseUtils.getSessionQuery())
+          .order('created_at', { ascending: false })
+          .limit(1)
+        if (!latestErr && latest && latest.length === 1) {
+          const transformed = latest.map(supabaseUtils.transformSession)[0]
+          setSessions(prev => {
+            const exists = prev.some(s => s.id === transformed.id)
+            return exists ? prev : [transformed, ...prev]
+          })
+        }
+      } catch {}
       console.log('✅ Session saved successfully')
       
     } catch (error) {
