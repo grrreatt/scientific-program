@@ -428,18 +428,26 @@ export default function EditSessionsPage() {
         return
       }
 
+      const chosenTimeSlotId = formData.time_slot_id || selectedTimeSlotForSession || null
+      const chosenTimeSlot = chosenTimeSlotId ? timeSlots.find(ts => ts.id === chosenTimeSlotId) : undefined
+      const derivedStart = formData.custom_start_time || chosenTimeSlot?.start_time || null
+      const derivedEnd = formData.custom_end_time || chosenTimeSlot?.end_time || null
+
       const insertData = {
         title: formData.title,
         session_type: sessionType,
         day_id: selectedDayData.id,
         stage_id: formData.stage_id || selectedHallForSession || null,
-        time_slot_id: formData.time_slot_id || selectedTimeSlotForSession || null,
+        time_slot_id: chosenTimeSlotId,
         topic: formData.topic,
         description: formData.description,
         is_parallel_meal: formData.is_parallel_meal,
         parallel_meal_type: formData.parallel_meal_type,
         custom_start_time: formData.custom_start_time || null,
-        custom_end_time: formData.custom_end_time || null
+        custom_end_time: formData.custom_end_time || null,
+        // legacy required columns kept in schema; set for DB NOT NULL safety
+        start_time: derivedStart,
+        end_time: derivedEnd
       }
 
       let sessionId: string
@@ -467,6 +475,7 @@ export default function EditSessionsPage() {
 
       // Handle participants (both single fields and dynamic arrays)
       if (sessionId) {
+        console.log('📤 Saving participants for session', sessionId)
         // Delete existing participants for this session
         await supabase
           .from('session_participants')
@@ -483,7 +492,7 @@ export default function EditSessionsPage() {
         // Add speakers (dynamic array)
         if (formData.speakers && formData.speakers.length > 0) {
           formData.speakers.forEach((speaker: any) => {
-            if (speaker.id) {
+            if (speaker.id && typeof speaker.id === 'string' && !speaker.id.startsWith('temp:')) {
               participantsToAdd.push({
                 session_id: sessionId,
                 speaker_id: speaker.id,
@@ -494,14 +503,14 @@ export default function EditSessionsPage() {
         }
 
         // Single speaker field
-        if (formData.speaker_id) {
+        if (formData.speaker_id && typeof formData.speaker_id === 'string' && !formData.speaker_id.startsWith('temp:')) {
           participantsToAdd.push({ session_id: sessionId, speaker_id: formData.speaker_id, role: 'speaker' })
         }
 
         // Add moderators (dynamic array)
         if (formData.moderators && formData.moderators.length > 0) {
           formData.moderators.forEach((moderator: any) => {
-            if (moderator.id) {
+            if (moderator.id && typeof moderator.id === 'string' && !moderator.id.startsWith('temp:')) {
               participantsToAdd.push({
                 session_id: sessionId,
                 speaker_id: moderator.id,
@@ -512,14 +521,14 @@ export default function EditSessionsPage() {
         }
 
         // Single moderator field
-        if (formData.moderator_id) {
+        if (formData.moderator_id && typeof formData.moderator_id === 'string' && !formData.moderator_id.startsWith('temp:')) {
           participantsToAdd.push({ session_id: sessionId, speaker_id: formData.moderator_id, role: 'moderator' })
         }
 
         // Add chairpersons (dynamic array)
         if (formData.chairpersons && formData.chairpersons.length > 0) {
           formData.chairpersons.forEach((chairperson: any) => {
-            if (chairperson.id) {
+            if (chairperson.id && typeof chairperson.id === 'string' && !chairperson.id.startsWith('temp:')) {
               participantsToAdd.push({
                 session_id: sessionId,
                 speaker_id: chairperson.id,
@@ -531,49 +540,49 @@ export default function EditSessionsPage() {
         // Panelists array (dynamic)
         if (formData.panelists && formData.panelists.length > 0) {
           formData.panelists.forEach((p: any) => {
-            if (p.id) participantsToAdd.push({ session_id: sessionId, speaker_id: p.id, role: 'panelist' })
+            if (p.id && typeof p.id === 'string' && !p.id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: p.id, role: 'panelist' })
           })
         }
 
         // Experts array (dynamic)
         if (formData.experts && formData.experts.length > 0) {
           formData.experts.forEach((e: any) => {
-            if (e.id) participantsToAdd.push({ session_id: sessionId, speaker_id: e.id, role: 'expert' })
+            if (e.id && typeof e.id === 'string' && !e.id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: e.id, role: 'expert' })
           })
         }
 
 
         // Single chairperson field
-        if (formData.chairperson_id) {
+        if (formData.chairperson_id && typeof formData.chairperson_id === 'string' && !formData.chairperson_id.startsWith('temp:')) {
           participantsToAdd.push({ session_id: sessionId, speaker_id: formData.chairperson_id, role: 'chairperson' })
         }
 
         // Panelists array
         if (formData.panelist_ids && formData.panelist_ids.length > 0) {
           formData.panelist_ids.forEach((id: string) => {
-            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'panelist' })
+            if (id && typeof id === 'string' && !id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'panelist' })
           })
         }
 
         // Workshop leads and assistants
         if (formData.workshop_lead_ids && formData.workshop_lead_ids.length > 0) {
           formData.workshop_lead_ids.forEach((id: string) => {
-            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'workshop_lead' })
+            if (id && typeof id === 'string' && !id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'workshop_lead' })
           })
         }
         if (formData.assistant_ids && formData.assistant_ids.length > 0) {
           formData.assistant_ids.forEach((id: string) => {
-            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'assistant' })
+            if (id && typeof id === 'string' && !id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'assistant' })
           })
         }
 
         // Discussion leader and presenters
-        if (formData.discussion_leader_id) {
+        if (formData.discussion_leader_id && typeof formData.discussion_leader_id === 'string' && !formData.discussion_leader_id.startsWith('temp:')) {
           participantsToAdd.push({ session_id: sessionId, speaker_id: formData.discussion_leader_id, role: 'discussion_leader' })
         }
         if (formData.presenter_ids && formData.presenter_ids.length > 0) {
           formData.presenter_ids.forEach((id: string) => {
-            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'presenter' })
+            if (id && typeof id === 'string' && !id.startsWith('temp:')) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'presenter' })
           })
         }
 
@@ -602,9 +611,9 @@ export default function EditSessionsPage() {
             .map((s: any) => ({
               parent_session_id: sessionId,
               title: s.title,
-              speaker_id: s.speaker_id || null,
-              chairperson_id: (s as any).chairperson_id || null,
-              expert_ids: (s as any).expert_ids && (s as any).expert_ids.length ? (s as any).expert_ids.filter(Boolean) : null,
+              speaker_id: (typeof s.speaker_id === 'string' && !s.speaker_id.startsWith('temp:')) ? s.speaker_id : null,
+              chairperson_id: (typeof (s as any).chairperson_id === 'string' && !(s as any).chairperson_id.startsWith('temp:')) ? (s as any).chairperson_id : null,
+              expert_ids: (s as any).expert_ids && (s as any).expert_ids.length ? (s as any).expert_ids.filter((id: string) => !!id && typeof id === 'string' && !id.startsWith('temp:')) : null,
               start_time: s.start_time,
               end_time: s.end_time,
               topic: s.topic || null,
@@ -1443,7 +1452,10 @@ export default function EditSessionsPage() {
             {/* Global Block Button */}
             <button
               onClick={() => {
-                setSelectedDayForGlobalBlock(selectedDay || '')
+                const day = days.find(d => d.name === selectedDay)
+                setSelectedDayForGlobalBlock(day?.id || '')
+                setGlobalBlockStartTime('08:00')
+                setGlobalBlockEndTime('09:00')
                 setShowGlobalBlockModal(true)
               }}
               className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
@@ -1667,6 +1679,7 @@ export default function EditSessionsPage() {
           timeSlots={timeSlots}
           isAddingNewSession={!editingSession}
           speakers={speakers}
+          onPersonCreated={(p) => setSpeakers(prev => [...prev, { id: p.id, name: p.name }])}
           sessions={sessions}
           selectedDay={selectedDay}
         />

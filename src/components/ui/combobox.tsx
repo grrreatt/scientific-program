@@ -18,6 +18,8 @@ interface ComboboxProps {
   disabled?: boolean
   ariaDescribedById?: string
   allowFreeText?: boolean
+  enableInlineAdd?: boolean
+  onCreateOption?: (label: string) => Promise<ComboOption>
 }
 
 export function Combobox({
@@ -31,12 +33,16 @@ export function Combobox({
   disabled = false,
   ariaDescribedById,
   allowFreeText = false,
+  enableInlineAdd = false,
+  onCreateOption,
 }: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [activeIndex, setActiveIndex] = useState<number>(-1)
+  const [extraOptions, setExtraOptions] = useState<ComboOption[]>([])
   const rootRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
 
   // Keep input text in sync with current selection when closed
   useEffect(() => {
@@ -45,11 +51,17 @@ export function Combobox({
     setInputValue(selected ? selected.label : '')
   }, [value, options, isOpen])
 
+  // Merge provided options with any locally added custom entries, drop blank labels
+  const allOptions = useMemo(
+    () => [...options, ...extraOptions].filter(o => (o.label || '').trim().length > 0),
+    [options, extraOptions]
+  )
+
   const filtered = useMemo(() => {
     const term = inputValue.trim().toLowerCase()
-    if (!term) return options
-    return options.filter(o => o.label.toLowerCase().includes(term))
-  }, [options, inputValue])
+    if (!term) return allOptions
+    return allOptions.filter(o => o.label.toLowerCase().includes(term))
+  }, [allOptions, inputValue])
 
   // Close on outside click
   useEffect(() => {
@@ -124,6 +136,15 @@ export function Combobox({
     }
   }
 
+  // Helper to decide if we should show an "Add \"...\"" action
+  const canOfferAdd = useMemo(() => {
+    if (!enableInlineAdd) return false
+    const term = inputValue.trim()
+    if (!term) return false
+    const exists = allOptions.some(o => o.label.toLowerCase() === term.toLowerCase())
+    return !exists
+  }, [enableInlineAdd, inputValue, allOptions])
+
   return (
     <div ref={rootRef} className={`w-full ${className}`}>
       <label htmlFor={inputId} className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
@@ -148,7 +169,7 @@ export function Combobox({
           onClick={() => openList()}
           onKeyDown={onKeyDown}
           onBlur={handleBlur}
-          disabled={disabled}
+          disabled={disabled || isCreating}
           className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           placeholder={placeholder}
         />
@@ -179,6 +200,33 @@ export function Combobox({
                 </li>
               )
             })}
+            {canOfferAdd && (
+              <li
+                role="option"
+                aria-selected={false}
+                onMouseDown={async (e) => {
+                  e.preventDefault()
+                  if (!onCreateOption) return
+                  const term = inputValue.trim()
+                  try {
+                    setIsCreating(true)
+                    const created = await onCreateOption(term)
+                    setExtraOptions(prev => (prev.some(o => o.value === created.value) ? prev : [...prev, created]))
+                    onChange(created.value)
+                    setInputValue(created.label)
+                    closeList()
+                    inputRef.current?.focus()
+                  } catch (err) {
+                    console.error('Error creating option:', err)
+                  } finally {
+                    setIsCreating(false)
+                  }
+                }}
+                className="px-3 py-2 text-sm cursor-pointer text-indigo-700 border-t border-gray-100"
+              >
+                {isCreating ? 'Adding…' : `Add "${inputValue.trim()}"`}
+              </li>
+            )}
           </ul>
         )}
       </div>
