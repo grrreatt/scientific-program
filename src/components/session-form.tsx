@@ -72,6 +72,7 @@ interface SessionFormProps {
   speakers?: Array<{ id: string; name: string; email?: string; title?: string; organization?: string }>
   sessions?: Array<any>
   selectedDay?: string
+  onPersonCreated?: (person: { id: string; name: string }) => void
 }
 
 export function SessionForm({ 
@@ -87,12 +88,35 @@ export function SessionForm({
   isAddingNewSession = false,
   speakers = [],
   sessions = [],
-  selectedDay = ''
+  selectedDay = '',
+  onPersonCreated
 }: SessionFormProps) {
   const [currentSessionType, setCurrentSessionType] = useState(sessionType)
   const [showParticipantDropdown, setShowParticipantDropdown] = useState(false)
   const [participantSearchTerms, setParticipantSearchTerms] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const createPerson = async (name: string) => {
+    const term = (name || '').trim()
+    if (!term) return { value: '', label: '' }
+    const existing = speakers.find(s => (s.name || '').toLowerCase() === term.toLowerCase())
+    if (existing) return { value: existing.id, label: existing.name }
+    try {
+      const { supabase } = await import('@/lib/supabase/client')
+      const { data, error } = await supabase
+        .from('speakers')
+        .insert({ name: term })
+        .select('id, name')
+        .single()
+      if (error) throw error
+      if (onPersonCreated) onPersonCreated({ id: data!.id, name: data!.name })
+      return { value: data!.id, label: data!.name }
+    } catch (err) {
+      console.error('Error creating person:', err)
+      alert('Could not add person. Please try again.')
+      return { value: `temp:${term}`, label: term }
+    }
+  }
+
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -404,6 +428,8 @@ export function SessionForm({
               onChange={(val) => handleInputChange(fieldName, val)}
               options={speakers.map(s => ({ value: s.id, label: s.name }))}
               allowFreeText
+              enableInlineAdd
+              onCreateOption={createPerson}
             />
           ) : (
             <>
@@ -519,6 +545,8 @@ export function SessionForm({
                 onChange={(val) => handleArrayChange(fieldName, index, val)}
                 options={speakers.map(s => ({ value: s.id, label: s.name }))}
                 allowFreeText
+                enableInlineAdd
+                onCreateOption={createPerson}
               />
             </div>
             {values.length > 1 && (
@@ -710,6 +738,9 @@ export function SessionForm({
                     value={st.speaker_id}
                     onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
                     options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                    allowFreeText
+                    enableInlineAdd
+                    onCreateOption={createPerson}
                   />
                 </div>
                 <div className="col-span-2">
@@ -990,18 +1021,56 @@ export function SessionForm({
             + Add Subtalk
           </button>
           <div className="hidden sm:block h-4 w-px bg-gray-300" />
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-700">Chairperson</label>
-            <select
-              value={formData.chairperson_id}
-              onChange={(e) => handleInputChange('chairperson_id', e.target.value)}
-              className="px-2 py-1 border border-gray-300 rounded text-sm"
-            >
-              <option value="">Select Chairperson</option>
-              {speakers.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+          <div className="flex flex-col gap-2 min-w-[280px]">
+            <div className="flex items-center justify-between">
+              <label className="text-sm text-gray-700">Chairpersons</label>
+              <button
+                type="button"
+                onClick={() => addParticipant('chairpersons')}
+                className="text-xs text-indigo-600 hover:text-indigo-800"
+              >
+                + Add Chairperson
+              </button>
+            </div>
+            {/* Selected chips */}
+            {(formData.chairpersons || []).filter((c: any) => c.id).length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {(formData.chairpersons || []).filter((c: any) => c.id).map((c: any, idx: number) => {
+                  const person = speakers.find(s => s.id === c.id)
+                  return (
+                    <span key={`${c.id}-${idx}`} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {person?.name || 'Unknown'}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+            {/* Inputs */}
+            <div className="space-y-2">
+              {(formData.chairpersons || []).map((c: any, idx: number) => (
+                <div key={`chair-${idx}`} className="flex items-center gap-2">
+                  <div className="flex-1 min-w-[200px]">
+                    <Combobox
+                      label={idx === 0 ? 'Chairperson' : 'Chairperson'}
+                      idBase={`session-chair-${idx}`}
+                      value={c.id || ''}
+                      onChange={(val) => updateParticipant('chairpersons', idx, val)}
+                      options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                      allowFreeText
+                      enableInlineAdd
+                      onCreateOption={createPerson}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeArrayItem('chairpersons', idx)}
+                    className="text-red-600 hover:text-red-800 text-xs"
+                  >
+                    Remove
+                  </button>
+                </div>
               ))}
-            </select>
+            </div>
           </div>
           <div className="hidden sm:block h-4 w-px bg-gray-300" />
           {!discussion ? (
@@ -1060,9 +1129,9 @@ export function SessionForm({
                   </div>
                   </div>
 
-                  {/* Row 2: Speaker + Chairperson/Experts + Topic */}
+                  {/* Row 2: Speaker + Chairperson */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                    <div className="sm:col-span-3 min-w-[180px] relative focus-within:z-10">
+                    <div className="sm:col-span-6 min-w-[180px] relative focus-within:z-10">
                       <Combobox
                         label="Speaker *"
                         idBase={`subtalk-${st.id || index}-speaker`}
@@ -1071,27 +1140,38 @@ export function SessionForm({
                         options={speakers.map(s => ({ value: s.id, label: s.name }))}
                         ariaDescribedById={`subtalk-${st.id || index}-help`}
                         allowFreeText
+                        enableInlineAdd
+                        onCreateOption={createPerson}
                       />
                     </div>
-                    <div className="sm:col-span-3 min-w-[160px]">
+                    <div className="sm:col-span-6 min-w-[180px]">
                       <Combobox
                         label="Chairperson"
                         idBase={`subtalk-${st.id || index}-chairperson`}
                         value={(st as any).chairperson_id || ''}
                         onChange={(val) => updateSubSession(st.id, 'chairperson_id', val)}
                         options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                        allowFreeText
+                        enableInlineAdd
+                        onCreateOption={createPerson}
                       />
                     </div>
-                    <div className="sm:col-span-3 min-w-[200px]">
+                  </div>
+                  {/* Row 3: Expert + Topic */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                    <div className="sm:col-span-6 min-w-[180px]">
                       <Combobox
                         label="Expert"
                         idBase={`subtalk-${st.id || index}-expert`}
                         value={(((st as any).expert_ids || [])[0]) || ''}
                         onChange={(val) => updateSubSession(st.id, 'expert_ids', val ? [val] : [])}
                         options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                        allowFreeText
+                        enableInlineAdd
+                        onCreateOption={createPerson}
                       />
                     </div>
-                    <div className="sm:col-span-3 min-w-[180px] relative">
+                    <div className="sm:col-span-6 min-w-[180px] relative">
                       <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
                     <input
                         id={`subtalk-${st.id || index}-topic`}
