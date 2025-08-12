@@ -17,6 +17,7 @@ interface ComboboxProps {
   className?: string
   disabled?: boolean
   ariaDescribedById?: string
+  allowFreeText?: boolean
 }
 
 export function Combobox({
@@ -29,6 +30,7 @@ export function Combobox({
   className = '',
   disabled = false,
   ariaDescribedById,
+  allowFreeText = false,
 }: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
@@ -103,9 +105,22 @@ export function Combobox({
     } else if (e.key === 'Enter') {
       e.preventDefault()
       if (activeIndex >= 0) selectIndex(activeIndex)
+      else if (allowFreeText) {
+        // Commit free text value
+        onChange(inputValue)
+        closeList()
+      }
     } else if (e.key === 'Escape') {
       e.preventDefault()
       closeList()
+    }
+  }
+
+  const handleBlur = () => {
+    if (!allowFreeText) return
+    const selected = options.find(o => o.value === value)
+    if (!selected || selected.label !== inputValue) {
+      onChange(inputValue)
     }
   }
 
@@ -124,10 +139,15 @@ export function Combobox({
           aria-activedescendant={activeIndex >= 0 ? `${listboxId}-opt-${activeIndex}` : undefined}
           aria-describedby={ariaDescribedById}
           value={inputValue}
-          onChange={(e) => { setInputValue(e.target.value); setIsOpen(true) }}
+          onChange={(e) => { 
+            setInputValue(e.target.value); 
+            setIsOpen(true);
+            if (allowFreeText) onChange(e.target.value)
+          }}
           onFocus={() => openList()}
           onClick={() => openList()}
           onKeyDown={onKeyDown}
+          onBlur={handleBlur}
           disabled={disabled}
           className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           placeholder={placeholder}

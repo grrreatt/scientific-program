@@ -106,7 +106,7 @@ export default function EditWorkshopPage({ params }: { params: { id: string } })
                     label="Lead"
                     idBase={`workshop-lead-${i}`}
                     value={id}
-                    onChange={(val) => setForm({ ...form, leads: form.leads.map((v, idx) => idx === i ? val : v) })}
+                    onChange={(val: string) => setForm({ ...form, leads: form.leads.map((v, idx) => idx === i ? val : v) })}
                     options={speakers.map(s => ({ value: s.id, label: s.name }))}
                     allowFreeText
                   />
@@ -127,7 +127,7 @@ export default function EditWorkshopPage({ params }: { params: { id: string } })
                     label="Assistant"
                     idBase={`workshop-assistant-${i}`}
                     value={id}
-                    onChange={(val) => setForm({ ...form, assistants: form.assistants.map((v, idx) => idx === i ? val : v) })}
+                    onChange={(val: string) => setForm({ ...form, assistants: form.assistants.map((v, idx) => idx === i ? val : v) })}
                     options={speakers.map(s => ({ value: s.id, label: s.name }))}
                     allowFreeText
                   />

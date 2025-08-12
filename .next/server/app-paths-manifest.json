@@ -1,16 +1,17 @@
 {
   "/_not-found": "app/_not-found.js",
   "/api/download-template/route": "app/api/download-template/route.js",
+  "/page": "app/page.js",
   "/login/page": "app/login/page.js",
   "/public-program/page": "app/public-program/page.js",
-  "/page": "app/page.js",
   "/public-workshops/page": "app/public-workshops/page.js",
   "/api/export/route": "app/api/export/route.js",
-  "/(admin)/sessions/page": "app/(admin)/sessions/page.js",
-  "/(admin)/participants/page": "app/(admin)/participants/page.js",
   "/(admin)/dashboard/page": "app/(admin)/dashboard/page.js",
-  "/(admin)/edit-sessions/page": "app/(admin)/edit-sessions/page.js",
+  "/(admin)/participants/page": "app/(admin)/participants/page.js",
+  "/(admin)/edit-workshops/page": "app/(admin)/edit-workshops/page.js",
   "/(admin)/workshops/[id]/page": "app/(admin)/workshops/[id]/page.js",
-  "/(admin)/workshops/index/page": "app/(admin)/workshops/index/page.js",
-  "/(admin)/speakers/page": "app/(admin)/speakers/page.js"
+  "/(admin)/sessions/page": "app/(admin)/sessions/page.js",
+  "/(admin)/edit-sessions/page": "app/(admin)/edit-sessions/page.js",
+  "/(admin)/speakers/page": "app/(admin)/speakers/page.js",
+  "/(admin)/workshops/index/page": "app/(admin)/workshops/index/page.js"
 }

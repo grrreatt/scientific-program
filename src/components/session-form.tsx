@@ -403,6 +403,7 @@ export function SessionForm({
               value={(value as string) || ''}
               onChange={(val) => handleInputChange(fieldName, val)}
               options={speakers.map(s => ({ value: s.id, label: s.name }))}
+              allowFreeText
             />
           ) : (
             <>
@@ -517,6 +518,7 @@ export function SessionForm({
                 value={value}
                 onChange={(val) => handleArrayChange(fieldName, index, val)}
                 options={speakers.map(s => ({ value: s.id, label: s.name }))}
+                allowFreeText
               />
             </div>
             {values.length > 1 && (
@@ -1072,6 +1074,7 @@ export function SessionForm({
                         onChange={(val) => updateSubSession(st.id, 'speaker_id', val)}
                         options={speakers.map(s => ({ value: s.id, label: s.name }))}
                         ariaDescribedById={`subtalk-${st.id || index}-help`}
+                        allowFreeText
                       />
                     </div>
                     <div className="sm:col-span-3 min-w-[160px]">
