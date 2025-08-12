@@ -997,9 +997,10 @@ export default function EditSessionsPage() {
       await loadTimeSlots()
       console.log('✅ Global block created successfully')
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error creating global block:', error)
-      alert(`Error creating global block: ${error?.message || 'Please try again.'}`)
+      const msg = (error && typeof error === 'object' && 'message' in error) ? (error as any).message : String(error)
+      alert(`Error creating global block: ${msg || 'Please try again.'}`)
     }
   }
 
