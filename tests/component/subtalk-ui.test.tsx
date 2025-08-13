@@ -20,9 +20,9 @@ test('can add and remove subtalk row', async () => {
   // Ensure async effects settle, then find the button
   const addBtn = await screen.findByText(/Add\s*Subtalk/i)
   fireEvent.click(addBtn)
-  expect((await screen.findAllByTestId('subtalk-row')).length).toBe(1)
-
-  const removeBtn = await screen.findByTestId('remove-subtalk')
+  const rows = await screen.findAllByTestId('subtalk-row')
+  expect(rows.length).toBe(1)
+  const removeBtn = await screen.findByRole('button', { name: /remove subtalk/i })
   fireEvent.click(removeBtn)
   expect(screen.queryByTestId('subtalk-row')).toBeNull()
 })
