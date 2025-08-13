@@ -25,4 +25,14 @@ test('creates when not found', async () => {
   expect(created[0]).toEqual({ id: '2', name: 'Bob' })
 })
 
+test('strips temp: prefix and creates', async () => {
+  const supa = {
+    from: () => ({
+      insert: () => ({ select: () => ({ single: async () => ({ data: { id: '3', name: 'Temp Name' } }) }) })
+    })
+  }
+  const id = await ensurePersonByNameOrId(supa as any, [], 'temp:Temp Name')
+  expect(id).toBe('3')
+})
+
 
