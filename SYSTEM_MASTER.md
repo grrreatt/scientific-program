@@ -48,6 +48,7 @@ Health checks
 - Lint: `npm run lint`
 - Orchestrator (quick): `npm run orchestrator:status`
 - Orchestrator (targeted): `npm run orchestrator:check -- <component>` (components: engine|tyres|suspension|doors|seats|people)
+- Save smoke test (server-side, uses service role): `npm run smoke:save`
 - SQL spot checks (run in Supabase SQL editor):
   - `select count(*) from sessions;`
   - `select * from sessions_with_times limit 3;`
