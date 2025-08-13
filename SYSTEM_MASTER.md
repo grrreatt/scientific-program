@@ -78,6 +78,7 @@ Initial FIX STEPS backbone (living, auto-updated):
 Diagnostics artifacts
 
 - All orchestrator logs and targeted diagnostics are saved under `artifacts/`.
+- Smoke artifacts: save JSON output and export `.xlsx` saved under `artifacts/` when running `npm run smoke:*`.
 
 Note: This document is maintained by `tools/system_orchestrator.ts` and will be updated alongside code changes.
 

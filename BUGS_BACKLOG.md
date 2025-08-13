@@ -1,12 +1,12 @@
 Monk Mode Backlog (auto-generated seed)
 
-- [E-001] Save flow: verify payload shape and persistence
+- [E-001] Save flow: verify payload shape and persistence — FIXED
   - severity: high
   - repro: Add a session via `Edit Sessions` → Save. Observe network responses and DB rows.
   - files: `src/app/(admin)/edit-sessions/page.tsx`, `src/components/session-form.tsx`, `src/lib/supabase/client.ts`
-  - suspected: participant resolution edge cases; missing `time_slot_id` causing NOT NULL; sub_sessions insert error handling
-  - ETA: 4-6h
-  - tests: unit for payload builder; component test for form submit; e2e hitting Supabase test DB
+  - fix: centralized person resolution `ensurePersonByNameOrId`, chunked participant inserts, added smoke tests for session + sub-sessions
+  - commits: fix(engine) 326dc0c3, test(smoke) 1d56740e
+  - tests: unit + component pass; smoke save passes against test DB
 
 - [U-002] Subtalk row clickability/inputs overlap on small widths
   - severity: medium
