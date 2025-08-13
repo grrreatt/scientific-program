@@ -49,6 +49,7 @@ Health checks
 - Orchestrator (quick): `npm run orchestrator:status`
 - Orchestrator (targeted): `npm run orchestrator:check -- <component>` (components: engine|tyres|suspension|doors|seats|people)
 - Save smoke test (server-side, uses service role): `npm run smoke:save`
+- Export smoke test (requires dev server at APP_URL): `npm run smoke:export`
 - SQL spot checks (run in Supabase SQL editor):
   - `select count(*) from sessions;`
   - `select * from sessions_with_times limit 3;`
@@ -79,6 +80,13 @@ Diagnostics artifacts
 
 - All orchestrator logs and targeted diagnostics are saved under `artifacts/`.
 - Smoke artifacts: save JSON output and export `.xlsx` saved under `artifacts/` when running `npm run smoke:*`.
+
+Current fix branches and status
+
+- fix/inline-add-durability-E003 — merged tests; awaiting PR review
+- fix/subtalk-ui-polish-U002 — component tests added; awaiting PR review
+- fix/day-selection-persistence-S004 — component tests added; awaiting PR review
+- fix/export-fallback-E005 — unit tests added; awaiting PR review
 
 Note: This document is maintained by `tools/system_orchestrator.ts` and will be updated alongside code changes.
 

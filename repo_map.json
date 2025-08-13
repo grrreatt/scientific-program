@@ -71,6 +71,13 @@
       "outputs": [".xlsx"]
     }
   ],
+  "branches": [
+    "supercar-refactor-20250812",
+    "fix/inline-add-durability-E003",
+    "fix/subtalk-ui-polish-U002",
+    "fix/day-selection-persistence-S004",
+    "fix/export-fallback-E005"
+  ],
   "workshop_references": [
     "src/app/(admin)/dashboard/page.tsx",
     "src/app/public-workshops/page.tsx",
