@@ -67,6 +67,18 @@ async function main() {
   const { error: partErr } = await supabase.from('session_participants').insert({ session_id: sess.id, speaker_id: sp.id, role: 'speaker' })
   if (partErr) throw partErr
 
+  // Add a sub-session (talk)
+  const { error: subErr } = await supabase.from('sub_sessions').insert({
+    parent_session_id: sess.id,
+    title: 'Smoke Subtalk',
+    speaker_id: sp.id,
+    start_time: '08:00',
+    end_time: '08:30',
+    topic: 'Smoke Topic',
+    sub_session_type: 'lecture'
+  })
+  if (subErr) throw subErr
+
   // Verify via view
   const { data: check, error: checkErr } = await supabase
     .from('sessions_with_times')
@@ -75,7 +87,14 @@ async function main() {
     .single()
   if (checkErr) throw checkErr
 
-  console.log(JSON.stringify({ ok: true, session_id: sess.id, title: check.title, start_time: check.start_time, end_time: check.end_time }, null, 2))
+  // Verify sub-sessions exist
+  const { data: subs, error: subsErr } = await supabase
+    .from('sub_sessions')
+    .select('id')
+    .eq('parent_session_id', sess.id)
+  if (subsErr) throw subsErr
+
+  console.log(JSON.stringify({ ok: true, session_id: sess.id, title: check.title, start_time: check.start_time, end_time: check.end_time, sub_sessions: subs?.length || 0 }, null, 2))
 }
 
 main().catch((e) => { console.error(e); process.exit(1) })

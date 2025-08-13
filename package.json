@@ -10,6 +10,7 @@
     "orchestrator:status": "node tools/system_orchestrator.js status",
     "orchestrator:check": "node tools/system_orchestrator.js run-check",
     "smoke:save": "node tools/save_smoke_test.js",
+    "smoke:export": "node tools/export_smoke_test.js",
     "db:generate": "supabase gen types typescript --local > src/types/supabase.ts",
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
