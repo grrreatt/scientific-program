@@ -8,6 +8,7 @@ import { SessionForm } from '@/components/session-form'
 import { supabase } from '@/lib/supabase/client'
 import { Session, DayTimeSlot, Hall, Day, DayHall } from '@/types'
 import realtimeService from '@/lib/supabase/realtime'
+const REALTIME_ENABLED = (process.env.NEXT_PUBLIC_ENABLE_REALTIME || '').toLowerCase() === 'true'
 import { RealtimeStatus } from '@/components/ui/realtime-status'
 
 export default function EditSessionsPage() {
@@ -294,53 +295,42 @@ export default function EditSessionsPage() {
 
   // Initialize realtime connection
   useEffect(() => {
-    const initRealtime = () => {
-      try {
-        console.log('🚀 Initializing realtime connections...')
-        
-        realtimeService.subscribeToAll({
-          onSessionChange: () => {
-            console.log('🔄 Sessions updated via realtime')
-            loadAllData()
-            setLastUpdate(new Date())
-          },
-          onHallChange: () => {
-            console.log('🔄 Halls updated via realtime')
-            loadAllData()
-            setLastUpdate(new Date())
-          },
-          onDayChange: () => {
-            console.log('🔄 Days updated via realtime')
-            loadAllData()
-            setLastUpdate(new Date())
-          },
-          onTimeSlotChange: () => {
-            console.log('🔄 Time slots updated via realtime')
-            loadTimeSlots()
-            setLastUpdate(new Date())
-          },
-          onDayHallChange: () => {
-            console.log('🔄 Day Halls updated via realtime')
-            loadAllData()
-            setLastUpdate(new Date())
-          },
-          onConnectionChange: (status) => {
-            console.log('🔗 Connection status changed:', status)
-            setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
-          }
-        })
-
-        setConnectionStatus('connecting')
-      } catch (error) {
-        console.error('❌ Error initializing realtime:', error)
-        setConnectionStatus('disconnected')
-      }
+    if (!REALTIME_ENABLED) return
+    try {
+      console.log('🚀 Initializing realtime connections...')
+      realtimeService.subscribeToAll({
+        onSessionChange: () => { loadAllData(); setLastUpdate(new Date()) },
+        onHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
+        onDayChange: () => { loadAllData(); setLastUpdate(new Date()) },
+        onTimeSlotChange: () => { loadTimeSlots(); setLastUpdate(new Date()) },
+        onDayHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
+        onConnectionChange: (status) => setConnectionStatus(status as any)
+      })
+      setConnectionStatus('connecting')
+    } catch (error) {
+      console.error('❌ Error initializing realtime:', error)
+      setConnectionStatus('disconnected')
     }
+    return () => { realtimeService.unsubscribeFromAll() }
+  }, [])
 
-    initRealtime()
-
+  // Polling fallback when realtime disabled
+  useEffect(() => {
+    if (REALTIME_ENABLED) return
+    let timer: any
+    const tick = async () => {
+      await loadAllData()
+      timer = setTimeout(tick, 10000)
+    }
+    tick()
+    const onVisible = () => { if (document.visibilityState === 'visible') loadAllData() }
+    const onOnline = () => loadAllData()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onOnline)
     return () => {
-      realtimeService.unsubscribeFromAll()
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onOnline)
     }
   }, [])
 

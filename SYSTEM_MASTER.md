@@ -58,6 +58,7 @@ Health checks
 Environment and keys
 
 - Env template: `env.example` (local dev values). No production keys committed. Export API optionally uses `SUPABASE_SERVICE_ROLE_KEY` for server-side export; do not commit real secrets.
+- Realtime optional: set `NEXT_PUBLIC_ENABLE_REALTIME=true` to enable live subscriptions. When false/missing, the app uses polling with optimistic UI.
 
 Workshop/edit-workshop references (for safe removal plan)
 
