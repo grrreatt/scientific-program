@@ -1,4 +1,5 @@
 import { supabase } from './client'
+const REALTIME_ENABLED = (process.env.NEXT_PUBLIC_ENABLE_REALTIME || '').toLowerCase() === 'true'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface RealtimeConfig {
@@ -47,6 +48,10 @@ class RealtimeService {
   }
 
   public subscribeToAll(config: RealtimeConfig) {
+    if (!REALTIME_ENABLED) {
+      console.log('ℹ️ Realtime disabled (NEXT_PUBLIC_ENABLE_REALTIME!=true). Skipping subscriptions.')
+      return
+    }
     console.log('🚀 Setting up real-time subscriptions...')
     
     // Subscribe to sessions
@@ -77,6 +82,7 @@ class RealtimeService {
   }
 
   private subscribeToSessions(onChange?: (payload: any) => void) {
+    if (!REALTIME_ENABLED) return
     const channel = supabase
       .channel('sessions-realtime')
       .on('postgres_changes', 

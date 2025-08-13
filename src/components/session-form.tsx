@@ -700,6 +700,7 @@ export function SessionForm({
           <button
             type="button"
             onClick={addSubSession}
+            data-testid="add-subtalk"
             className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none"
           >
             + Add Sub-talk
@@ -711,7 +712,7 @@ export function SessionForm({
         ) : (
           <div className="space-y-2">
             {subSessions.map((st, index) => (
-              <div key={st.id || index} className="grid grid-cols-12 gap-2 items-end bg-gray-50 p-2 rounded">
+              <div key={st.id || index} className="grid grid-cols-12 gap-2 items-end bg-gray-50 p-2 rounded" data-testid="subtalk-row">
                 <div className="col-span-3">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
                   <input
@@ -773,6 +774,7 @@ export function SessionForm({
                   <button
                     type="button"
                     onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
+                    data-testid="remove-subtalk"
                     className="text-red-600 hover:text-red-800 text-xs"
                   >
                     ×
@@ -1017,6 +1019,7 @@ export function SessionForm({
             type="button"
             onClick={addSubSession}
             className="text-sm text-indigo-600 hover:text-indigo-800"
+            data-testid="add-subtalk"
           >
             + Add Subtalk
           </button>
@@ -1102,6 +1105,7 @@ export function SessionForm({
                   role="group"
                   aria-label={`Subtalk ${index + 1}`}
                   className="space-y-3 bg-gray-50 p-3 rounded-md border border-gray-200 overflow-visible"
+                  data-testid="subtalk-row"
                 >
                   {/* Row 1: Time */}
                   <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center">
@@ -1176,8 +1180,9 @@ export function SessionForm({
                     <button
                       type="button"
                       onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
-                        className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
-                        aria-label={`Remove subtalk ${index + 1}`}
+                      className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
+                      aria-label={`Remove Subtalk`}
+                      data-testid="remove-subtalk"
                     >
                       ×
                     </button>

@@ -438,21 +438,7 @@ export default function DashboardPage() {
               </div>
             </Link>
 
-            <Link
-              href="/admin/edit-workshops"
-              className="relative rounded-lg border border-purple-200 bg-purple-50 px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-purple-300 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-purple-500"
-            >
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M4 7h16M4 17h16" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">Edit Workshops</p>
-                <p className="text-sm text-gray-500">Grid view editing (with subtalk chair/experts)</p>
-              </div>
-            </Link>
+            {/* Workshop editor link removed per cleanup plan; workshops are handled within sessions flow */}
             <Link
               href="/speakers/new"
               className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"

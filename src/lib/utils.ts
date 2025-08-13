@@ -163,6 +163,41 @@ export const supabaseUtils = {
   `
 }
 
+// Person resolution helper used by save flows
+// Pass a Supabase client and an optional in-memory list to speed lookups.
+export async function ensurePersonByNameOrId(
+  supabaseClient: any,
+  existingPeople: Array<{ id: string; name: string }> | undefined,
+  rawInput: string | null | undefined,
+  onCreated?: (person: { id: string; name: string }) => void
+): Promise<string | null> {
+  const isUuid = (val: string) => /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(val || '')
+  if (!rawInput) return null
+  let value = String(rawInput).trim()
+  // Handle optimistic placeholders like "temp:Name"
+  if (value.toLowerCase().startsWith('temp:')) value = value.slice(5)
+  if (!value) return null
+  if (isUuid(value)) return value
+  const match = (existingPeople || []).find(p => (p.name || '').toLowerCase() === value.toLowerCase())
+  if (match) return match.id
+  try {
+    const { data, error } = await supabaseClient
+      .from('speakers')
+      .insert({ name: value })
+      .select('id, name')
+      .single()
+    if (error) {
+      console.error('Failed to create person', error)
+      return null
+    }
+    if (onCreated) onCreated({ id: data!.id, name: data!.name })
+    return data!.id
+  } catch (e) {
+    console.error('Exception creating person', e)
+    return null
+  }
+}
+
 export function parseTimeInput(timeString: string): string {
   // Convert 12-hour format to 24-hour format
   const match = timeString.match(/^(\d{1,2}):(\d{2})(am|pm)$/i)

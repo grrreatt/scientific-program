@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { formatTime, formatTimeRange, supabaseUtils, formatParticipantsDisplay, formatTimeRangeCompact } from '@/lib/utils'
+import { formatTime, formatTimeRange, supabaseUtils, formatParticipantsDisplay, formatTimeRangeCompact, ensurePersonByNameOrId } from '@/lib/utils'
 import { SESSION_TYPES } from '@/lib/constants'
 import { Modal } from '@/components/ui/modal'
 import { SessionForm } from '@/components/session-form'
 import { supabase } from '@/lib/supabase/client'
 import { Session, DayTimeSlot, Hall, Day, DayHall } from '@/types'
 import realtimeService from '@/lib/supabase/realtime'
+const REALTIME_ENABLED = (process.env.NEXT_PUBLIC_ENABLE_REALTIME || '').toLowerCase() === 'true'
 import { RealtimeStatus } from '@/components/ui/realtime-status'
 
 export default function EditSessionsPage() {
@@ -294,53 +295,42 @@ export default function EditSessionsPage() {
 
   // Initialize realtime connection
   useEffect(() => {
-    const initRealtime = () => {
-      try {
-        console.log('🚀 Initializing realtime connections...')
-        
-        realtimeService.subscribeToAll({
-          onSessionChange: () => {
-            console.log('🔄 Sessions updated via realtime')
-            loadAllData()
-            setLastUpdate(new Date())
-          },
-          onHallChange: () => {
-            console.log('🔄 Halls updated via realtime')
-            loadAllData()
-            setLastUpdate(new Date())
-          },
-          onDayChange: () => {
-            console.log('🔄 Days updated via realtime')
-            loadAllData()
-            setLastUpdate(new Date())
-          },
-          onTimeSlotChange: () => {
-            console.log('🔄 Time slots updated via realtime')
-            loadTimeSlots()
-            setLastUpdate(new Date())
-          },
-          onDayHallChange: () => {
-            console.log('🔄 Day Halls updated via realtime')
-            loadAllData()
-            setLastUpdate(new Date())
-          },
-          onConnectionChange: (status) => {
-            console.log('🔗 Connection status changed:', status)
-            setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
-          }
-        })
-
-        setConnectionStatus('connecting')
-      } catch (error) {
-        console.error('❌ Error initializing realtime:', error)
-        setConnectionStatus('disconnected')
-      }
+    if (!REALTIME_ENABLED) return
+    try {
+      console.log('🚀 Initializing realtime connections...')
+      realtimeService.subscribeToAll({
+        onSessionChange: () => { loadAllData(); setLastUpdate(new Date()) },
+        onHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
+        onDayChange: () => { loadAllData(); setLastUpdate(new Date()) },
+        onTimeSlotChange: () => { loadTimeSlots(); setLastUpdate(new Date()) },
+        onDayHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
+        onConnectionChange: (status) => setConnectionStatus(status as any)
+      })
+      setConnectionStatus('connecting')
+    } catch (error) {
+      console.error('❌ Error initializing realtime:', error)
+      setConnectionStatus('disconnected')
     }
+    return () => { realtimeService.unsubscribeFromAll() }
+  }, [])
 
-    initRealtime()
-
+  // Polling fallback when realtime disabled
+  useEffect(() => {
+    if (REALTIME_ENABLED) return
+    let timer: any
+    const tick = async () => {
+      await loadAllData()
+      timer = setTimeout(tick, 10000)
+    }
+    tick()
+    const onVisible = () => { if (document.visibilityState === 'visible') loadAllData() }
+    const onOnline = () => loadAllData()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onOnline)
     return () => {
-      realtimeService.unsubscribeFromAll()
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onOnline)
     }
   }, [])
 
@@ -421,22 +411,8 @@ export default function EditSessionsPage() {
     setIsSubmitting(true)
     
     try {
-      const isUuid = (val: string) => /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(val || '')
       const ensurePerson = async (nameOrId: string | null | undefined): Promise<string | null> => {
-        if (!nameOrId) return null
-        const raw = String(nameOrId).trim()
-        if (!raw) return null
-        if (isUuid(raw)) return raw
-        const existing = speakers.find(p => (p.name || '').toLowerCase() === raw.toLowerCase())
-        if (existing) return existing.id
-        // create new person
-        const { data, error } = await supabase.from('speakers').insert({ name: raw }).select('id, name').single()
-        if (error) {
-          console.error('❌ Failed to create person', error)
-          return null
-        }
-        setSpeakers(prev => [...prev, { id: data!.id, name: data!.name }])
-        return data!.id
+        return ensurePersonByNameOrId(supabase, speakers, nameOrId, (p) => setSpeakers(prev => [...prev, { id: p.id, name: p.name }]))
       }
       const prevSelectedDay = selectedDay
       const selectedDayData = days.find(d => d.name === selectedDay)
@@ -614,15 +590,16 @@ export default function EditSessionsPage() {
           }
         }
 
-        // Insert all participants
-        if (participantsToAdd.length > 0) {
-          const { error: participantError } = await supabase
-            .from('session_participants')
-            .insert(participantsToAdd)
-
+        // Insert all participants in chunks (avoid payload issues)
+        const chunkSize = 500
+        for (let i = 0; i < participantsToAdd.length; i += chunkSize) {
+          const chunk = participantsToAdd.slice(i, i + chunkSize)
+          if (chunk.length === 0) continue
+          const { error: participantError } = await supabase.from('session_participants').insert(chunk)
           if (participantError) {
             console.error('❌ Error saving participants:', participantError)
-            alert('Session saved but there was an error saving participants.')
+            alert('Session saved but there was an error saving some participants.')
+            break
           }
         }
 
