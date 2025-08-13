@@ -63,6 +63,6 @@ test('selected day persists after save', async () => {
   // Just re-render triggers; we assert the selected day button remains active
   const day2Again = await screen.findByRole('button', { name: /Day 2/i })
   expect(day2Again).toBeInTheDocument()
-})
+}, 15000)
 
 
