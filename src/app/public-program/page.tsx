@@ -397,14 +397,30 @@ export default function PublicProgramPage() {
   // Get sessions for a specific time slot and hall - EXACTLY same as edit sessions page
   const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
     const selectedDayData = days.find(d => d.name === selectedDay)
-    return sessions.find(session =>
-      (session as any).time_slot_id === timeSlotId &&
-      (session as any).stage_id === hallId &&
-      (
-        (session as any).day_name === selectedDay ||
-        (selectedDayData ? (session as any).day_id === selectedDayData.id : false)
-      )
-    )
+    const slot = timeSlots.find(s => s.id === timeSlotId)
+    const slotStart = slot?.start_time || ''
+    const slotEnd = slot?.end_time || ''
+    const toMinutes = (t: string) => {
+      if (!t) return -1
+      const [h, m] = t.split(':').map(Number)
+      return h * 60 + (m || 0)
+    }
+    const sStartMin = toMinutes(slotStart)
+    const sEndMin = toMinutes(slotEnd)
+    return sessions.find(session => {
+      const sess: any = session
+      const matchesDay = sess.day_name === selectedDay || (selectedDayData ? sess.day_id === selectedDayData.id : false)
+      if (!matchesDay) return false
+      if (sess.stage_id !== hallId) return false
+      if (sess.time_slot_id === timeSlotId) return true
+      if (!sess.time_slot_id && slotStart && slotEnd && sess.start_time && sess.end_time) {
+        const a1 = toMinutes(String(sess.start_time))
+        const a2 = toMinutes(String(sess.end_time))
+        if (a1 === -1 || a2 === -1 || sStartMin === -1 || sEndMin === -1) return false
+        return a1 < sEndMin && sStartMin < a2
+      }
+      return false
+    })
   }
 
   if (loading) {

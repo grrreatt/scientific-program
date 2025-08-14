@@ -1278,14 +1278,30 @@ export default function EditSessionsPage() {
   // Get sessions for a specific time slot and hall
   const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
     const selectedDayData = days.find(day => day.name === selectedDay)
-    return sessions.find(session =>
-      session.time_slot_id === timeSlotId &&
-      session.stage_id === hallId &&
-      (
-        session.day_name === selectedDay ||
-        (selectedDayData ? session.day_id === selectedDayData.id : false)
-      )
-    )
+    const slot = timeSlots.find(s => s.id === timeSlotId)
+    const slotStart = slot?.start_time || ''
+    const slotEnd = slot?.end_time || ''
+    const toMinutes = (t: string) => {
+      if (!t) return -1
+      const [h, m] = t.split(':').map(Number)
+      return h * 60 + (m || 0)
+    }
+    const sStartMin = toMinutes(slotStart)
+    const sEndMin = toMinutes(slotEnd)
+    return sessions.find(session => {
+      const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
+      if (!matchesDay) return false
+      if (session.stage_id !== hallId) return false
+      if (session.time_slot_id === timeSlotId) return true
+      // Fallback: if session has no time_slot_id, match by time overlap
+      if (!session.time_slot_id && slotStart && slotEnd && session.start_time && session.end_time) {
+        const a1 = toMinutes(String(session.start_time))
+        const a2 = toMinutes(String(session.end_time))
+        if (a1 === -1 || a2 === -1 || sStartMin === -1 || sEndMin === -1) return false
+        return a1 < sEndMin && sStartMin < a2
+      }
+      return false
+    })
   }
 
   // Calendar utility functions
