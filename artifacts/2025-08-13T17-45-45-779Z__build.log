@@ -1,0 +1,42 @@
+
+> scientific-conference-scheduler@0.1.0 build
+> next build
+
+   ▲ Next.js 14.0.3
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/12) ...
+   Generating static pages (3/12) 
+   Generating static pages (6/12) 
+   Generating static pages (9/12) 
+ ✓ Generating static pages (12/12) 
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    175 B          90.9 kB
+├ ○ /_not-found                          870 B          84.9 kB
+├ λ /api/download-template               0 B                0 B
+├ λ /api/export                          0 B                0 B
+├ ○ /dashboard                           6.87 kB         136 kB
+├ ○ /edit-sessions                       15.8 kB         142 kB
+├ ○ /login                               1.66 kB        92.4 kB
+├ ○ /participants                        6.35 kB         129 kB
+├ ○ /public-program                      3.72 kB         130 kB
+├ ○ /public-workshops                    1.19 kB         124 kB
+└ ○ /speakers                            3.89 kB         126 kB
++ First Load JS shared by all            84 kB
+  ├ chunks/472-4fb726cf44ac0953.js       28.8 kB
+  ├ chunks/fd9d1056-7060a71c73faee30.js  53.3 kB
+  ├ chunks/main-app-8ea0381f2160629f.js  220 B
+  └ chunks/webpack-6b37c81b533d116a.js   1.75 kB
+
+
+○  (Static)   prerendered as static content
+λ  (Dynamic)  server-rendered on demand using Node.js
+
+

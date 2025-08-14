@@ -1180,7 +1180,7 @@ export function SessionForm({
                     <button
                       type="button"
                       onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
-                      className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
+                        className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
                       aria-label={`Remove Subtalk`}
                       data-testid="remove-subtalk"
                     >
