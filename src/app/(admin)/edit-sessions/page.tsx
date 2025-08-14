@@ -32,6 +32,7 @@ export default function EditSessionsPage() {
   // Realtime state
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const editingRef = useRef<boolean>(false)
 
   // Time slot editing state
   const [editingTimeSlot, setEditingTimeSlot] = useState<DayTimeSlot | null>(null)
@@ -296,9 +297,9 @@ export default function EditSessionsPage() {
   // Initialize realtime connection
   useEffect(() => {
     if (!REALTIME_ENABLED) return
-    try {
-      console.log('🚀 Initializing realtime connections...')
-      realtimeService.subscribeToAll({
+      try {
+        console.log('🚀 Initializing realtime connections...')
+        realtimeService.subscribeToAll({
         onSessionChange: () => { loadAllData(); setLastUpdate(new Date()) },
         onHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
         onDayChange: () => { loadAllData(); setLastUpdate(new Date()) },
@@ -306,25 +307,36 @@ export default function EditSessionsPage() {
         onDayHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
         onConnectionChange: (status) => setConnectionStatus(status as any)
       })
-      setConnectionStatus('connecting')
-    } catch (error) {
-      console.error('❌ Error initializing realtime:', error)
-      setConnectionStatus('disconnected')
-    }
+        setConnectionStatus('connecting')
+      } catch (error) {
+        console.error('❌ Error initializing realtime:', error)
+        setConnectionStatus('disconnected')
+      }
     return () => { realtimeService.unsubscribeFromAll() }
   }, [])
 
-  // Polling fallback when realtime disabled
+  // Keep a live flag of whether user is editing to avoid refresh during input
+  useEffect(() => {
+    editingRef.current = isModalOpen || isSubmitting
+  }, [isModalOpen, isSubmitting])
+
+  // Polling fallback when realtime disabled (paused while editing)
   useEffect(() => {
     if (REALTIME_ENABLED) return
+    const intervalMs = Number(process.env.NEXT_PUBLIC_POLL_INTERVAL_MS || 15000)
     let timer: any
     const tick = async () => {
-      await loadAllData()
-      timer = setTimeout(tick, 10000)
+      try {
+        if (!editingRef.current) {
+          await loadAllData()
+        }
+      } finally {
+        timer = setTimeout(tick, intervalMs)
+      }
     }
-    tick()
-    const onVisible = () => { if (document.visibilityState === 'visible') loadAllData() }
-    const onOnline = () => loadAllData()
+    timer = setTimeout(tick, intervalMs)
+    const onVisible = () => { if (document.visibilityState === 'visible' && !editingRef.current) loadAllData() }
+    const onOnline = () => { if (!editingRef.current) loadAllData() }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('online', onOnline)
     return () => {
@@ -1265,10 +1277,14 @@ export default function EditSessionsPage() {
 
   // Get sessions for a specific time slot and hall
   const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
-    return sessions.find(session => 
-      session.time_slot_id === timeSlotId && 
+    const selectedDayData = days.find(day => day.name === selectedDay)
+    return sessions.find(session =>
+      session.time_slot_id === timeSlotId &&
       session.stage_id === hallId &&
-      session.day_name === selectedDay
+      (
+        session.day_name === selectedDay ||
+        (selectedDayData ? session.day_id === selectedDayData.id : false)
+      )
     )
   }
 
@@ -1338,7 +1354,8 @@ export default function EditSessionsPage() {
 
   // Filter sessions for selected day and search
   const filteredSessions = sessions.filter(session => {
-    const matchesDay = session.day_name === selectedDay
+    const selectedDayData = days.find(d => d.name === selectedDay)
+    const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
     if (!matchesDay) return false
     
     if (!searchQuery.trim()) return true

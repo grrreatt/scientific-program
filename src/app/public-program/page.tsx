@@ -375,7 +375,8 @@ export default function PublicProgramPage() {
   }
 
   const filteredSessions = sessions.filter(session => {
-    const matchesDay = session.day_name === selectedDay
+    const selectedDayData = days.find(d => d.name === selectedDay)
+    const matchesDay = session.day_name === selectedDay || (selectedDayData ? (session as any).day_id === selectedDayData.id : false)
     if (!matchesDay) return false
     
     if (!searchQuery.trim()) return true
@@ -395,10 +396,14 @@ export default function PublicProgramPage() {
 
   // Get sessions for a specific time slot and hall - EXACTLY same as edit sessions page
   const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
-    return sessions.find(session => 
-      session.time_slot_id === timeSlotId && 
-      session.stage_id === hallId &&
-      session.day_name === selectedDay
+    const selectedDayData = days.find(d => d.name === selectedDay)
+    return sessions.find(session =>
+      (session as any).time_slot_id === timeSlotId &&
+      (session as any).stage_id === hallId &&
+      (
+        (session as any).day_name === selectedDay ||
+        (selectedDayData ? (session as any).day_id === selectedDayData.id : false)
+      )
     )
   }
 
