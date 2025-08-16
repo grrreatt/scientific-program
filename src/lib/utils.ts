@@ -193,12 +193,21 @@ export async function ensurePersonByNameOrId(
   const isUuid = (val: string) => /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(val || '')
   if (!rawInput) return null
   let value = String(rawInput).trim()
-  // Handle optimistic placeholders like "temp:Name"
-  if (value.toLowerCase().startsWith('temp:')) value = value.slice(5)
+  
+  // Handle optimistic placeholders like "temp:Name" - extract the name and try to create the person
+  if (value.toLowerCase().startsWith('temp:')) {
+    value = value.slice(5)
+    console.warn('Found temp ID, attempting to resolve:', value)
+  }
+  
   if (!value) return null
   if (isUuid(value)) return value
+  
+  // Check existing people first
   const match = (existingPeople || []).find(p => (p.name || '').toLowerCase() === value.toLowerCase())
   if (match) return match.id
+  
+  // Try to create the person
   try {
     const { data, error } = await supabaseClient
       .from('speakers')
@@ -209,6 +218,7 @@ export async function ensurePersonByNameOrId(
       console.error('Failed to create person', error)
       return null
     }
+    console.log('Successfully created person:', data.name)
     if (onCreated) onCreated({ id: data!.id, name: data!.name })
     return data!.id
   } catch (e) {

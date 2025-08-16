@@ -53,8 +53,12 @@ export async function GET() {
     sessions?.forEach(session => {
       const dayName = session.day_name || 'Unknown Day'
       const stageName = session.stage_name || 'Unknown Hall'
-      const duration = calculateDuration(session.start_time, session.end_time)
-      const timeRange12h = `${formatTimeCompact(session.start_time)}-${formatTimeCompact(session.end_time)}`
+      
+      // Ensure start_time and end_time are available (fallback to empty if null)
+      const startTime = session.start_time || ''
+      const endTime = session.end_time || ''
+      const duration = startTime && endTime ? calculateDuration(startTime, endTime) : ''
+      const timeRange12h = startTime && endTime ? `${formatTimeCompact(startTime)}-${formatTimeCompact(endTime)}` : 'Time TBD'
       
       // Handle participants
       if (session.session_participants && session.session_participants.length > 0) {
@@ -96,7 +100,9 @@ export async function GET() {
       // Include sub-sessions (speaker, chairperson, expert each as separate row if present)
       if (session.sub_sessions && session.sub_sessions.length > 0) {
         session.sub_sessions.forEach((sub: any) => {
-          const subTime = `${formatTimeCompact(sub.start_time)}-${formatTimeCompact(sub.end_time)}`
+          const subStartTime = sub.start_time || ''
+          const subEndTime = sub.end_time || ''
+          const subTime = subStartTime && subEndTime ? `${formatTimeCompact(subStartTime)}-${formatTimeCompact(subEndTime)}` : 'Time TBD'
           const pushRow = (spId: string | null, role: string) => {
             if (!spId) return
             const sp = speakerMap[spId] || {}

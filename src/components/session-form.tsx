@@ -112,8 +112,9 @@ export function SessionForm({
       return { value: data!.id, label: data!.name }
     } catch (err) {
       console.error('Error creating person:', err)
-      alert('Could not add person. Please try again.')
-      return { value: `temp:${term}`, label: term }
+      // Instead of creating temp IDs, return empty value to avoid temp ID leaks
+      alert('Could not add person. Please check the name and try again.')
+      return { value: '', label: '' }
     }
   }
 
@@ -194,7 +195,7 @@ export function SessionForm({
   }, [isAddingNewSession, initialData, timeSlots])
 
   const handleInputChange = (field: string, value: any) => {
-    console.log(`🔄 Input change: ${field} = ${value}`)
+    // Debug: Input change for field ${field}
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -216,7 +217,7 @@ export function SessionForm({
   }
 
   const handleArrayChange = (field: string, index: number, value: string) => {
-    console.log(`🔄 Array change: ${field}[${index}] = ${value}`)
+    // Debug: Array change for field ${field}
     setFormData(prev => ({
       ...prev,
       [field]: (prev[field as keyof typeof prev] as string[]).map((item: string, i: number) => 
@@ -226,7 +227,7 @@ export function SessionForm({
   }
 
   const addArrayItem = (field: string) => {
-    console.log(`➕ Adding array item to: ${field}`)
+    // Debug: Adding array item to field ${field}
     if (field === 'symposium_subtalks') {
       setFormData(prev => ({
         ...prev,
@@ -248,7 +249,7 @@ export function SessionForm({
   }
 
   const removeArrayItem = (field: string, index: number) => {
-    console.log(`➖ Removing array item from: ${field}[${index}]`)
+    // Debug: Removing array item from field ${field}
     if (field === 'symposium_subtalks') {
       setFormData(prev => ({
         ...prev,
@@ -269,7 +270,7 @@ export function SessionForm({
 
   const addParticipant = (type: 'speakers' | 'moderators' | 'chairpersons' | 'panelists' | 'experts') => {
     // Note: extended to support 'panelists' as well
-    console.log(`➕ Adding participant to: ${type}`)
+    // Debug: Adding participant to ${type}
     setFormData(prev => ({
       ...prev,
       [type]: [...(prev[type] || []), { id: '', role: type.slice(0, -1) }] // Remove 's' from end
@@ -325,7 +326,7 @@ export function SessionForm({
   }
 
   const updateParticipant = (type: 'speakers' | 'moderators' | 'chairpersons' | 'panelists' | 'experts', index: number, speakerId: string) => {
-    console.log(`🔄 Updating participant: ${type}[${index}] = ${speakerId}`)
+    // Debug: Updating participant in ${type}
     setFormData(prev => ({
       ...prev,
       [type]: (prev[type] || []).map((participant: any, i: number) => 
@@ -385,13 +386,13 @@ export function SessionForm({
     
     // Validation: require title for lecture sessions
     if (currentSessionType === 'lecture' && !formData.title?.trim()) {
-      alert('Please enter a talk title for the lecture')
+      setErrors({ title: 'Please enter a title for the lecture' })
       return
     }
     
     // Validation: require start/end time for all sessions
     if (!formData.custom_start_time || !formData.custom_end_time) {
-      alert('Please select session start and end time')
+      setErrors({ custom_start_time: 'Please select start and end times' })
       return
     }
 
@@ -539,7 +540,7 @@ export function SessionForm({
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         {values.map((value, index) => (
-          <div key={index} className="flex items-center space-x-2 mb-2">
+          <div key={`${fieldName}-${index}-${value}`} className="flex items-center space-x-2 mb-2">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">{index === 0 ? 'Assistant' : 'Assistant'}</label>
               <input
@@ -585,7 +586,7 @@ export function SessionForm({
     return (
       <div className="space-y-4">
         {subtalks.map((subtalk, index) => (
-          <div key={index} className="grid grid-cols-4 gap-4 items-end">
+          <div key={`subtalk-${index}-${subtalk.title || 'empty'}`} className="grid grid-cols-4 gap-4 items-end">
             <div>
               <label htmlFor={`subtalk-title-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
                 Subtalk Title {index + 1}
@@ -1152,40 +1153,40 @@ export function SessionForm({
                       />
                     </div>
                   </div>
-                  {/* Row 3: Expert + Topic */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                    <div className="sm:col-span-6 min-w-[180px]">
+                  {/* Row 3: Expert + Topic + Remove Button */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                    <div className="sm:col-span-5 min-w-[160px]">
                       <label className="block text-xs font-medium text-gray-700 mb-1">Expert</label>
                       <input
                         type="text"
                         value={(((st as any).expert_ids || [])[0]) || ''}
                         onChange={(e) => updateSubSession(st.id, 'expert_ids', e.target.value ? [e.target.value] : [])}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       />
                     </div>
-                    <div className="sm:col-span-6 min-w-[180px] relative">
+                    <div className="sm:col-span-5 min-w-[160px] relative">
                       <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
-                    <input
+                      <input
                         id={`subtalk-${st.id || index}-topic`}
-                      type="text"
-                      value={st.topic}
-                      onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
-                        className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                        type="text"
+                        value={st.topic}
+                        onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Enter topic"
                         aria-describedby={`subtalk-${st.id || index}-help`}
-                    />
-                  </div>
-                    <div className="sm:col-span-1 flex justify-end items-center">
-                    <button
-                      type="button"
-                      onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
-                        className="text-red-600 hover:text-red-800 text-sm h-11 px-2"
-                      aria-label={`Remove Subtalk`}
-                      data-testid="remove-subtalk"
-                    >
-                      ×
-                    </button>
-                  </div>
+                      />
+                    </div>
+                    <div className="sm:col-span-2 flex justify-end items-end">
+                      <button
+                        type="button"
+                        onClick={() => removeSubSession(formData.sub_sessions.findIndex(ss => ss.id === st.id))}
+                        className="text-red-600 hover:text-red-800 text-sm px-3 py-1 border border-red-300 rounded hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        aria-label={`Remove Subtalk ${index + 1}`}
+                        data-testid="remove-subtalk"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
 
                   <div id={`subtalk-${st.id || index}-help`} className="sr-only">Subtalk {index + 1} controls: Start, End, Speaker, Topic, Remove</div>
