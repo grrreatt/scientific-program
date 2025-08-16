@@ -65,6 +65,18 @@ export interface Session {
   speakers?: string[]
   moderators?: string[]
   chairpersons?: string[]
+  panelists?: string[]
+  experts?: string[]
+  // Participant ID arrays for editing
+  speakers_ids?: string[]
+  moderators_ids?: string[]
+  chairpersons_ids?: string[]
+  panelists_ids?: string[]
+  experts_ids?: string[]
+  // Sub-sessions and additional data
+  sub_sessions?: SubSession[]
+  symposium_subtalks?: SymposiumSubtalk[]
+  custom_data?: Record<string, any>
   // Optimistic flag for realtime updates
   optimistic?: boolean
 }
