@@ -1016,7 +1016,20 @@ export default function EditSessionsPage() {
   }
 
   const handleSubmitGlobalBlock = async () => {
+    console.log('🔄 Creating global block with:', {
+      selectedDayForGlobalBlock,
+      globalBlockStartTime,
+      globalBlockEndTime,
+      globalBlockType,
+      globalBlockTitle
+    })
+
     if (!selectedDayForGlobalBlock || !globalBlockStartTime || !globalBlockEndTime) {
+      console.error('❌ Missing required fields:', {
+        selectedDayForGlobalBlock: !!selectedDayForGlobalBlock,
+        globalBlockStartTime: !!globalBlockStartTime,
+        globalBlockEndTime: !!globalBlockEndTime
+      })
       alert('Please select day and time')
       return
     }
@@ -1066,6 +1079,8 @@ export default function EditSessionsPage() {
         alert(`Error creating global block: ${timeSlotError.message || 'Please try again.'}`)
         return
       }
+
+      console.log('✅ Global block created in database:', newTimeSlot)
 
       setShowGlobalBlockModal(false)
       setGlobalBlockType('registration')
@@ -1572,9 +1587,12 @@ export default function EditSessionsPage() {
             <button
               onClick={() => {
                 const day = days.find(d => d.name === selectedDay)
+                console.log('🔄 Opening global block modal for day:', day)
                 setSelectedDayForGlobalBlock(day?.id || '')
                 setGlobalBlockStartTime('08:00')
                 setGlobalBlockEndTime('09:00')
+                setGlobalBlockType('registration')
+                setGlobalBlockTitle('')
                 setShowGlobalBlockModal(true)
               }}
               className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
