@@ -223,13 +223,14 @@ export default function EditSessionsPage() {
 
       if (error) {
         console.error('❌ Error loading time slots:', error)
-        // Try to create default time slots
+        // Try to create default time slots only if it's a new day
         await createDefaultTimeSlots(selectedDayData.id)
         return
       }
 
       if (data && data.length > 0) {
         setTimeSlots(data)
+        console.log('✅ Loaded time slots:', data.length, 'slots including', data.filter(slot => slot.is_break).length, 'global blocks')
       } else {
         // Create default time slots if none exist
         await createDefaultTimeSlots(selectedDayData.id)
@@ -248,6 +249,23 @@ export default function EditSessionsPage() {
   const createDefaultTimeSlots = async (dayId: string) => {
     try {
       console.log('🔄 Creating default time slots for day:', dayId)
+      
+      // First check if any time slots already exist for this day
+      const { data: existingSlots, error: checkError } = await supabase
+        .from('day_time_slots')
+        .select('*')
+        .eq('day_id', dayId)
+
+      if (checkError) {
+        console.error('❌ Error checking existing time slots:', checkError)
+        return
+      }
+
+      if (existingSlots && existingSlots.length > 0) {
+        console.log('⚠️ Time slots already exist for this day, skipping default creation')
+        setTimeSlots(existingSlots)
+        return
+      }
       
       const slots = []
       let currentTime = new Date()
@@ -1011,6 +1029,12 @@ export default function EditSessionsPage() {
       return
     }
 
+    // Validate time format and order
+    if (globalBlockStartTime >= globalBlockEndTime) {
+      alert('End time must be after start time')
+      return
+    }
+
     try {
       // selectedDayForGlobalBlock now stores the day id
       const selectedDayData = days.find(d => d.id === selectedDayForGlobalBlock)
@@ -1032,11 +1056,27 @@ export default function EditSessionsPage() {
       const finalTitle = globalBlockType === 'custom' ? (globalBlockTitle?.trim() || 'Custom Block') : (typeToTitle[globalBlockType] || 'Break')
 
       // Compute next slot order for the day to avoid conflicts
-      const { data: existingSlots } = await supabase
+      const { data: existingSlots, error: fetchError } = await supabase
         .from('day_time_slots')
         .select('slot_order')
         .eq('day_id', selectedDayData.id)
+      
+      if (fetchError) {
+        console.error('❌ Error fetching existing slots:', fetchError)
+        alert('Error checking existing time slots. Please try again.')
+        return
+      }
+
       const nextOrder = (existingSlots?.reduce((m: number, s: any) => Math.max(m, s.slot_order || 0), 0) || 0) + 1
+
+      console.log('🔄 Creating global block:', {
+        day_id: selectedDayData.id,
+        start_time: globalBlockStartTime,
+        end_time: globalBlockEndTime,
+        slot_order: nextOrder,
+        is_break: true,
+        break_title: finalTitle
+      })
 
       // Create a new time slot for the global block
       const { data: newTimeSlot, error: timeSlotError } = await supabase
@@ -1057,6 +1097,8 @@ export default function EditSessionsPage() {
         return
       }
 
+      console.log('✅ Global block created:', newTimeSlot)
+
       setShowGlobalBlockModal(false)
       setGlobalBlockType('registration')
       setGlobalBlockTitle('')
@@ -1065,7 +1107,7 @@ export default function EditSessionsPage() {
       setSelectedDayForGlobalBlock('')
       
       await loadTimeSlots()
-      console.log('✅ Global block created successfully')
+      console.log('✅ Global block created successfully and time slots reloaded')
       
     } catch (error: any) {
       console.error('❌ Error creating global block:', error)
@@ -1078,35 +1120,48 @@ export default function EditSessionsPage() {
     setShowGlobalBlockModal(false)
     setGlobalBlockType('registration')
     setGlobalBlockTitle('')
-    setGlobalBlockStartTime('')
-    setGlobalBlockEndTime('')
+    setGlobalBlockStartTime('08:00')
+    setGlobalBlockEndTime('09:00')
     setSelectedDayForGlobalBlock('')
   }
 
   const handleDeleteGlobalBlock = async (timeSlot: DayTimeSlot) => {
     if (!timeSlot.is_break) return
 
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${timeSlot.break_title || 'Global Block'}"? This action cannot be undone.`
+    )
+    
+    if (!confirmed) return
+
     try {
+      console.log('🗑️ Deleting global block:', timeSlot.id, timeSlot.break_title)
+
       const { error } = await supabase
         .from('day_time_slots')
         .update({ 
           is_break: false, 
-          break_title: undefined 
+          break_title: null 
         })
         .eq('id', timeSlot.id)
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error deleting global block:', error)
+        alert(`Error deleting global block: ${error.message || 'Please try again.'}`)
+        return
+      }
 
       // Update local state
       setTimeSlots(prev => prev.map(ts => 
         ts.id === timeSlot.id 
-          ? { ...ts, is_break: false, break_title: undefined }
+          ? { ...ts, is_break: false, break_title: null }
           : ts
       ))
 
-      console.log('Global block deleted successfully')
+      console.log('✅ Global block deleted successfully')
     } catch (error) {
-      console.error('Error deleting global block:', error)
+      console.error('❌ Exception deleting global block:', error)
+      alert('Error deleting global block. Please try again.')
     }
   }
 
