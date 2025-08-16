@@ -380,17 +380,18 @@ export default function PublicProgramPage() {
 
   const getSessionTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      lecture: 'bg-blue-50 border-blue-200 text-blue-800',
-      panel: 'bg-green-50 border-green-200 text-green-800',
-      workshop: 'bg-purple-50 border-purple-200 text-purple-800',
-      symposium: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-      oration: 'bg-red-50 border-red-200 text-red-800',
-      guest_lecture: 'bg-indigo-50 border-indigo-200 text-indigo-800',
-      discussion: 'bg-pink-50 border-pink-200 text-pink-800',
-      break: 'bg-gray-50 border-gray-200 text-gray-800',
-      other: 'bg-gray-50 border-gray-200 text-gray-800'
+      lecture: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+      panel: 'bg-violet-50 border-violet-200 text-violet-800',
+      workshop: 'bg-rose-50 border-rose-200 text-rose-800',
+      symposium: 'bg-amber-50 border-amber-200 text-amber-800',
+      oration: 'bg-orange-50 border-orange-200 text-orange-800',
+      guest_lecture: 'bg-teal-50 border-teal-200 text-teal-800',
+      discussion: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-800',
+      session: 'bg-cyan-50 border-cyan-200 text-cyan-800',
+      break: 'bg-slate-50 border-slate-200 text-slate-800',
+      other: 'bg-stone-50 border-stone-200 text-stone-800'
     }
-    return colors[type] || 'bg-gray-50 border-gray-200 text-gray-800'
+    return colors[type] || 'bg-stone-50 border-stone-200 text-stone-800'
   }
 
   const getSessionIcon = (type: string) => {
@@ -677,65 +678,121 @@ export default function PublicProgramPage() {
                               <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-teal-400">
                                 {/* Session Content */}
                                 <div className="text-center space-y-2">
-                                  {/* Session Type Badge */}
+                                  {/* Session Type Badge - No icons, better colors */}
                                   <div className="flex justify-center mb-2">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getSessionTypeColor(session.session_type)}`}>
-                                      {getSessionIcon(session.session_type)} {getSessionTypeLabel(session.session_type)}
+                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getSessionTypeColor(session.session_type)}`}>
+                                      {getSessionTypeLabel(session.session_type)}
                                     </span>
                                   </div>
 
                                   {/* TITLE (large and prominent) */}
-                                  <div className="text-lg font-bold text-gray-900 leading-tight">
+                                  <div className="text-lg font-bold text-gray-900 leading-tight mb-2">
                                     {session.title}
                                   </div>
 
                                   {/* Topic */}
                                   {session.topic && (
-                                    <div className="text-sm font-semibold text-gray-700">
-                                      <span className="text-indigo-600">Topic:</span> {session.topic}
+                                    <div className="text-sm font-semibold text-gray-800 mb-2">
+                                      <span className="text-emerald-700 font-bold">Topic:</span> {session.topic}
                                     </div>
                                   )}
 
-                                  {/* Participants */}
-                                  {session.speakers && session.speakers.length > 0 && (
-                                    <div className="text-sm text-gray-700">
-                                      <span className="font-bold text-blue-600">🎤 Speaker:</span> {session.speakers.join(', ')}
-                                    </div>
-                                  )}
-                                  
-                                  {session.moderators && session.moderators.length > 0 && (
-                                    <div className="text-sm text-gray-700">
-                                      <span className="font-bold text-purple-600">👨‍⚖️ Moderator:</span> {session.moderators.join(', ')}
-                                    </div>
-                                  )}
-                                  
-                                  {session.chairpersons && session.chairpersons.length > 0 && (
-                                    <div className="text-sm text-gray-700">
-                                      <span className="font-bold text-amber-600">👑 Chairperson:</span> {session.chairpersons.join(', ')}
-                                    </div>
-                                  )}
+                                  {/* All Participants in one section for better space usage */}
+                                  <div className="text-sm space-y-1">
+                                    {session.speakers && session.speakers.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-emerald-700">Speaker:</span> {session.speakers.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {session.moderators && session.moderators.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-violet-700">Moderator:</span> {session.moderators.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {session.chairpersons && session.chairpersons.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-orange-700">Chairperson:</span> {session.chairpersons.join(', ')}
+                                      </div>
+                                    )}
 
-                                  {/* Sub-talks - Compact with all info */}
+                                    {/* Add other participant types */}
+                                    {(session as any).panelists && (session as any).panelists.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-rose-700">Panelists:</span> {(session as any).panelists.join(', ')}
+                                      </div>
+                                    )}
+
+                                    {(session as any).experts && (session as any).experts.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-teal-700">Experts:</span> {(session as any).experts.join(', ')}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Sub-talks - Complete information without icons */}
                                   {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
-                                    <div className="text-xs border-t pt-2 mt-2">
-                                      <div className="font-bold text-gray-800 mb-1 text-center">📋 Sub-talks</div>
-                                      <div className="space-y-1">
+                                    <div className="text-xs border-t border-gray-300 pt-2 mt-3">
+                                      <div className="font-bold text-gray-900 mb-2 text-center">Sub-talks</div>
+                                      <div className="space-y-2">
                                         {(session as any).sub_sessions.map((st: any, idx: number) => (
-                                          <div key={st.id || idx} className="bg-gray-50 rounded p-1.5 text-left">
-                                            <div className="flex justify-between items-start mb-1">
-                                              <span className="text-xs text-indigo-600 font-bold">
-                                                🕘 {formatTime(st.start_time)}–{formatTime(st.end_time)}
+                                          <div key={st.id || idx} className="bg-gray-50 rounded-md p-2 text-left border border-gray-200">
+                                            <div className="flex justify-between items-center mb-1">
+                                              <span className="text-xs text-emerald-700 font-bold">
+                                                {formatTime(st.start_time)}–{formatTime(st.end_time)}
                                               </span>
+                                              <span className="text-xs text-gray-500">#{idx + 1}</span>
                                             </div>
                                             <div className="font-bold text-gray-900 text-xs leading-tight mb-1">{st.title}</div>
                                             {st.topic && (
-                                              <div className="text-xs text-gray-600 italic mb-1">
+                                              <div className="text-xs text-violet-700 font-medium mb-1">
                                                 Topic: {st.topic}
                                               </div>
                                             )}
                                             {st.speaker_name && (
-                                              <div className="text-xs text-gray-600">
+                                              <div className="text-xs text-orange-700 font-medium">
                                                 Speaker: {st.speaker_name}
+                                              </div>
+                                            )}
+                                            {st.description && (
+                                              <div className="text-xs text-gray-600 mt-1 italic">
+                                                {st.description}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Symposium Subtalks if available */}
+                                  {Array.isArray((session as any).symposium_subtalks) && (session as any).symposium_subtalks.length > 0 && (
+                                    <div className="text-xs border-t border-gray-300 pt-2 mt-3">
+                                      <div className="font-bold text-gray-900 mb-2 text-center">Symposium Subtalks</div>
+                                      <div className="space-y-2">
+                                        {(session as any).symposium_subtalks.map((st: any, idx: number) => (
+                                          <div key={idx} className="bg-blue-50 rounded-md p-2 text-left border border-blue-200">
+                                            <div className="flex justify-between items-center mb-1">
+                                              <span className="text-xs text-emerald-700 font-bold">
+                                                {formatTime(st.start_time)}–{formatTime(st.end_time)}
+                                              </span>
+                                              <span className="text-xs text-gray-500">#{idx + 1}</span>
+                                            </div>
+                                            <div className="font-bold text-gray-900 text-xs leading-tight mb-1">{st.title}</div>
+                                            {st.topic && (
+                                              <div className="text-xs text-violet-700 font-medium mb-1">
+                                                Topic: {st.topic}
+                                              </div>
+                                            )}
+                                            {st.speaker_name && (
+                                              <div className="text-xs text-orange-700 font-medium">
+                                                Speaker: {st.speaker_name}
+                                              </div>
+                                            )}
+                                            {st.description && (
+                                              <div className="text-xs text-gray-600 mt-1 italic">
+                                                {st.description}
                                               </div>
                                             )}
                                           </div>
@@ -745,13 +802,7 @@ export default function PublicProgramPage() {
                                   )}
                                 </div>
                               </div>
-                            ) : (
-                              <div className="h-16 flex items-center justify-center">
-                                <div className="text-gray-300 text-xs border-2 border-dashed border-gray-200 rounded p-2 w-full h-full flex items-center justify-center">
-                                  No Session
-                                </div>
-                              </div>
-                            )}
+                            ) : null}
                           </td>
                         )
                       })

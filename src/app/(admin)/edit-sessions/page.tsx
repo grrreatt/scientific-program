@@ -1771,22 +1771,16 @@ export default function EditSessionsPage() {
                                     )}
                           </div>
                         </div>
-                      ) : shouldShowAddSessionButton(timeSlot.id, hall.id) ? (
-                        <div className="h-full flex items-center justify-center">
-                          <button
-                            onClick={() => handleAddSession(hall.id, timeSlot.id)}
-                            className="text-gray-400 hover:text-gray-600 text-xs border-2 border-dashed border-gray-300 rounded p-2 w-full h-16 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
-                          >
-                            + Add Session
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="h-full flex items-center justify-center">
-                          <div className="text-gray-300 text-xs">
-                            Empty
-                          </div>
-                        </div>
-                      )}
+                                                  ) : shouldShowAddSessionButton(timeSlot.id, hall.id) ? (
+                              <div className="h-full flex items-center justify-center">
+                                <button
+                                  onClick={() => handleAddSession(hall.id, timeSlot.id)}
+                                  className="text-gray-400 hover:text-gray-600 text-xs border-2 border-dashed border-gray-300 rounded p-2 w-full h-16 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
+                                >
+                                  + Add Session
+                                </button>
+                              </div>
+                            ) : null}
                             </td>
                           )
                         })
