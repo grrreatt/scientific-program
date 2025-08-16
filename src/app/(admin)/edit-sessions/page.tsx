@@ -1278,30 +1278,57 @@ export default function EditSessionsPage() {
   // Get sessions for a specific time slot and hall
   const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
     const selectedDayData = days.find(day => day.name === selectedDay)
+    
+    // Find session by exact match first (most reliable)
+    const exactMatch = sessions.find(session => {
+      const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
+      const matchesHall = session.stage_id === hallId
+      const matchesTimeSlot = session.time_slot_id === timeSlotId
+      
+      return matchesDay && matchesHall && matchesTimeSlot
+    })
+    
+    if (exactMatch) {
+      return exactMatch
+    }
+    
+    // Fallback: match by time overlap (for sessions without time_slot_id)
     const slot = timeSlots.find(s => s.id === timeSlotId)
-    const slotStart = slot?.start_time || ''
-    const slotEnd = slot?.end_time || ''
+    if (!slot) return undefined
+    
+    const slotStart = slot.start_time
+    const slotEnd = slot.end_time
+    
     const toMinutes = (t: string) => {
       if (!t) return -1
       const [h, m] = t.split(':').map(Number)
       return h * 60 + (m || 0)
     }
+    
     const sStartMin = toMinutes(slotStart)
     const sEndMin = toMinutes(slotEnd)
-    return sessions.find(session => {
+    
+    const timeMatch = sessions.find(session => {
       const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
-      if (!matchesDay) return false
-      if (session.stage_id !== hallId) return false
-      if (session.time_slot_id === timeSlotId) return true
-      // Fallback: if session has no time_slot_id, match by time overlap
-      if (!session.time_slot_id && slotStart && slotEnd && session.start_time && session.end_time) {
+      const matchesHall = session.stage_id === hallId
+      
+      if (!matchesDay || !matchesHall) return false
+      
+      // Only use time overlap if session doesn't have a time_slot_id
+      if (session.time_slot_id) return false
+      
+      if (session.start_time && session.end_time) {
         const a1 = toMinutes(String(session.start_time))
         const a2 = toMinutes(String(session.end_time))
         if (a1 === -1 || a2 === -1 || sStartMin === -1 || sEndMin === -1) return false
+        
         return a1 < sEndMin && sStartMin < a2
       }
+      
       return false
     })
+    
+    return timeMatch || undefined
   }
 
   // Calendar utility functions

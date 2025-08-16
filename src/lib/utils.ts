@@ -109,7 +109,7 @@ export const supabaseUtils = {
       speaker_name: st.speakers?.name || ''
     }))
 
-    return {
+    const transformed = {
       ...session,
       day_name: session.conference_days?.name || 'Unknown Day',
       stage_name: session.stages?.name || 'Unknown Hall',
@@ -125,11 +125,30 @@ export const supabaseUtils = {
       experts,
       sub_sessions: subSessions
     }
+
+    return transformed
   },
 
   // Standard session query for both pages
   getSessionQuery: () => `
-    *,
+    id,
+    title,
+    session_type,
+    day_id,
+    stage_id,
+    time_slot_id,
+    topic,
+    description,
+    is_parallel_meal,
+    parallel_meal_type,
+    custom_start_time,
+    custom_end_time,
+    start_time,
+    end_time,
+    session_number,
+    status,
+    created_at,
+    updated_at,
     conference_days(name),
     stages(name),
     day_time_slots(start_time, end_time, is_break, break_title),
@@ -146,7 +165,7 @@ export const supabaseUtils = {
       topic,
       sub_session_type,
       speaker_id,
-      speakers(name)
+      speakers!sub_sessions_speaker_id_fkey(name)
     )
   `,
 
