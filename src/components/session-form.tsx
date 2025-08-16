@@ -693,14 +693,14 @@ export function SessionForm({
     const subSessions = formData.sub_sessions || []
 
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-900">Sub-talks</h3>
+      <div className="space-y-4">
+        <div className="flex flex-col items-center space-y-3">
+          <h3 className="text-lg font-bold text-gray-900 text-center">Sub-talks</h3>
           <button
             type="button"
             onClick={addSubSession}
             data-testid="add-subtalk"
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none"
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none"
           >
             + Add Sub-talk
           </button>
@@ -889,7 +889,15 @@ export function SessionForm({
                       <div key={index} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
                       <input
                         type="text"
-                        value={participant.id || ''}
+                        value={(() => {
+                          // If participant.id is a UUID, resolve it to a name, otherwise show as-is
+                          const id = participant.id || ''
+                          if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+                            const speaker = speakers.find(s => s.id === id)
+                            return speaker?.name || id
+                          }
+                          return id
+                        })()}
                         onChange={(e) => updateParticipant(key as any, index, e.target.value)}
                         placeholder={`Type ${label.toLowerCase()} name (new or existing)`}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
@@ -1079,8 +1087,8 @@ export function SessionForm({
 
         {/* Subtalks list */}
         {subTalks.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gray-900">Subtalks</h4>
+          <div className="space-y-3">
+            <h4 className="text-lg font-bold text-gray-900 text-center">Subtalks</h4>
             {subTalks.map((st, index) => {
               const isFirst = index === 0
               return (
@@ -1088,9 +1096,13 @@ export function SessionForm({
                   key={st.id || index}
                   role="group"
                   aria-label={`Subtalk ${index + 1}`}
-                  className="space-y-3 bg-gray-50 p-3 rounded-md border border-gray-200 overflow-visible"
+                  className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-visible"
                   data-testid="subtalk-row"
                 >
+                  {/* Talk Header */}
+                  <div className="text-center">
+                    <h5 className="text-lg font-bold text-gray-800">Talk {index + 1}</h5>
+                  </div>
                   {/* Row 1: Time */}
                   <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center">
                     <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
@@ -1412,7 +1424,7 @@ export function SessionForm({
       {/* Symposium Subtalks Section */}
       {currentSessionType === 'symposium' && (
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-900">Symposium Subtalks</h3>
+          <h3 className="text-lg font-bold text-gray-900 text-center">Symposium Subtalks</h3>
           {renderSymposiumSubtalkFields()}
         </div>
       )}

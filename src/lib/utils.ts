@@ -120,9 +120,9 @@ export const supabaseUtils = {
       ...session,
       day_name: session.conference_days?.name || 'Unknown Day',
       stage_name: session.stages?.name || 'Unknown Hall',
-      // Prefer custom_* if present, else day_time_slots
-      start_time: session.custom_start_time || session.day_time_slots?.start_time || '',
-      end_time: session.custom_end_time || session.day_time_slots?.end_time || '',
+      // Prefer custom_* if present, else original start_time/end_time, else day_time_slots
+      start_time: session.custom_start_time || session.start_time || session.day_time_slots?.start_time || '',
+      end_time: session.custom_end_time || session.end_time || session.day_time_slots?.end_time || '',
       is_break: session.day_time_slots?.is_break || false,
       break_title: session.day_time_slots?.break_title,
       speakers,

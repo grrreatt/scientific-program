@@ -662,46 +662,46 @@ export default function PublicProgramPage() {
                         return (
                           <td key={hall.id} className="w-64 border-r border-gray-200 p-1">
                             {session ? (
-                              <div className="bg-white border border-gray-200 rounded p-1 shadow-sm">
+                              <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
                                 {/* Public Session Block with Time at Top */}
-                                <div className="text-center space-y-0.5">
-                                  {/* TIME RANGE (bold) */}
-                                  <div className="text-xs font-bold text-gray-900">
-                                    {formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
+                                <div className="text-center space-y-2">
+                                  {/* TIME RANGE (bold and bigger) */}
+                                  <div className="text-sm font-bold text-gray-900">
+                                    <span className="mr-1">🕘</span>{formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
                                   </div>
-                                  {/* TITLE (larger) */}
-                                  <div className="text-sm font-semibold text-gray-900">
+                                  {/* TITLE (larger and bold) */}
+                                  <div className="text-lg font-bold text-gray-900">
                                     {session.title}
                                   </div>
                                   {/* Full role names for public view */}
                                   {session.speakers && session.speakers.length > 0 && (
-                                    <div className="text-xs text-gray-700">
-                                      <span className="font-medium">Speaker:</span> {session.speakers.join(', ')}
+                                    <div className="text-sm text-gray-700 text-center">
+                                      <span className="font-bold">Speaker:</span> {session.speakers.join(', ')}
                                     </div>
                                   )}
                                   {session.moderators && session.moderators.length > 0 && (
-                                    <div className="text-xs text-gray-700">
-                                      <span className="font-medium">Moderator:</span> {session.moderators.join(', ')}
+                                    <div className="text-sm text-gray-700 text-center">
+                                      <span className="font-bold">Moderator:</span> {session.moderators.join(', ')}
                                     </div>
                                   )}
                                   {session.chairpersons && session.chairpersons.length > 0 && (
-                                    <div className="text-xs text-gray-700">
-                                      <span className="font-medium">Chairperson:</span> {session.chairpersons.join(', ')}
+                                    <div className="text-sm text-gray-700 text-center">
+                                      <span className="font-bold">Chairperson:</span> {session.chairpersons.join(', ')}
                                     </div>
                                   )}
                                   {/* Topic */}
                                   {session.topic ? (
-                                    <div className="text-[11px] text-gray-600">Topic: {session.topic}</div>
+                                    <div className="text-sm font-bold text-gray-700 text-center">Topic: {session.topic}</div>
                                   ) : null}
                                   {/* Sub-talks (public view) */}
                                   {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
-                                    <div className="text-[11px] text-gray-700 border-t border-gray-100 pt-1 space-y-0.5 text-left">
-                                      <div className="font-medium text-gray-800 mb-0.5">Sub-talks:</div>
+                                    <div className="text-sm text-gray-700 border-t border-gray-100 pt-2 space-y-1 text-center">
+                                      <div className="font-bold text-gray-800 mb-1">Sub-talks:</div>
                                       {(session as any).sub_sessions.map((st: any, idx: number) => (
-                                        <div key={st.id || idx} className="truncate">
-                                          <span className="text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)} • </span>
-                                          <span className="font-medium">{st.title}</span>
-                                          {st.speaker_name ? <span className="text-gray-500"> — Speaker: {st.speaker_name}</span> : null}
+                                        <div key={st.id || idx} className="text-center">
+                                          <div className="text-xs text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)}</div>
+                                          <div className="font-bold">{st.title}</div>
+                                          {st.speaker_name ? <div className="text-xs text-gray-600">Speaker: {st.speaker_name}</div> : null}
                                         </div>
                                       ))}
                                     </div>
