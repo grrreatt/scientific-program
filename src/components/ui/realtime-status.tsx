@@ -13,11 +13,11 @@ export function RealtimeStatus({ className = '' }: RealtimeStatusProps) {
   const [updateCount, setUpdateCount] = useState(0)
 
   useEffect(() => {
-    // Subscribe to connection status changes
+    // Subscribe to connection status changes - reduced from 1000ms to 5000ms to reduce frequent updates
     const interval = setInterval(() => {
       const status = realtimeService.getConnectionStatusPublic()
       setConnectionStatus(status)
-    }, 1000)
+    }, 5000)
 
     return () => clearInterval(interval)
   }, [])

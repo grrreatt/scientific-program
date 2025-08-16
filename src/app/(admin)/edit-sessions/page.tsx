@@ -93,7 +93,7 @@ export default function EditSessionsPage() {
   }, [selectedDay, dayHalls.length])
 
   // Load all data from database
-  const loadAllData = async () => {
+  const loadAllData = async (preferredDay?: string) => {
     setLoading(true)
     setError(null)
     
@@ -116,7 +116,7 @@ export default function EditSessionsPage() {
       
       // Restore previously selected day or choose first
       if (daysData && daysData.length > 0) {
-        let next = selectedDay
+        let next = preferredDay || selectedDay
         if (!next) {
           let persisted: string | null = null
           if (typeof window !== 'undefined') {
@@ -679,8 +679,7 @@ export default function EditSessionsPage() {
       }
 
       handleCloseModal()
-      await loadAllData()
-      if (prevSelectedDay) selectDay(prevSelectedDay)
+      await loadAllData(prevSelectedDay)
       // Force UI to show immediately by optimistic append if necessary
       try {
         const { data: latest, error: latestErr } = await supabase
@@ -1433,7 +1432,7 @@ export default function EditSessionsPage() {
           <div className="text-lg text-red-600 mb-2">⚠️ Error</div>
           <div className="text-sm text-gray-600 mb-4">{error}</div>
           <button
-            onClick={loadAllData}
+            onClick={() => loadAllData()}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
           >
             Try Again

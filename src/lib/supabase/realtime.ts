@@ -27,14 +27,14 @@ class RealtimeService {
   }
 
   private setupConnectionMonitoring() {
-    // Monitor connection status
+    // Monitor connection status - increased from 5000ms to 10000ms to reduce frequent checks
     setInterval(() => {
       const status = this.getConnectionStatus()
       if (status !== this.connectionStatus) {
         this.connectionStatus = status
         console.log('🔗 Connection status changed:', status)
       }
-    }, 5000)
+    }, 10000)
   }
 
   private getConnectionStatus(): 'connected' | 'disconnected' | 'connecting' {
@@ -73,11 +73,11 @@ class RealtimeService {
     // Subscribe to day_halls changes
     this.subscribeToDayHalls(config.onDayHallChange)
     
-    // Monitor connection changes
+    // Monitor connection changes - increased from 2000ms to 5000ms to reduce frequent updates
     if (config.onConnectionChange) {
       setInterval(() => {
         config.onConnectionChange?.(this.connectionStatus)
-      }, 2000)
+      }, 5000)
     }
   }
 
