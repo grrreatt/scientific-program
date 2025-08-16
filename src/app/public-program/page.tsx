@@ -5,6 +5,7 @@ import { formatTime, formatTimeRange, calculateDuration, supabaseUtils, formatTi
 import { SESSION_TYPES } from '@/lib/constants'
 import { supabase } from '@/lib/supabase/client'
 import realtimeService from '@/lib/supabase/realtime'
+const REALTIME_ENABLED = (process.env.NEXT_PUBLIC_ENABLE_REALTIME || '').toLowerCase() === 'true'
 import { RealtimeStatus } from '@/components/ui/realtime-status'
 
 interface Session {
@@ -66,7 +67,7 @@ export default function PublicProgramPage() {
   const [halls, setHalls] = useState<Hall[]>([])
   const [days, setDays] = useState<Day[]>([])
   const [timeSlots, setTimeSlots] = useState<DayTimeSlot[]>([])
-  const [selectedDay, setSelectedDay] = useState('Day 1')
+  const [selectedDay, setSelectedDay] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
@@ -74,6 +75,14 @@ export default function PublicProgramPage() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Persist/restore selected day
+  const selectDay = (dayName: string) => {
+    setSelectedDay(dayName)
+    if (typeof window !== 'undefined') {
+      try { localStorage.setItem('selectedDayPublic', dayName) } catch {}
+    }
+  }
 
   // Load sessions from Supabase - single source of truth
   const loadSessions = async () => {
@@ -273,6 +282,11 @@ export default function PublicProgramPage() {
       }))
 
       setDays(transformedDays)
+      // Initialize/repair selected day once days are known
+      const persisted = (typeof window !== 'undefined') ? (() => { try { return localStorage.getItem('selectedDayPublic') } catch { return null } })() : null
+      const firstDayName = transformedDays[0]?.name
+      const next = (persisted && transformedDays.some(d => d.name === persisted)) ? persisted : firstDayName || ''
+      if (next && next !== selectedDay) setSelectedDay(next)
       setError(null)
     } catch (error) {
       console.error('Error loading days:', error)
@@ -285,48 +299,73 @@ export default function PublicProgramPage() {
     // Load data from Supabase
     const loadData = async () => {
       await Promise.all([loadSessions(), loadHalls(), loadDays()])
-    setLoading(false)
+      setLoading(false)
     }
-    
     loadData()
 
     // Set up enhanced real-time subscriptions
-    realtimeService.subscribeToAll({
-      onSessionChange: (payload) => {
-        console.log('Public: Session change detected:', payload)
-        setLastUpdate(new Date())
-        loadSessions()
-      },
-      onHallChange: (payload) => {
-        console.log('Public: Hall change detected:', payload)
-        setLastUpdate(new Date())
-        loadHalls()
-      },
-      onDayChange: (payload) => {
-        console.log('Public: Day change detected:', payload)
-        setLastUpdate(new Date())
-        loadDays()
-      },
-      onTimeSlotChange: (payload) => {
-        console.log('Public: Time slot change detected:', payload)
-        setLastUpdate(new Date())
-        // Reload time slots to get updated time slots
-        loadTimeSlots()
-      },
-      onDayHallChange: (payload) => {
-        console.log('Public: Day Hall change detected:', payload)
-        setLastUpdate(new Date())
-        // Reload halls to get updated day-hall relationships
-        loadHalls()
-      },
-      onConnectionChange: (status) => {
-        console.log('Public: Connection status changed:', status)
-        setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
-      }
-    })
+    if (REALTIME_ENABLED) {
+      realtimeService.subscribeToAll({
+        onSessionChange: (payload) => {
+          console.log('Public: Session change detected:', payload)
+          setLastUpdate(new Date())
+          loadSessions()
+        },
+        onHallChange: (payload) => {
+          console.log('Public: Hall change detected:', payload)
+          setLastUpdate(new Date())
+          loadHalls()
+        },
+        onDayChange: (payload) => {
+          console.log('Public: Day change detected:', payload)
+          setLastUpdate(new Date())
+          loadDays()
+        },
+        onTimeSlotChange: (payload) => {
+          console.log('Public: Time slot change detected:', payload)
+          setLastUpdate(new Date())
+          // Reload time slots to get updated time slots
+          loadTimeSlots()
+        },
+        onDayHallChange: (payload) => {
+          console.log('Public: Day Hall change detected:', payload)
+          setLastUpdate(new Date())
+          // Reload halls to get updated day-hall relationships
+          loadHalls()
+        },
+        onConnectionChange: (status) => {
+          console.log('Public: Connection status changed:', status)
+          setConnectionStatus(status as 'connected' | 'disconnected' | 'connecting')
+        }
+      })
+    }
 
     return () => {
       realtimeService.unsubscribeFromAll()
+    }
+  }, [])
+
+  // Polling fallback when realtime disabled
+  useEffect(() => {
+    if (REALTIME_ENABLED) return
+    const intervalMs = Number(process.env.NEXT_PUBLIC_POLL_INTERVAL_MS || 15000)
+    let timer: any
+    const tick = async () => {
+      try {
+        await Promise.all([loadSessions(), loadHalls(), loadDays()])
+      } finally {
+        timer = setTimeout(tick, intervalMs)
+      }
+    }
+    timer = setTimeout(tick, intervalMs)
+    const onVisible = () => { if (document.visibilityState === 'visible') Promise.all([loadSessions(), loadHalls(), loadDays()]) }
+    const onOnline = () => { Promise.all([loadSessions(), loadHalls(), loadDays()]) }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onOnline)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onOnline)
     }
   }, [])
 
@@ -397,30 +436,57 @@ export default function PublicProgramPage() {
   // Get sessions for a specific time slot and hall - EXACTLY same as edit sessions page
   const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
     const selectedDayData = days.find(d => d.name === selectedDay)
+    
+    // Find session by exact match first (most reliable)
+    const exactMatch = sessions.find(session => {
+      const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
+      const matchesHall = session.stage_id === hallId
+      const matchesTimeSlot = session.time_slot_id === timeSlotId
+      
+      return matchesDay && matchesHall && matchesTimeSlot
+    })
+    
+    if (exactMatch) {
+      return exactMatch
+    }
+    
+    // Fallback: match by time overlap (for sessions without time_slot_id)
     const slot = timeSlots.find(s => s.id === timeSlotId)
-    const slotStart = slot?.start_time || ''
-    const slotEnd = slot?.end_time || ''
+    if (!slot) return undefined
+    
+    const slotStart = slot.start_time
+    const slotEnd = slot.end_time
+    
     const toMinutes = (t: string) => {
       if (!t) return -1
       const [h, m] = t.split(':').map(Number)
       return h * 60 + (m || 0)
     }
+    
     const sStartMin = toMinutes(slotStart)
     const sEndMin = toMinutes(slotEnd)
-    return sessions.find(session => {
-      const sess: any = session
-      const matchesDay = sess.day_name === selectedDay || (selectedDayData ? sess.day_id === selectedDayData.id : false)
-      if (!matchesDay) return false
-      if (sess.stage_id !== hallId) return false
-      if (sess.time_slot_id === timeSlotId) return true
-      if (!sess.time_slot_id && slotStart && slotEnd && sess.start_time && sess.end_time) {
-        const a1 = toMinutes(String(sess.start_time))
-        const a2 = toMinutes(String(sess.end_time))
+    
+    const timeMatch = sessions.find(session => {
+      const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
+      const matchesHall = session.stage_id === hallId
+      
+      if (!matchesDay || !matchesHall) return false
+      
+      // Only use time overlap if session doesn't have a time_slot_id
+      if (session.time_slot_id) return false
+      
+      if (session.start_time && session.end_time) {
+        const a1 = toMinutes(String(session.start_time))
+        const a2 = toMinutes(String(session.end_time))
         if (a1 === -1 || a2 === -1 || sStartMin === -1 || sEndMin === -1) return false
+        
         return a1 < sEndMin && sStartMin < a2
       }
+      
       return false
     })
+    
+    return timeMatch || undefined
   }
 
   if (loading) {
@@ -539,7 +605,7 @@ export default function PublicProgramPage() {
             {days.map(day => (
               <button
                 key={day.id}
-                onClick={() => setSelectedDay(day.name)}
+                onClick={() => selectDay(day.name)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   selectedDay === day.name
                     ? 'border-teal-500 text-teal-600'
