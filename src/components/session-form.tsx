@@ -1266,10 +1266,16 @@ export function SessionForm({
             'other'
           ].filter(key => SESSION_TYPES[key]).map((key) => {
             const type = SESSION_TYPES[key]
+            // Dynamic padding based on session type complexity
+            const getPadding = (sessionType: string) => {
+              if (sessionType === 'symposium') return 'p-1.5' // Less space for symposium
+              if (sessionType === 'oration' || sessionType === 'guest_lecture') return 'p-3' // More space for important types
+              return 'p-2' // Default for others
+            }
             return (
             <div
               key={key}
-              className={`relative rounded border p-2 cursor-pointer transition-colors ${
+              className={`relative rounded border cursor-pointer transition-colors ${getPadding(key)} ${
                 currentSessionType === key
                   ? 'border-indigo-500 bg-indigo-50'
                   : 'border-gray-300 bg-white hover:border-gray-400'

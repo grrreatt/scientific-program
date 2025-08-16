@@ -632,52 +632,50 @@ export default function PublicProgramPage() {
           </p>
         </div>
 
-        {/* Timeline Table - Exactly like edit session page but read-only */}
-        <div className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto">
-          <div className="min-w-max">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="w-32 bg-teal-50 border-r border-teal-100 p-2 font-semibold text-sm text-teal-800 text-left sticky left-0 z-10">
-                    Time
-                  </th>
-                  {/* Hall Column Headers */}
-                  {getHallsForSelectedDay().map((hall) => (
-                    <th key={hall.id} className="w-80 bg-indigo-50 border-r border-indigo-100 p-2 font-semibold text-sm text-indigo-800 text-left">
-                      🏛️ {hall.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {timeSlots.map((timeSlot) => (
-                  <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                    {/* Time Column */}
-                    <td className="w-32 border-r border-gray-200 p-2 text-sm font-medium text-gray-900 bg-gray-50 sticky left-0 z-10">
-                      <div className="text-center">
-                        <div className="font-bold text-gray-900">
-                          {formatTimeRangeCompact(timeSlot.start_time, timeSlot.end_time)}
-                        </div>
-                      </div>
-                    </td>
+        {/* Hall Headers */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 mb-6">
+          {getHallsForSelectedDay().map((hall) => (
+            <div key={hall.id} className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
+              <h3 className="font-semibold text-indigo-800">🏛️ {hall.name}</h3>
+            </div>
+          ))}
+        </div>
 
-                    {/* Check if this is a global block (break) */}
-                    {timeSlot.is_break ? (
-                      <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-3 text-center">
+        {/* Independent Hall Columns - Each hall has its own structure */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {getHallsForSelectedDay().map((hall) => (
+            <div key={hall.id} className="space-y-4">
+              <div className="bg-indigo-100 border border-indigo-200 rounded-lg p-2 text-center sticky top-0 z-10">
+                <h4 className="font-semibold text-indigo-800">{hall.name}</h4>
+              </div>
+              
+              {/* Sessions for this hall only */}
+              <div className="space-y-3">
+                {timeSlots.map((timeSlot) => {
+                  // Handle global blocks
+                  if (timeSlot.is_break) {
+                    return (
+                      <div key={timeSlot.id} className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
                         <div className="text-sm font-medium text-orange-800">
                           🔶 {timeSlot.break_title || 'Global Block'}
                         </div>
-                      </td>
-                    ) : (
-                      /* Hall Columns */
-                      getHallsForSelectedDay().map((hall) => {
-                        const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
-                        return (
-                          <td key={hall.id} className="w-80 border-r border-gray-200 p-2" style={{ scrollSnapAlign: 'start' }}>
-                            {session ? (
-                              <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-teal-400">
-                                {/* Session Content */}
-                                <div className="text-center space-y-2">
+                        <div className="text-xs text-orange-600">
+                          {formatTimeRangeCompact(timeSlot.start_time, timeSlot.end_time)}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // Get session for this specific hall and time slot
+                  const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
+                  
+                  // Only render if there's a session (no empty blocks)
+                  if (!session) return null
+
+                  return (
+                    <div key={timeSlot.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-teal-400">
+                                      {/* Session Content */}
+                      <div className="text-center space-y-2">
                                   {/* Individual Session Time - Show actual session time, not time slot time */}
                                   <div className="flex justify-center mb-2">
                                     <div className="bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full">
@@ -809,18 +807,13 @@ export default function PublicProgramPage() {
                                       </div>
                                     </div>
                                   )}
-                                </div>
-                              </div>
-                            ) : null}
-                          </td>
-                        )
-                      })
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Print Button */}

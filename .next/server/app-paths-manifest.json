@@ -3,11 +3,11 @@
   "/api/download-template/route": "app/api/download-template/route.js",
   "/login/page": "app/login/page.js",
   "/page": "app/page.js",
-  "/public-program/page": "app/public-program/page.js",
   "/public-workshops/page": "app/public-workshops/page.js",
-  "/api/export/route": "app/api/export/route.js",
-  "/(admin)/dashboard/page": "app/(admin)/dashboard/page.js",
+  "/public-program/page": "app/public-program/page.js",
   "/(admin)/edit-sessions/page": "app/(admin)/edit-sessions/page.js",
-  "/(admin)/participants/page": "app/(admin)/participants/page.js",
-  "/(admin)/speakers/page": "app/(admin)/speakers/page.js"
+  "/(admin)/speakers/page": "app/(admin)/speakers/page.js",
+  "/(admin)/dashboard/page": "app/(admin)/dashboard/page.js",
+  "/api/export/route": "app/api/export/route.js",
+  "/(admin)/participants/page": "app/(admin)/participants/page.js"
 }
