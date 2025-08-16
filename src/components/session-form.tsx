@@ -864,8 +864,8 @@ export function SessionForm({
     ] as const;
 
     return (
-      <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900">Participants</h4>
+      <div className="space-y-4">
+          <h4 className="text-lg font-bold text-gray-900 text-center">Participants</h4>
 
         {/* Compact Participant Display */}
         <div className="space-y-2">
@@ -875,48 +875,33 @@ export function SessionForm({
             // Always render a role section; show helper if empty
           
           return (
-              <div key={key} className="space-y-1">
-                <div className="flex items-center space-x-1">
-                  <span className="text-xs text-gray-500">{icon} {label}s:</span>
+              <div key={key} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-700">{icon} {label}s:</span>
                   {/* Quick add buttons */}
-                  <button type="button" onClick={() => addParticipant(key)} className="text-[11px] text-indigo-600 hover:text-indigo-800">+ {label}</button>
+                  <button type="button" onClick={() => addParticipant(key)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add {label}</button>
               </div>
                 <div className="space-y-1">
                   {participants.map((participant, index) => {
                     const rowKey = `${key}-${index}`
                     const searchTerm = participantSearchTerms[rowKey] || ''
                     return (
-                      <div key={index} className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1">
+                      <div key={index} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
                       <input
-                        value={searchTerm}
-                        onChange={(e)=> setParticipantSearchTerms(prev => ({...prev, [rowKey]: e.target.value }))}
-                        placeholder="Type 2-3 chars…"
-                        className="w-40 px-2 py-1 border rounded text-xs"
+                        type="text"
+                        value={participant.id || ''}
+                        onChange={(e) => updateParticipant(key as any, index, e.target.value)}
+                        placeholder={`Type ${label.toLowerCase()} name (new or existing)`}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                       />
-                      <select
-                        value={participant.id}
-                          onChange={(e) => updateParticipant(key as any, index, e.target.value)}
-                          onKeyDown={(e:any)=>{
-                            if (e.key === 'Enter') { addParticipant(key); }
-                            // no-op: filtered influences options below via searchTerm state
-                          }}
-                          className="flex-1 block pl-2 pr-8 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded"
-                      >
-                          <option value="">Select {label}</option>
-                          {getSortedSpeakers(searchTerm).map(speaker => (
-                          <option key={speaker.id} value={speaker.id}>
-                              {speaker.name}{speaker.email ? ` (${speaker.email})` : ''}
-                          </option>
-                        ))}
-                      </select>
                       {/* Conflict indicator */}
                       {participant.id && participantConflicts.some(c => c.speakerId === participant.id) && (
-                        <span className="text-[11px] text-amber-600">⚠️ conflict</span>
+                        <span className="text-xs text-amber-600">⚠️ conflict</span>
                       )}
                       <button
                         type="button"
                           onClick={() => removeArrayItem(key as any, index)}
-                          className="text-red-600 hover:text-red-900 text-xs"
+                          className="text-red-600 hover:text-red-900 text-sm font-bold"
                       >
                           ×
                       </button>
@@ -924,7 +909,7 @@ export function SessionForm({
                     );
                   })}
                   {participants.length === 0 && (
-                    <div className="text-[11px] text-gray-500">No {label.toLowerCase()} added yet</div>
+                    <div className="text-sm text-gray-500 text-center italic">No {label.toLowerCase()}s added yet</div>
                   )}
                 </div>
             </div>
@@ -1248,9 +1233,9 @@ export function SessionForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Session Type Selection */}
-      <div className="bg-gray-50 rounded-lg p-3">
-        <h3 className="text-sm font-medium text-gray-900 mb-2">Session Type</h3>
-        <div className="grid grid-cols-3 gap-2">
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h3 className="text-lg font-bold text-gray-900 mb-3 text-center">Session Type</h3>
+        <div className="grid grid-cols-3 gap-3">
           {[
             'lecture',
             'session',
@@ -1267,7 +1252,7 @@ export function SessionForm({
             return (
             <div
               key={key}
-              className={`relative rounded border p-2 cursor-pointer text-xs ${
+              className={`relative rounded border p-3 cursor-pointer text-sm ${
                 currentSessionType === key
                   ? 'border-indigo-500 bg-indigo-50'
                   : 'border-gray-300 bg-white hover:border-gray-400'
@@ -1281,9 +1266,9 @@ export function SessionForm({
                   value={key}
                   checked={currentSessionType === key}
                   onChange={() => setCurrentSessionType(key)}
-                  className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                 />
-                <label className="ml-1 block text-xs font-medium text-gray-900">
+                <label className="ml-2 block text-sm font-bold text-gray-900">
                   {type.name}
                 </label>
               </div>
@@ -1302,7 +1287,7 @@ export function SessionForm({
         <div className="grid grid-cols-1 gap-3">
           {/* Session Title - Show for ALL session types */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-lg font-bold text-gray-800 mb-2 text-center">
               {currentSessionType === 'lecture' ? 'Talk Title *' : 
                currentSessionType === 'session' ? 'Session Title' : 'Session Title *'}
             </label>
@@ -1323,7 +1308,7 @@ export function SessionForm({
           {/* Topic - Show for all types except lecture (since lecture uses title as topic) */}
           {currentSessionType !== 'lecture' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-lg font-bold text-gray-800 mb-2 text-center">
                 {currentSessionType === 'session' ? 'Session Topic' : 'Topic'}
               </label>
               <input

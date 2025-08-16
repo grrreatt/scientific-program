@@ -1686,23 +1686,23 @@ export default function EditSessionsPage() {
                               </button>
                             </div>
                                   
-                                  {/* Session Content with Time at Top - aligned like reference */}
-                                  <div className="text-left space-y-1 pr-8">
-                                    {/* TIME RANGE (bold) */}
-                                    <div className="text-xs font-semibold text-gray-800">
+                                  {/* Session Content with Time at Top - improved styling with better centering and bigger fonts */}
+                                  <div className="text-center space-y-2 pr-8">
+                                    {/* TIME RANGE (bold and bigger) */}
+                                    <div className="text-sm font-bold text-gray-800">
                                       <span className="mr-1">🕘</span>{formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
                                     </div>
-                                    {/* TITLE (larger) */}
-                                    <div className="text-sm font-semibold text-gray-900">
+                                    {/* TITLE (larger and bold, centered) */}
+                                    <div className="text-lg font-bold text-gray-900 text-center">
                                       {session.title}
                                     </div>
                                     {/* PARTICIPANTS COMPACT S/M/C/P/E */}
-                                    <div className="text-xs text-gray-600 min-h-[16px]">
+                                    <div className="text-sm text-gray-600 min-h-[20px] text-center">
                                       {formatParticipantsDisplay(session)}
                                     </div>
-                                    {/* TOPIC (optional) */}
+                                    {/* TOPIC (optional, bold and centered) */}
                                     {session.topic ? (
-                                      <div className="text-[11px] text-gray-600">Topic: {session.topic}</div>
+                                      <div className="text-sm font-bold text-gray-700 text-center">Topic: {session.topic}</div>
                                     ) : null}
                                     {/* Sub-talks list (compact, admin abbreviations) */}
                                     {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
@@ -1772,7 +1772,16 @@ export default function EditSessionsPage() {
             custom_end_time: editingSession.custom_end_time || editingSession.end_time || '',
             description: editingSession.description || '',
             is_parallel_meal: editingSession.is_parallel_meal || false,
-            parallel_meal_type: editingSession.parallel_meal_type || ''
+            parallel_meal_type: editingSession.parallel_meal_type || '',
+            // Pass existing participant data
+            speakers: editingSession.speakers_ids?.map(id => ({ id, role: 'speaker' })) || [],
+            moderators: editingSession.moderators_ids?.map(id => ({ id, role: 'moderator' })) || [],
+            chairpersons: editingSession.chairpersons_ids?.map(id => ({ id, role: 'chairperson' })) || [],
+            panelists: editingSession.panelists_ids?.map(id => ({ id, role: 'panelist' })) || [],
+            experts: editingSession.experts_ids?.map(id => ({ id, role: 'expert' })) || [],
+            sub_sessions: (editingSession as any).sub_sessions || [],
+            symposium_subtalks: (editingSession as any).symposium_subtalks || [],
+            custom_data: (editingSession as any).custom_data || {}
           } : {
             day_id: days.find(d => d.name === selectedDay)?.id || '',
             stage_id: selectedHallForSession || getHallsForSelectedDay()[0]?.id || '',
