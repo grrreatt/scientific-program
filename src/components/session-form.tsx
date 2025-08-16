@@ -890,13 +890,18 @@ export function SessionForm({
                       <input
                         type="text"
                         value={(() => {
-                          // If participant.id is a UUID, resolve it to a name, otherwise show as-is
+                          // Always try to resolve IDs to names for display, but allow direct text input
                           const id = participant.id || ''
-                          if (id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+                          if (id) {
+                            // First check if it's already a name (not a UUID)
+                            if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+                              return id  // It's already a name, show as-is
+                            }
+                            // It's a UUID, try to resolve to name
                             const speaker = speakers.find(s => s.id === id)
-                            return speaker?.name || id
+                            return speaker?.name || ''  // Show name or empty if not found
                           }
-                          return id
+                          return ''
                         })()}
                         onChange={(e) => updateParticipant(key as any, index, e.target.value)}
                         placeholder={`Type ${label.toLowerCase()} name (new or existing)`}
@@ -1243,11 +1248,11 @@ export function SessionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl mx-auto">
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl mx-auto">
       {/* Session Type Selection */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">Session Type</h3>
-        <div className="grid grid-cols-3 gap-3">
+      <div className="space-y-3">
+        <h3 className="text-base font-medium text-gray-900">Session Type</h3>
+        <div className="grid grid-cols-3 gap-2">
           {[
             'lecture',
             'session',
@@ -1264,7 +1269,7 @@ export function SessionForm({
             return (
             <div
               key={key}
-              className={`relative rounded-md border p-3 cursor-pointer transition-colors ${
+              className={`relative rounded border p-2 cursor-pointer transition-colors ${
                 currentSessionType === key
                   ? 'border-indigo-500 bg-indigo-50'
                   : 'border-gray-300 bg-white hover:border-gray-400'
@@ -1291,8 +1296,8 @@ export function SessionForm({
       </div>
 
       {/* Core Fields: Title, Topic, Time */}
-      <div className="space-y-5">
-        <div className="space-y-5">
+      <div className="space-y-4">
+        <div className="space-y-4">
           {/* Session Title - Show for ALL session types */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1363,9 +1368,9 @@ export function SessionForm({
 
       {/* Optional minimal fields by type (hidden for simplified Session flow and lecture/talk) */}
       {currentSessionType !== 'session' && currentSessionType !== 'lecture' && (
-        <div className="space-y-5">
-          <h3 className="text-lg font-medium text-gray-900">Additional Details</h3>
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Additional Details</h3>
+          <div className="space-y-3">
             {optionalFields.map(field => {
               // Description removed globally
               if (field === 'description') return null
@@ -1391,8 +1396,8 @@ export function SessionForm({
 
       {/* Lecture/Talk specific: primary Speaker free-text */}
       {currentSessionType === 'lecture' && (
-        <div className="space-y-5">
-          <h3 className="text-lg font-medium text-gray-900">Speaker Information</h3>
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Speaker Information</h3>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Speaker *</label>
             <input
@@ -1409,9 +1414,9 @@ export function SessionForm({
 
       {/* Simplified Session flow */}
       {currentSessionType === 'session' && (
-        <div className="space-y-5">
-          <h3 className="text-lg font-medium text-gray-900">Session Management</h3>
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Session Management</h3>
+          <div className="space-y-3">
             {renderSessionSimplifiedFlow()}
           </div>
         </div>
@@ -1419,9 +1424,9 @@ export function SessionForm({
 
       {/* Dynamic Participants Section (hidden for simplified Session flow) */}
       {currentSessionType !== 'session' && (
-        <div className="space-y-5">
-          <h3 className="text-lg font-medium text-gray-900">Participants</h3>
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Participants</h3>
+          <div className="space-y-3">
             {renderDynamicParticipants()}
           </div>
         </div>
@@ -1429,9 +1434,9 @@ export function SessionForm({
 
       {/* Symposium Subtalks Section */}
       {currentSessionType === 'symposium' && (
-        <div className="space-y-5">
-          <h3 className="text-lg font-medium text-gray-900">Symposium Subtalks</h3>
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Symposium Subtalks</h3>
+          <div className="space-y-3">
             {renderSymposiumSubtalkFields()}
           </div>
         </div>
@@ -1439,43 +1444,43 @@ export function SessionForm({
 
       {/* Custom Data Section */}
       {currentSessionType === 'other' && (
-        <div className="space-y-5">
-          <h3 className="text-lg font-medium text-gray-900">Custom Fields</h3>
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Custom Fields</h3>
+          <div className="space-y-3">
             {renderCustomDataFields()}
           </div>
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+      {/* Actions - Compact spacing */}
+      <div className="flex items-center justify-between pt-3 border-t border-gray-200">
         {/* Left: Delete when editing */}
         <div>
           {onDelete && (
             <button
               type="button"
               onClick={onDelete}
-              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              className="px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500"
             >
-              Delete Session
+              Delete
             </button>
           )}
         </div>
         {/* Right: Cancel / Save */}
-        <div className="flex space-x-3">
+        <div className="flex space-x-2">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Saving...' : 'Save Session'}
+            {isSubmitting ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
