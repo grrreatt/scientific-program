@@ -65,6 +65,7 @@ export default function EditSessionsPage() {
   const [globalBlockStartTime, setGlobalBlockStartTime] = useState('')
   const [globalBlockEndTime, setGlobalBlockEndTime] = useState('')
   const [selectedDayForGlobalBlock, setSelectedDayForGlobalBlock] = useState<string>('')
+  const [editingGlobalBlock, setEditingGlobalBlock] = useState<DayTimeSlot | null>(null)
 
   // Search state (removed from main interface)
   const [searchQuery, setSearchQuery] = useState('')
@@ -1054,33 +1055,73 @@ export default function EditSessionsPage() {
       }
       const finalTitle = globalBlockType === 'custom' ? (globalBlockTitle?.trim() || 'Custom Block') : (typeToTitle[globalBlockType] || 'Break')
 
-      // Compute next slot order for the day to avoid conflicts
+      // Find the correct slot order based on time position
       const { data: existingSlots } = await supabase
         .from('day_time_slots')
-        .select('slot_order')
+        .select('id, slot_order, start_time')
         .eq('day_id', selectedDayData.id)
-      const nextOrder = (existingSlots?.reduce((m: number, s: any) => Math.max(m, s.slot_order || 0), 0) || 0) + 1
+        .order('start_time', { ascending: true })
+      
+      // Find where this time slot should be inserted
+      let insertOrder = 1
+      if (existingSlots && existingSlots.length > 0) {
+        // Find the first slot that starts after our global block start time
+        const laterSlotIndex = existingSlots.findIndex((slot: any) => slot.start_time > globalBlockStartTime)
+        if (laterSlotIndex !== -1) {
+          insertOrder = existingSlots[laterSlotIndex].slot_order
+          // Update all slots that come after this time to have higher slot_order
+          const slotsToUpdate = existingSlots.slice(laterSlotIndex)
+          for (const slotToUpdate of slotsToUpdate) {
+            await supabase
+              .from('day_time_slots')
+              .update({ slot_order: slotToUpdate.slot_order + 1 })
+              .eq('id', slotToUpdate.id)
+          }
+        } else {
+          // This goes at the end
+          insertOrder = (existingSlots.reduce((m: number, s: any) => Math.max(m, s.slot_order || 0), 0) || 0) + 1
+        }
+      }
 
-      // Create a new time slot for the global block
-      const { data: newTimeSlot, error: timeSlotError } = await supabase
-        .from('day_time_slots')
-        .insert({
-          day_id: selectedDayData.id,
-          start_time: globalBlockStartTime,
-          end_time: globalBlockEndTime,
-          slot_order: nextOrder,
-          is_break: true,
-          break_title: finalTitle
-        })
-        .select()
+      // Create or update the global block
+      let newTimeSlot, timeSlotError
+      if (editingGlobalBlock) {
+        // Update existing global block
+        const { data, error } = await supabase
+          .from('day_time_slots')
+          .update({
+            start_time: globalBlockStartTime,
+            end_time: globalBlockEndTime,
+            break_title: finalTitle
+          })
+          .eq('id', editingGlobalBlock.id)
+          .select()
+        newTimeSlot = data
+        timeSlotError = error
+      } else {
+        // Create new global block
+        const { data, error } = await supabase
+          .from('day_time_slots')
+          .insert({
+            day_id: selectedDayData.id,
+            start_time: globalBlockStartTime,
+            end_time: globalBlockEndTime,
+            slot_order: insertOrder,
+            is_break: true,
+            break_title: finalTitle
+          })
+          .select()
+        newTimeSlot = data
+        timeSlotError = error
+      }
 
       if (timeSlotError) {
-        console.error('❌ Error creating global block:', timeSlotError)
-        alert(`Error creating global block: ${timeSlotError.message || 'Please try again.'}`)
+        console.error(`❌ Error ${editingGlobalBlock ? 'updating' : 'creating'} global block:`, timeSlotError)
+        alert(`Error ${editingGlobalBlock ? 'updating' : 'creating'} global block: ${timeSlotError.message || 'Please try again.'}`)
         return
       }
 
-      console.log('✅ Global block created in database:', newTimeSlot)
+      console.log(`✅ Global block ${editingGlobalBlock ? 'updated' : 'created'} in database:`, newTimeSlot)
 
       setShowGlobalBlockModal(false)
       setGlobalBlockType('registration')
@@ -1088,9 +1129,10 @@ export default function EditSessionsPage() {
       setGlobalBlockStartTime('08:00')
       setGlobalBlockEndTime('09:00')
       setSelectedDayForGlobalBlock('')
+      setEditingGlobalBlock(null)
       
       await loadTimeSlots()
-      console.log('✅ Global block created successfully')
+      console.log(`✅ Global block ${editingGlobalBlock ? 'updated' : 'created'} successfully`)
       
     } catch (error: any) {
       console.error('❌ Error creating global block:', error)
@@ -1106,32 +1148,55 @@ export default function EditSessionsPage() {
     setGlobalBlockStartTime('')
     setGlobalBlockEndTime('')
     setSelectedDayForGlobalBlock('')
+    setEditingGlobalBlock(null)
+  }
+
+  const handleEditGlobalBlock = (timeSlot: DayTimeSlot) => {
+    if (!timeSlot.is_break) return
+
+    setEditingGlobalBlock(timeSlot)
+    setSelectedDayForGlobalBlock(timeSlot.day_id)
+    setGlobalBlockStartTime(timeSlot.start_time)
+    setGlobalBlockEndTime(timeSlot.end_time)
+    
+    // Determine the type from the title
+    const title = timeSlot.break_title || ''
+    if (title === 'Registration') setGlobalBlockType('registration')
+    else if (title === 'Tea Break') setGlobalBlockType('tea_break')
+    else if (title === 'Lunch') setGlobalBlockType('lunch')
+    else if (title === 'Coffee Break') setGlobalBlockType('coffee_break')
+    else if (title === 'Inauguration') setGlobalBlockType('inauguration')
+    else if (title === 'Valedictory') setGlobalBlockType('valedictory')
+    else {
+      setGlobalBlockType('custom')
+      setGlobalBlockTitle(title)
+    }
+    
+    setShowGlobalBlockModal(true)
   }
 
   const handleDeleteGlobalBlock = async (timeSlot: DayTimeSlot) => {
     if (!timeSlot.is_break) return
 
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${timeSlot.break_title || 'this global block'}"? This action cannot be undone.`
+    )
+    
+    if (!confirmed) return
+
     try {
       const { error } = await supabase
         .from('day_time_slots')
-        .update({ 
-          is_break: false, 
-          break_title: undefined 
-        })
+        .delete()
         .eq('id', timeSlot.id)
 
       if (error) throw error
 
-      // Update local state
-      setTimeSlots(prev => prev.map(ts => 
-        ts.id === timeSlot.id 
-          ? { ...ts, is_break: false, break_title: undefined }
-          : ts
-      ))
-
+      await loadTimeSlots()
       console.log('Global block deleted successfully')
     } catch (error) {
       console.error('Error deleting global block:', error)
+      alert('Error deleting global block. Please try again.')
     }
   }
 
@@ -1671,8 +1736,15 @@ export default function EditSessionsPage() {
                       {/* Check if this is a global block (break) */}
                       {timeSlot.is_break ? (
                         <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-2 text-center group relative">
-                          {/* Delete Icon - Top Right */}
-                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                          {/* Action Icons - Top Right */}
+                          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <button
+                              onClick={() => handleEditGlobalBlock(timeSlot)}
+                              className="w-4 h-4 bg-blue-600 text-white rounded text-xs flex items-center justify-center hover:bg-blue-700 transition-colors"
+                              title="Edit Global Block"
+                            >
+                              ✏️
+                            </button>
                             <button
                               onClick={() => handleDeleteGlobalBlock(timeSlot)}
                               className="w-4 h-4 bg-red-600 text-white rounded text-xs flex items-center justify-center hover:bg-red-700 transition-colors"
@@ -2034,7 +2106,9 @@ export default function EditSessionsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-medium text-gray-900">Add Global Block</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                {editingGlobalBlock ? 'Edit Global Block' : 'Add Global Block'}
+              </h3>
               <button
                 onClick={handleCancelGlobalBlock}
                 className="text-gray-400 hover:text-gray-600 text-xl font-bold"
@@ -2127,12 +2201,12 @@ export default function EditSessionsPage() {
 
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-3">
-                <button
-                  onClick={handleSubmitGlobalBlock}
-                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-                >
-                  Add Global Block
-                </button>
+                                  <button
+                    onClick={handleSubmitGlobalBlock}
+                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                  >
+                    {editingGlobalBlock ? 'Update Global Block' : 'Add Global Block'}
+                  </button>
                 <button
                   onClick={handleCancelGlobalBlock}
                   className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
