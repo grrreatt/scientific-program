@@ -77,7 +77,7 @@ interface SessionFormProps {
 
 export function SessionForm({ 
   initialData = {}, 
-  sessionType = 'lecture', 
+  sessionType = 'session', 
   onSubmit, 
   onCancel, 
   onDelete,
@@ -1243,11 +1243,11 @@ export function SessionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-8">
       {/* Session Type Selection */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <h3 className="text-lg font-bold text-gray-900 mb-3 text-center">Session Type</h3>
-        <div className="grid grid-cols-3 gap-3">
+      <div className="bg-gray-50 rounded-xl p-6">
+        <h3 className="text-xl font-bold text-gray-900 mb-5 text-center">Session Type</h3>
+        <div className="grid grid-cols-3 gap-4">
           {[
             'lecture',
             'session',
@@ -1264,10 +1264,10 @@ export function SessionForm({
             return (
             <div
               key={key}
-              className={`relative rounded border p-3 cursor-pointer text-sm ${
+              className={`relative rounded-lg border p-4 cursor-pointer text-sm transition-all duration-200 ${
                 currentSessionType === key
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-gray-300 bg-white hover:border-gray-400'
+                  ? 'border-indigo-500 bg-indigo-50 shadow-md'
+                  : 'border-gray-300 bg-white hover:border-gray-400 hover:shadow-sm'
               }`}
               onClick={() => setCurrentSessionType(key)}
             >
@@ -1280,7 +1280,7 @@ export function SessionForm({
                   onChange={() => setCurrentSessionType(key)}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                 />
-                <label className="ml-2 block text-sm font-bold text-gray-900">
+                <label className="ml-3 block text-base font-bold text-gray-900">
                   {type.name}
                 </label>
               </div>
@@ -1291,15 +1291,13 @@ export function SessionForm({
       </div>
 
       {/* Core Fields: Title, Topic, Time */}
-      <div className="space-y-3">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+        <h3 className="text-xl font-bold text-gray-900 text-center border-b border-gray-100 pb-3">Session Details</h3>
         
-        {/* Show pre-selected hall and time slot when adding new session */}
-        {/* Removed preview/info card to keep form minimal */}
-        
-        <div className="grid grid-cols-1 gap-3">
+        <div className="space-y-6">
           {/* Session Title - Show for ALL session types */}
           <div>
-            <label className="block text-lg font-bold text-gray-800 mb-2 text-center">
+            <label className="block text-xl font-bold text-gray-800 mb-3 text-center">
               {currentSessionType === 'lecture' ? 'Talk Title *' : 
                currentSessionType === 'session' ? 'Session Title' : 'Session Title *'}
             </label>
@@ -1309,7 +1307,7 @@ export function SessionForm({
               onChange={(e) => handleInputChange('title', e.target.value)}
               placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : 
                           currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${
+              className={`w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 text-base ${
                 (currentSessionType === 'lecture' && !formData.title) ? 'border-red-300 focus:ring-red-300 focus:border-red-400' : 
                 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
               }`}
@@ -1320,7 +1318,7 @@ export function SessionForm({
           {/* Topic - Show for all types except lecture (since lecture uses title as topic) */}
           {currentSessionType !== 'lecture' && (
             <div>
-              <label className="block text-lg font-bold text-gray-800 mb-2 text-center">
+              <label className="block text-xl font-bold text-gray-800 mb-3 text-center">
                 {currentSessionType === 'session' ? 'Session Topic' : 'Topic'}
               </label>
               <input
@@ -1328,15 +1326,17 @@ export function SessionForm({
                 value={formData.topic}
                 onChange={(e) => handleInputChange('topic', e.target.value)}
                 placeholder={currentSessionType === 'session' ? 'Enter session topic' : 'Enter topic'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base"
               />
             </div>
           )}
 
           {/* Time Range - Always visible */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <div className="text-[11px] text-gray-500">Select session start</div>
+          <div>
+            <h4 className="text-lg font-bold text-gray-800 mb-4 text-center">Session Time</h4>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <div className="text-sm text-gray-600 font-medium text-center">Start Time</div>
               <TimePicker
                 value={formData.custom_start_time}
                 onChange={(t) => handleInputChange('custom_start_time', t)}
@@ -1345,19 +1345,20 @@ export function SessionForm({
                 idBase="session-start"
                 ariaInvalid={Boolean(errors.time)}
               />
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm text-gray-600 font-medium text-center">End Time</div>
+                <TimePicker
+                  value={formData.custom_end_time}
+                  onChange={(t) => handleInputChange('custom_end_time', t)}
+                  label="End Time"
+                  required
+                  idBase="session-end"
+                  ariaInvalid={Boolean(errors.time)}
+                  ariaDescribedById={errors.time ? 'session-time-error' : undefined}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <div className="text-[11px] text-gray-500">Select session end</div>
-              <TimePicker
-                value={formData.custom_end_time}
-                onChange={(t) => handleInputChange('custom_end_time', t)}
-                label="End Time"
-                required
-                idBase="session-end"
-                ariaInvalid={Boolean(errors.time)}
-                ariaDescribedById={errors.time ? 'session-time-error' : undefined}
-              />
-          </div>
           </div>
           {errors.time && (
             <div id="session-time-error" className="text-[11px] text-red-600">{errors.time}</div>
@@ -1367,7 +1368,9 @@ export function SessionForm({
 
       {/* Optional minimal fields by type (hidden for simplified Session flow and lecture/talk) */}
       {currentSessionType !== 'session' && currentSessionType !== 'lecture' && (
-      <div className="grid grid-cols-1 gap-3">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+        <h3 className="text-xl font-bold text-gray-900 text-center border-b border-gray-100 pb-3">Additional Details</h3>
+        <div className="space-y-4">
           {optionalFields.map(field => {
             // Description removed globally
             if (field === 'description') return null
@@ -1388,87 +1391,101 @@ export function SessionForm({
             return null
           })}
         </div>
+        </div>
       )}
 
       {/* Lecture/Talk specific: primary Speaker free-text */}
       {currentSessionType === 'lecture' && (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-xl font-bold text-gray-900 text-center border-b border-gray-100 pb-3 mb-6">Speaker Information</h3>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Speaker *</label>
+            <label className="block text-lg font-bold text-gray-800 mb-3 text-center">Speaker *</label>
             <input
               type="text"
               value={formData.speaker_id}
               onChange={(e) => handleInputChange('speaker_id', e.target.value)}
               required
               placeholder="Type a name (new or existing)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base"
             />
-      </div>
+          </div>
         </div>
       )}
 
       {/* Simplified Session flow */}
       {currentSessionType === 'session' && (
-        <div className="space-y-3 will-change-auto">
-          {renderSessionSimplifiedFlow()}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+          <h3 className="text-xl font-bold text-gray-900 text-center border-b border-gray-100 pb-3">Session Management</h3>
+          <div className="space-y-6 will-change-auto">
+            {renderSessionSimplifiedFlow()}
+          </div>
         </div>
       )}
 
       {/* Dynamic Participants Section (hidden for simplified Session flow) */}
       {currentSessionType !== 'session' && (
-        <div className="space-y-2">
-        {renderDynamicParticipants()}
-      </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+          <h3 className="text-xl font-bold text-gray-900 text-center border-b border-gray-100 pb-3">Participants</h3>
+          <div className="space-y-4">
+            {renderDynamicParticipants()}
+          </div>
+        </div>
       )}
 
       {/* Symposium Subtalks Section */}
       {currentSessionType === 'symposium' && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-bold text-gray-900 text-center">Symposium Subtalks</h3>
-          {renderSymposiumSubtalkFields()}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+          <h3 className="text-xl font-bold text-gray-900 text-center border-b border-gray-100 pb-3">Symposium Subtalks</h3>
+          <div className="space-y-4">
+            {renderSymposiumSubtalkFields()}
+          </div>
         </div>
       )}
 
       {/* Custom Data Section */}
       {currentSessionType === 'other' && (
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-900">Custom Fields</h3>
-          {renderCustomDataFields()}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-6">
+          <h3 className="text-xl font-bold text-gray-900 text-center border-b border-gray-100 pb-3">Custom Fields</h3>
+          <div className="space-y-4">
+            {renderCustomDataFields()}
+          </div>
         </div>
       )}
 
       {/* Removed preview to keep form compact */}
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-3 border-top border-gray-200">
-        {/* Left: Delete when editing */}
-        <div>
-          {onDelete && (
+      <div className="bg-gray-50 rounded-xl p-6 border-t-4 border-indigo-500">
+        <div className="flex items-center justify-between">
+          {/* Left: Delete when editing */}
+          <div>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="px-6 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 hover:scale-105"
+              >
+                🗑️ Delete Session
+              </button>
+            )}
+          </div>
+          {/* Right: Cancel / Save */}
+          <div className="flex space-x-4">
             <button
               type="button"
-              onClick={onDelete}
-              className="px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              onClick={onCancel}
+              className="px-6 py-3 border border-gray-300 shadow-lg text-base font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 hover:scale-105"
             >
-              Delete Session
+              Cancel
             </button>
-          )}
-              </div>
-        {/* Right: Cancel / Save */}
-        <div className="flex space-x-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? 'Saving...' : 'Save Session'}
-        </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-8 py-3 border border-transparent text-base font-semibold rounded-lg shadow-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
+            >
+              {isSubmitting ? '💾 Saving...' : '✅ Save Session'}
+            </button>
+          </div>
         </div>
       </div>
     </form>

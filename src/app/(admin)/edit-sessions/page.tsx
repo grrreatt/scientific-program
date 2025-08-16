@@ -1223,31 +1223,7 @@ export default function EditSessionsPage() {
     setItemToDelete(null)
   }
 
-  // Search functionality (kept for future use)
-  const performSearch = (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([])
-      return
-    }
 
-    const results = sessions.filter(session => {
-      const searchLower = query.toLowerCase()
-      return (
-        session.title?.toLowerCase().includes(searchLower) ||
-        session.topic?.toLowerCase().includes(searchLower) ||
-        session.stage_name?.toLowerCase().includes(searchLower) ||
-        session.session_type?.toLowerCase().includes(searchLower) ||
-        session.description?.toLowerCase().includes(searchLower)
-      )
-    })
-    setSearchResults(results)
-  }
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value
-    setSearchQuery(query)
-    performSearch(query)
-  }
 
   // Time slot editing functions
   const handleEditTimeSlot = (timeSlot: DayTimeSlot) => {
@@ -1494,22 +1470,10 @@ export default function EditSessionsPage() {
       }))
   }
 
-  // Filter sessions for selected day and search
+  // Filter sessions for selected day
   const filteredSessions = sessions.filter(session => {
     const selectedDayData = days.find(d => d.name === selectedDay)
-    const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
-    if (!matchesDay) return false
-    
-    if (!searchQuery.trim()) return true
-    
-    const searchLower = searchQuery.toLowerCase()
-    return (
-      session.title?.toLowerCase().includes(searchLower) ||
-      session.topic?.toLowerCase().includes(searchLower) ||
-      session.stage_name?.toLowerCase().includes(searchLower) ||
-      session.session_type?.toLowerCase().includes(searchLower) ||
-      session.description?.toLowerCase().includes(searchLower)
-    )
+    return session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
   })
 
   // Loading state
