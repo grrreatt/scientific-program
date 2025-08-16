@@ -715,23 +715,32 @@ export default function PublicProgramPage() {
                                     </div>
                                   )}
 
-                                  {/* Sub-talks */}
+                                  {/* Sub-talks - Compact with all info */}
                                   {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
-                                    <div className="text-sm border-t pt-2 space-y-1 text-center">
-                                      <div className="font-bold text-gray-800 mb-1">📋 Sub-talks:</div>
-                                      {(session as any).sub_sessions.map((st: any, idx: number) => (
-                                        <div key={st.id || idx} className="text-center bg-gray-50 rounded p-2">
-                                          <div className="text-xs text-indigo-600 font-bold">
-                                            🕘 {formatTime(st.start_time)}–{formatTime(st.end_time)}
-                                          </div>
-                                          <div className="font-bold text-gray-900">{st.title}</div>
-                                          {st.speaker_name && (
-                                            <div className="text-xs text-gray-600">
-                                              Speaker: {st.speaker_name}
+                                    <div className="text-xs border-t pt-2 mt-2">
+                                      <div className="font-bold text-gray-800 mb-1 text-center">📋 Sub-talks</div>
+                                      <div className="space-y-1">
+                                        {(session as any).sub_sessions.map((st: any, idx: number) => (
+                                          <div key={st.id || idx} className="bg-gray-50 rounded p-1.5 text-left">
+                                            <div className="flex justify-between items-start mb-1">
+                                              <span className="text-xs text-indigo-600 font-bold">
+                                                🕘 {formatTime(st.start_time)}–{formatTime(st.end_time)}
+                                              </span>
                                             </div>
-                                          )}
-                                        </div>
-                                      ))}
+                                            <div className="font-bold text-gray-900 text-xs leading-tight mb-1">{st.title}</div>
+                                            {st.topic && (
+                                              <div className="text-xs text-gray-600 italic mb-1">
+                                                Topic: {st.topic}
+                                              </div>
+                                            )}
+                                            {st.speaker_name && (
+                                              <div className="text-xs text-gray-600">
+                                                Speaker: {st.speaker_name}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
                                   )}
                                 </div>
