@@ -678,6 +678,15 @@ export default function PublicProgramPage() {
                               <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-teal-400">
                                 {/* Session Content */}
                                 <div className="text-center space-y-2">
+                                  {/* Individual Session Time - Show actual session time, not time slot time */}
+                                  <div className="flex justify-center mb-2">
+                                    <div className="bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full">
+                                      <span className="text-xs font-bold text-emerald-800">
+                                        {formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
+                                      </span>
+                                    </div>
+                                  </div>
+
                                   {/* Session Type Badge - No icons, better colors */}
                                   <div className="flex justify-center mb-2">
                                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getSessionTypeColor(session.session_type)}`}>
