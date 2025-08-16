@@ -438,6 +438,15 @@ export default function EditSessionsPage() {
       const derivedStart = formData.custom_start_time || chosenTimeSlot?.start_time || null
       const derivedEnd = formData.custom_end_time || chosenTimeSlot?.end_time || null
 
+      // Prepare data field for symposium_subtalks and custom_data
+      const dataField: any = {}
+      if (sessionType === 'symposium' && formData.symposium_subtalks?.length > 0) {
+        dataField.symposium_subtalks = formData.symposium_subtalks
+      }
+      if (sessionType === 'other' && formData.custom_data) {
+        Object.assign(dataField, formData.custom_data)
+      }
+
       const insertData = {
         title: formData.title,
         session_type: sessionType,
@@ -450,6 +459,7 @@ export default function EditSessionsPage() {
         parallel_meal_type: formData.parallel_meal_type,
         custom_start_time: formData.custom_start_time || null,
         custom_end_time: formData.custom_end_time || null,
+        data: Object.keys(dataField).length > 0 ? dataField : null,
         // legacy required columns kept in schema; set for DB NOT NULL safety
         start_time: derivedStart,
         end_time: derivedEnd
@@ -1773,12 +1783,17 @@ export default function EditSessionsPage() {
             description: editingSession.description || '',
             is_parallel_meal: editingSession.is_parallel_meal || false,
             parallel_meal_type: editingSession.parallel_meal_type || '',
-            // Pass existing participant data
+            // Pass existing participant data (dynamic arrays)
             speakers: editingSession.speakers_ids?.map(id => ({ id, role: 'speaker' })) || [],
             moderators: editingSession.moderators_ids?.map(id => ({ id, role: 'moderator' })) || [],
             chairpersons: editingSession.chairpersons_ids?.map(id => ({ id, role: 'chairperson' })) || [],
             panelists: editingSession.panelists_ids?.map(id => ({ id, role: 'panelist' })) || [],
             experts: editingSession.experts_ids?.map(id => ({ id, role: 'expert' })) || [],
+            // Pass existing single participant fields
+            speaker_id: editingSession.speakers_ids?.[0] || '',
+            moderator_id: editingSession.moderators_ids?.[0] || '',
+            chairperson_id: editingSession.chairpersons_ids?.[0] || '',
+            // Pass other session-specific data
             sub_sessions: (editingSession as any).sub_sessions || [],
             symposium_subtalks: (editingSession as any).symposium_subtalks || [],
             custom_data: (editingSession as any).custom_data || {}

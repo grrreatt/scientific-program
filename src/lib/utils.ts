@@ -106,8 +106,15 @@ export const supabaseUtils = {
       start_time: st.start_time || '',
       end_time: st.end_time || '',
       type: st.sub_session_type || 'lecture',
-      speaker_name: st.speakers?.name || ''
+      speaker_name: st.speakers?.name || '',
+      speaker_id: st.speaker_id,
+      chairperson_id: st.chairperson_id,
+      expert_ids: st.expert_ids,
+      sub_session_type: st.sub_session_type
     }))
+
+    // Symposium subtalks (stored in data field)
+    const symposiumSubtalks = session.data?.symposium_subtalks || []
 
     const transformed = {
       ...session,
@@ -123,7 +130,25 @@ export const supabaseUtils = {
       chairpersons,
       panelists,
       experts,
-      sub_sessions: subSessions
+      sub_sessions: subSessions,
+      symposium_subtalks: symposiumSubtalks,
+      custom_data: session.data || {},
+      // Add participant IDs for editing
+      speakers_ids: participants
+        .filter((p: any) => ['speaker', 'orator', 'presenter', 'workshop_lead'].includes(p.role))
+        .map((p: any) => p.speaker_id),
+      moderators_ids: participants
+        .filter((p: any) => ['moderator', 'discussion_leader'].includes(p.role))
+        .map((p: any) => p.speaker_id),
+      chairpersons_ids: participants
+        .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
+        .map((p: any) => p.speaker_id),
+      panelists_ids: participants
+        .filter((p: any) => p.role === 'panelist')
+        .map((p: any) => p.speaker_id),
+      experts_ids: participants
+        .filter((p: any) => p.role === 'expert')
+        .map((p: any) => p.speaker_id)
     }
 
     return transformed
@@ -147,6 +172,7 @@ export const supabaseUtils = {
     end_time,
     session_number,
     status,
+    data,
     created_at,
     updated_at,
     conference_days(name),
@@ -165,6 +191,8 @@ export const supabaseUtils = {
       topic,
       sub_session_type,
       speaker_id,
+      chairperson_id,
+      expert_ids,
       speakers!sub_sessions_speaker_id_fkey(name)
     )
   `,
