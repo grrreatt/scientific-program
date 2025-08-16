@@ -6,8 +6,8 @@
   "/public-workshops/page": "app/public-workshops/page.js",
   "/public-program/page": "app/public-program/page.js",
   "/api/export/route": "app/api/export/route.js",
-  "/(admin)/dashboard/page": "app/(admin)/dashboard/page.js",
-  "/(admin)/participants/page": "app/(admin)/participants/page.js",
   "/(admin)/speakers/page": "app/(admin)/speakers/page.js",
-  "/(admin)/edit-sessions/page": "app/(admin)/edit-sessions/page.js"
+  "/(admin)/participants/page": "app/(admin)/participants/page.js",
+  "/(admin)/edit-sessions/page": "app/(admin)/edit-sessions/page.js",
+  "/(admin)/dashboard/page": "app/(admin)/dashboard/page.js"
 }
