@@ -1377,48 +1377,61 @@ export default function EditSessionsPage() {
       
       return matchesDay && matchesHall && matchesTimeSlot
     })
+
+    return exactMatch
+  }
+
+  // Helper function to determine if we should show "Add Session" button
+  const shouldShowAddSessionButton = (timeSlotId: string, hallId: string) => {
+    const selectedDayData = days.find(day => day.name === selectedDay)
     
-    if (exactMatch) {
-      return exactMatch
-    }
-    
-    // Fallback: match by time overlap (for sessions without time_slot_id)
-    const slot = timeSlots.find(s => s.id === timeSlotId)
-    if (!slot) return undefined
-    
-    const slotStart = slot.start_time
-    const slotEnd = slot.end_time
-    
-    const toMinutes = (t: string) => {
-      if (!t) return -1
-      const [h, m] = t.split(':').map(Number)
-      return h * 60 + (m || 0)
-    }
-    
-    const sStartMin = toMinutes(slotStart)
-    const sEndMin = toMinutes(slotEnd)
-    
-    const timeMatch = sessions.find(session => {
+    // Get all sessions for this hall on the selected day
+    const hallSessions = sessions.filter(session => {
       const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
       const matchesHall = session.stage_id === hallId
-      
-      if (!matchesDay || !matchesHall) return false
-      
-      // Only use time overlap if session doesn't have a time_slot_id
-      if (session.time_slot_id) return false
-      
-      if (session.start_time && session.end_time) {
-        const a1 = toMinutes(String(session.start_time))
-        const a2 = toMinutes(String(session.end_time))
-        if (a1 === -1 || a2 === -1 || sStartMin === -1 || sEndMin === -1) return false
-        
-        return a1 < sEndMin && sStartMin < a2
-      }
-      
-      return false
+      return matchesDay && matchesHall
     })
+
+    // If no sessions exist in this hall, show all "Add Session" buttons
+    if (hallSessions.length === 0) {
+      return true
+    }
+
+    // If sessions exist, only show "Add Session" for the next available time slot
+    // Get all time slots for the day, ordered by time
+    const currentTimeSlots = timeSlots
+      .filter(ts => ts.day_id === selectedDayData?.id)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+
+    // Find occupied time slot IDs for this hall
+    const occupiedTimeSlotIds = new Set(hallSessions.map(s => s.time_slot_id))
+
+    // Find the first empty time slot after any occupied slot
+    const currentTimeSlotIndex = currentTimeSlots.findIndex(ts => ts.id === timeSlotId)
     
-    return timeMatch || undefined
+    // If this is a break (global block), don't show add session button
+    const currentTimeSlot = currentTimeSlots[currentTimeSlotIndex]
+    if (currentTimeSlot?.is_break) {
+      return false
+    }
+
+    // Find the latest occupied time slot index
+    let latestOccupiedIndex = -1
+    for (let i = 0; i < currentTimeSlots.length; i++) {
+      if (occupiedTimeSlotIds.has(currentTimeSlots[i].id)) {
+        latestOccupiedIndex = i
+      }
+    }
+
+    // Show "Add Session" only for the first empty slot after the latest occupied one
+    if (latestOccupiedIndex === -1) {
+      // No occupied slots, show only for the first time slot
+      return currentTimeSlotIndex === 0
+    } else {
+      // Show for the first empty slot after the latest occupied slot
+      const nextAvailableIndex = latestOccupiedIndex + 1
+      return currentTimeSlotIndex === nextAvailableIndex && !occupiedTimeSlotIds.has(timeSlotId)
+    }
   }
 
   // Calendar utility functions
@@ -1819,7 +1832,7 @@ export default function EditSessionsPage() {
                                     )}
                           </div>
                         </div>
-                      ) : (
+                      ) : shouldShowAddSessionButton(timeSlot.id, hall.id) ? (
                         <div className="h-full flex items-center justify-center">
                           <button
                             onClick={() => handleAddSession(hall.id, timeSlot.id)}
@@ -1827,6 +1840,12 @@ export default function EditSessionsPage() {
                           >
                             + Add Session
                           </button>
+                        </div>
+                      ) : (
+                        <div className="h-full flex items-center justify-center">
+                          <div className="text-gray-300 text-xs">
+                            Empty
+                          </div>
                         </div>
                       )}
                             </td>
