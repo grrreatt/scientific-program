@@ -620,119 +620,190 @@ export default function PublicProgramPage() {
       </div>
 
       {/* Program Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-12">
         {/* Day Header */}
-        <div className="mb-8 text-center print:mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 print:text-xl">
+        <div className="mb-12 text-center">
+          <h2 className="text-4xl font-bold text-gray-900 mb-3">
             {selectedDay}
           </h2>
-          <p className="mt-1 text-indigo-600 print:text-sm">
+          <p className="text-xl text-indigo-600 font-medium">
             {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
           </p>
         </div>
 
-        {/* Timeline Table */}
-        <div className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto">
-          <div className="min-w-max">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-50">
-                  {/* Hall Column Headers only */}
-                  {getHallsForSelectedDay().map((hall) => (
-                    <th key={hall.id} className="w-64 bg-indigo-50 border-r border-indigo-100 p-2 font-semibold text-sm text-indigo-800 text-left">
-                      🏛️ {hall.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {timeSlots.map((timeSlot) => (
-                  <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                    {/* Check if this is a global block (break) */}
-                    {timeSlot.is_break ? (
-                      <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-2 text-center">
-                        <div className="text-sm font-medium text-orange-800">
-                          🔶 {timeSlot.break_title || 'Global Block'}
+        {/* Hall Headers */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8 mb-8">
+          {getHallsForSelectedDay().map((hall) => (
+            <div key={hall.id} className="text-center">
+              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 rounded-xl shadow-lg">
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-2xl">🏛️</span>
+                  <h3 className="text-xl font-bold">{hall.name}</h3>
+                </div>
+                {hall.capacity && (
+                  <p className="text-sm opacity-90 mt-1">Capacity: {hall.capacity}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Timeline Cards */}
+        <div className="space-y-8">
+          {timeSlots.map((timeSlot) => (
+            <div key={timeSlot.id} className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+              {/* Time Header */}
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-8 py-6 border-b border-gray-200">
+                <div className="flex items-center justify-center space-x-3">
+                  <span className="text-2xl">🕘</span>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {formatTimeRangeCompact(timeSlot.start_time, timeSlot.end_time)}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Check if this is a global block (break) */}
+              {timeSlot.is_break ? (
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 px-8 py-12">
+                  <div className="text-center">
+                    <div className="text-6xl mb-4">🔶</div>
+                    <h3 className="text-3xl font-bold text-orange-800 mb-2">
+                      {timeSlot.break_title || 'Global Block'}
+                    </h3>
+                    <p className="text-lg text-orange-700 font-medium">
+                      All Halls - {formatTimeRangeCompact(timeSlot.start_time, timeSlot.end_time)}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                /* Hall Sessions Grid */
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8 p-8">
+                  {getHallsForSelectedDay().map((hall) => {
+                    const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
+                    return (
+                      <div key={hall.id} className="space-y-3">
+                        {/* Hall Name Badge */}
+                        <div className="flex items-center justify-center">
+                          <div className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full text-sm font-semibold">
+                            🏛️ {hall.name}
+                          </div>
                         </div>
-                      </td>
-                    ) : (
-                      /* Hall Columns only */
-                      getHallsForSelectedDay().map((hall) => {
-                        const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
-                        return (
-                          <td key={hall.id} className="w-64 border-r border-gray-200 p-1">
-                            {session ? (
-                              <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-                                {/* Public Session Block with Time at Top */}
-                                <div className="text-center space-y-2">
-                                  {/* TIME RANGE (bold and bigger) */}
-                                  <div className="text-sm font-bold text-gray-900">
-                                    <span className="mr-1">🕘</span>{formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
+
+                        {session ? (
+                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                            {/* Session Type Icon & Badge */}
+                            <div className="flex items-center justify-center mb-6">
+                              <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold shadow-sm ${getSessionTypeColor(session.session_type)}`}>
+                                <span className="text-lg mr-2">{getSessionIcon(session.session_type)}</span>
+                                {getSessionTypeLabel(session.session_type)}
+                              </div>
+                            </div>
+
+                            {/* Session Content */}
+                            <div className="text-center space-y-6">
+                              {/* TITLE (large and prominent) */}
+                              <h4 className="text-2xl font-bold text-gray-900 leading-tight">
+                                {session.title}
+                              </h4>
+
+                              {/* Topic */}
+                              {session.topic && (
+                                <div className="bg-white/70 rounded-xl px-6 py-3">
+                                  <p className="text-lg font-semibold text-gray-700">
+                                    <span className="text-indigo-600">Topic:</span> {session.topic}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Participants */}
+                              <div className="space-y-4">
+                                {session.speakers && session.speakers.length > 0 && (
+                                  <div className="bg-blue-50 rounded-xl px-6 py-4">
+                                    <p className="text-lg font-semibold text-blue-900">
+                                      <span className="flex items-center justify-center mb-2">
+                                        <span className="text-xl mr-2">🎤</span>
+                                        Speaker{session.speakers.length > 1 ? 's' : ''}
+                                      </span>
+                                      <span className="text-blue-800">{session.speakers.join(', ')}</span>
+                                    </p>
                                   </div>
-                                  {/* TITLE (larger and bold) */}
-                                  <div className="text-lg font-bold text-gray-900">
-                                    {session.title}
+                                )}
+                                
+                                {session.moderators && session.moderators.length > 0 && (
+                                  <div className="bg-purple-50 rounded-xl px-6 py-4">
+                                    <p className="text-lg font-semibold text-purple-900">
+                                      <span className="flex items-center justify-center mb-2">
+                                        <span className="text-xl mr-2">👨‍⚖️</span>
+                                        Moderator{session.moderators.length > 1 ? 's' : ''}
+                                      </span>
+                                      <span className="text-purple-800">{session.moderators.join(', ')}</span>
+                                    </p>
                                   </div>
-                                  {/* Full role names for public view */}
-                                  {session.speakers && session.speakers.length > 0 && (
-                                    <div className="text-sm text-gray-700 text-center">
-                                      <span className="font-bold">Speaker:</span> {session.speakers.join(', ')}
-                                    </div>
-                                  )}
-                                  {session.moderators && session.moderators.length > 0 && (
-                                    <div className="text-sm text-gray-700 text-center">
-                                      <span className="font-bold">Moderator:</span> {session.moderators.join(', ')}
-                                    </div>
-                                  )}
-                                  {session.chairpersons && session.chairpersons.length > 0 && (
-                                    <div className="text-sm text-gray-700 text-center">
-                                      <span className="font-bold">Chairperson:</span> {session.chairpersons.join(', ')}
-                                    </div>
-                                  )}
-                                  {/* Topic */}
-                                  {session.topic ? (
-                                    <div className="text-sm font-bold text-gray-700 text-center">Topic: {session.topic}</div>
-                                  ) : null}
-                                  {/* Sub-talks (public view) */}
-                                  {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
-                                    <div className="text-sm text-gray-700 border-t border-gray-100 pt-2 space-y-1 text-center">
-                                      <div className="font-bold text-gray-800 mb-1">Sub-talks:</div>
-                                      {(session as any).sub_sessions.map((st: any, idx: number) => (
-                                        <div key={st.id || idx} className="text-center">
-                                          <div className="text-xs text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)}</div>
-                                          <div className="font-bold">{st.title}</div>
-                                          {st.speaker_name ? <div className="text-xs text-gray-600">Speaker: {st.speaker_name}</div> : null}
+                                )}
+                                
+                                {session.chairpersons && session.chairpersons.length > 0 && (
+                                  <div className="bg-amber-50 rounded-xl px-6 py-4">
+                                    <p className="text-lg font-semibold text-amber-900">
+                                      <span className="flex items-center justify-center mb-2">
+                                        <span className="text-xl mr-2">👑</span>
+                                        Chairperson{session.chairpersons.length > 1 ? 's' : ''}
+                                      </span>
+                                      <span className="text-amber-800">{session.chairpersons.join(', ')}</span>
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Sub-talks */}
+                              {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
+                                <div className="bg-gray-50 rounded-xl px-6 py-6 border-2 border-gray-200">
+                                  <h5 className="text-xl font-bold text-gray-800 mb-6 flex items-center justify-center">
+                                    <span className="text-2xl mr-2">📋</span>
+                                    Sub-talks
+                                  </h5>
+                                  <div className="space-y-4">
+                                    {(session as any).sub_sessions.map((st: any, idx: number) => (
+                                      <div key={st.id || idx} className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                                        <div className="text-center space-y-3">
+                                          <div className="text-sm font-bold text-indigo-600">
+                                            🕘 {formatTime(st.start_time)}–{formatTime(st.end_time)}
+                                          </div>
+                                          <h6 className="text-lg font-bold text-gray-900">{st.title}</h6>
+                                          {st.speaker_name && (
+                                            <p className="text-base text-gray-700">
+                                              <span className="font-semibold">Speaker:</span> {st.speaker_name}
+                                            </p>
+                                          )}
                                         </div>
-                                      ))}
-                                    </div>
-                                  )}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="h-full flex items-center justify-center">
-                                <div className="text-gray-300 text-xs border-2 border-dashed border-gray-200 rounded p-2 w-full h-16 flex items-center justify-center">
-                                  No Session
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                        )
-                      })
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center">
+                            <div className="text-4xl mb-4 text-gray-300">📅</div>
+                            <p className="text-lg text-gray-500 font-medium">No Session Scheduled</p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Print Button */}
-        <div className="mt-8 text-center print:hidden">
+        <div className="mt-16 text-center print:hidden">
           <button
             onClick={() => window.print()}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="inline-flex items-center px-8 py-4 border border-transparent text-lg font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transform hover:scale-105 transition-all duration-200"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
             Print Program
