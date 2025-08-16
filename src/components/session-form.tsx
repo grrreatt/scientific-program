@@ -383,18 +383,17 @@ export function SessionForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validation tweaks: for 'session' type, only require times; others use default rules
-    const sessionConfig = SESSION_TYPES[currentSessionType]
-    const requiredFields = sessionConfig.fields.required
-    const optionalFields = sessionConfig.fields.optional
+    // Validation: require title for lecture sessions
+    if (currentSessionType === 'lecture' && !formData.title?.trim()) {
+      alert('Please enter a talk title for the lecture')
+      return
+    }
     
-    // unified rule: only start/end time must be present
+    // Validation: require start/end time for all sessions
     if (!formData.custom_start_time || !formData.custom_end_time) {
       alert('Please select session start and end time')
       return
     }
-
-    // Relax participant enforcement: allow saving with only time
 
     // Auto-fill title for session if empty to satisfy DB NOT NULL constraint
     const dataToSubmit = { ...formData }
@@ -1301,37 +1300,41 @@ export function SessionForm({
         {/* Removed preview/info card to keep form minimal */}
         
         <div className="grid grid-cols-1 gap-3">
-          {/* Session Title with suggestions (hidden for lecture/talk). No '(optional)' labels anywhere */}
-          {currentSessionType !== 'lecture' && (
-              <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {currentSessionType === 'session' ? 'Session Title' : 'Session Title *'}
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder={currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${currentSessionType !== 'session' && !formData.title ? 'border-red-300 focus:ring-red-300 focus:border-red-400' : 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'}`}
-                required={currentSessionType !== 'session'}
-              />
-              </div>
-          )}
-
-          {/* Topic / Talk Title: show for all types. For lecture: required. For session: optional label as Session Topic. */}
+          {/* Session Title - Show for ALL session types */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {currentSessionType === 'lecture' ? 'Talk Title *' : currentSessionType === 'session' ? 'Session Topic' : 'Topic'}
+              {currentSessionType === 'lecture' ? 'Talk Title *' : 
+               currentSessionType === 'session' ? 'Session Title' : 'Session Title *'}
             </label>
             <input
               type="text"
-              value={formData.topic}
-              onChange={(e) => handleInputChange('topic', e.target.value)}
-              placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : currentSessionType === 'session' ? 'Enter session topic' : 'Enter topic'}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              value={formData.title}
+              onChange={(e) => handleInputChange('title', e.target.value)}
+              placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : 
+                          currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
+              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${
+                (currentSessionType === 'lecture' && !formData.title) ? 'border-red-300 focus:ring-red-300 focus:border-red-400' : 
+                'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+              }`}
               required={currentSessionType === 'lecture'}
             />
           </div>
+
+          {/* Topic - Show for all types except lecture (since lecture uses title as topic) */}
+          {currentSessionType !== 'lecture' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {currentSessionType === 'session' ? 'Session Topic' : 'Topic'}
+              </label>
+              <input
+                type="text"
+                value={formData.topic}
+                onChange={(e) => handleInputChange('topic', e.target.value)}
+                placeholder={currentSessionType === 'session' ? 'Enter session topic' : 'Enter topic'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              />
+            </div>
+          )}
 
           {/* Time Range - Always visible */}
           <div className="grid grid-cols-2 gap-4">
