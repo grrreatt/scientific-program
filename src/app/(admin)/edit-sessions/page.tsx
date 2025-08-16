@@ -525,28 +525,43 @@ export default function EditSessionsPage() {
           participantsToAdd.push({ session_id: sessionId, speaker_id: formData.moderator_id, role: 'moderator' })
         }
 
-        // Add chairpersons (dynamic array)
-        if (formData.chairpersons && formData.chairpersons.length > 0) {
-          formData.chairpersons.forEach((chairperson: any) => {
-            // collect for resolution
-          })
-        }
-        // Panelists array (dynamic)
-        if (formData.panelists && formData.panelists.length > 0) {
-          formData.panelists.forEach((p: any) => {
-            // collect for resolution
-          })
+        // Function to ensure a person exists in the database and return their ID
+        const ensurePerson = async (nameOrId: string): Promise<string | null> => {
+          if (!nameOrId || !nameOrId.trim()) return null
+          
+          const input = nameOrId.trim()
+          
+          // If it's already a UUID, return it
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input)) {
+            return input
+          }
+          
+          // It's a name, try to find existing person first
+          const { data: existingPerson } = await supabase
+            .from('speakers')
+            .select('id')
+            .ilike('name', input)
+            .single()
+          
+          if (existingPerson) {
+            return existingPerson.id
+          }
+          
+          // Create new person
+          const { data: newPerson, error } = await supabase
+            .from('speakers')
+            .insert({ name: input, email: '' })
+            .select('id')
+            .single()
+          
+          if (error) {
+            console.error('Error creating person:', error)
+            return null
+          }
+          
+          return newPerson?.id || null
         }
 
-        // Experts array (dynamic)
-        if (formData.experts && formData.experts.length > 0) {
-          formData.experts.forEach((e: any) => {
-            // collect for resolution
-          })
-        }
-
-
-        // Single chairperson field
         // Resolve all role fields to IDs and build participants list
         const resolveMany = async (items: any[], role: string) => {
           for (const it of items || []) {
