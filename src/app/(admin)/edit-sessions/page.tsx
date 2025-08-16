@@ -67,10 +67,6 @@ export default function EditSessionsPage() {
   const [selectedDayForGlobalBlock, setSelectedDayForGlobalBlock] = useState<string>('')
   const [editingGlobalBlock, setEditingGlobalBlock] = useState<DayTimeSlot | null>(null)
 
-  // Search state (removed from main interface)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<Session[]>([])
-
   // Persist selected day across reloads
   const selectDay = (dayName: string) => {
     setSelectedDay(dayName)
@@ -1556,31 +1552,7 @@ export default function EditSessionsPage() {
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Conference Program Editor</h1>
               <p className="text-sm text-gray-600">{selectedDay} Schedule - {halls.length} Halls • {timeSlots.length} Time Slots</p>
             </div>
-            {/* Global Search */}
             <div className="flex items-center space-x-2">
-                <input
-                  value={searchQuery}
-                onChange={(e)=> setSearchQuery(e.target.value)}
-                placeholder="Search title, topic, speaker, hall…"
-                className="px-3 py-1.5 border rounded-md text-sm"
-              />
-              {/* Add Day Button */}
-              <button
-                onClick={() => setShowAddDayModal(true)}
-                className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-              >
-                <span>📅</span>
-                <span>Add Day</span>
-              </button>
-
-              {/* Add Hall Button */}
-              <button
-                onClick={() => setShowAddHallModal(true)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-              >
-                <span>🏛️</span>
-                <span>Add Hall</span>
-              </button>
               <RealtimeStatus />
             </div>
           </div>
@@ -1643,25 +1615,27 @@ export default function EditSessionsPage() {
               ))}
             </div>
             
-            {/* Add Day Button */}
-            <button
-              onClick={() => setShowAddDayModal(true)}
-              className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-            >
-              <span>📅</span>
-              <span>Add Day</span>
-            </button>
+            {/* Management Actions */}
+            <div className="flex items-center space-x-3">
+              {/* Add Day Button */}
+              <button
+                onClick={() => setShowAddDayModal(true)}
+                className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+              >
+                <span>📅</span>
+                <span>Add Day</span>
+              </button>
 
-            {/* Add Hall Button */}
-            <button
-              onClick={() => setShowAddHallModal(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-            >
-              <span>🏛️</span>
-              <span>Add Hall</span>
-            </button>
+              {/* Add Hall Button */}
+              <button
+                onClick={() => setShowAddHallModal(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+              >
+                <span>🏛️</span>
+                <span>Add Hall</span>
+              </button>
 
-            {/* Global Block Button */}
+              {/* Global Block Button */}
             <button
               onClick={() => {
                 const day = days.find(d => d.name === selectedDay)
@@ -1678,6 +1652,7 @@ export default function EditSessionsPage() {
               <span>🌐</span>
               <span>Global Block</span>
             </button>
+            </div>
           </div>
         </div>
       </div>
