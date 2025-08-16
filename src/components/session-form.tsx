@@ -6,6 +6,7 @@ import { SESSION_TYPES, MEAL_TYPES } from '@/lib/constants'
 import { TimePicker } from '@/components/ui/time-picker'
 import { Combobox } from '@/components/ui/combobox'
 import { formatTime12h, parseTime12h, getSessionNumberDisplay, getSessionTitleSuggestions, getNextStartTime, calculateDuration } from '@/lib/utils'
+import { PersonAutocomplete } from '@/components/ui/person-autocomplete'
 
 interface SessionFormData {
   title: string
@@ -424,13 +425,18 @@ export function SessionForm({
               <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
                 {label} {required && <span className="text-red-500">*</span>}
               </label>
-              <input
-                id={fieldName}
-                type="text"
+              <PersonAutocomplete
                 value={(value as string) || ''}
-                onChange={(e) => handleInputChange(fieldName, e.target.value)}
+                onChange={(newValue) => handleInputChange(fieldName, newValue)}
                 placeholder={`Type a name (new or existing)`}
-                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+                required={required}
+                onPersonSelect={(person) => {
+                  if (person) {
+                    console.log(`Selected ${fieldName}:`, person)
+                    // You can store the person ID if needed
+                    // handleInputChange(fieldName, person.id)
+                  }
+                }}
               />
               <p className="text-xs text-gray-500 mt-1">You can type an existing name or a new person; it will be created on save.</p>
             </div>
@@ -541,13 +547,18 @@ export function SessionForm({
         {values.map((value, index) => (
           <div key={index} className="flex items-center space-x-2 mb-2">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">{index === 0 ? 'Assistant' : 'Assistant'}</label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium text-gray-700 mb-1">{index === 0 ? label : label}</label>
+              <PersonAutocomplete
                 value={value}
-                onChange={(val) => handleArrayChange(fieldName, index, (val.target as HTMLInputElement).value)}
+                onChange={(newValue) => handleArrayChange(fieldName, index, newValue)}
                 placeholder="Type a name"
-                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+                onPersonSelect={(person) => {
+                  if (person) {
+                    console.log(`Selected ${fieldName} ${index}:`, person)
+                    // You can store the person ID if needed
+                    // handleArrayChange(fieldName, index, person.id)
+                  }
+                }}
               />
             </div>
             {values.length > 1 && (
@@ -606,21 +617,24 @@ export function SessionForm({
               <label htmlFor={`subtalk-speaker-${index}`} className="block text-sm font-medium text-gray-700 mb-1">
                 Speaker
               </label>
-              <select
-                id={`subtalk-speaker-${index}`}
-                value={(subtalk as any).speaker_id || ''}
-                onChange={(e) => {
+              <PersonAutocomplete
+                value={(subtalk as any).speaker_name || ''}
+                onChange={(newValue) => {
                   const newSubtalks = [...subtalks];
-                  (newSubtalks[index] as any).speaker_id = e.target.value;
+                  (newSubtalks[index] as any).speaker_name = newValue;
                   setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
                 }}
-                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3 text-gray-900"
-              >
-                <option value="">Select Speaker</option>
-                {speakers.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+                placeholder="Type a name"
+                onPersonSelect={(person) => {
+                  if (person) {
+                    console.log(`Selected subtalk speaker ${index}:`, person)
+                    const newSubtalks = [...subtalks];
+                    (newSubtalks[index] as any).speaker_name = person.name;
+                    (newSubtalks[index] as any).speaker_id = person.id;
+                    setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
+                  }
+                }}
+              />
             </div>
             <div>
               <TimePicker
@@ -1398,15 +1412,20 @@ export function SessionForm({
         <div className="grid grid-cols-1 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Speaker *</label>
-            <input
-              type="text"
-              value={formData.speaker_id}
-              onChange={(e) => handleInputChange('speaker_id', e.target.value)}
-              required
+            <PersonAutocomplete
+              value={formData.speaker_id || ''}
+              onChange={(value) => handleInputChange('speaker_id', value)}
               placeholder="Type a name (new or existing)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              required
+              onPersonSelect={(person) => {
+                if (person) {
+                  console.log('Selected person:', person)
+                  // You can store the person ID if needed
+                  // handleInputChange('speaker_id', person.id)
+                }
+              }}
             />
-      </div>
+          </div>
         </div>
       )}
 
