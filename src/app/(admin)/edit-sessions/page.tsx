@@ -92,112 +92,115 @@ export default function EditSessionsPage() {
     container.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
   }, [selectedDay, dayHalls.length])
 
-  // Load all data from database
+  // Load all data
   const loadAllData = async () => {
     setLoading(true)
-    setError(null)
-    
+    setError('')
+
     try {
-      console.log('🔄 Loading all data from Supabase...')
-      
-      // Load days first
+      console.log('🔄 Loading all data for edit-sessions page...')
+
+      // Load days
       const { data: daysData, error: daysError } = await supabase
         .from('conference_days')
         .select('*')
-        .order('name', { ascending: true })
+        .order('date', { ascending: true })
 
       if (daysError) {
         console.error('❌ Error loading days:', daysError)
-        setError('Failed to load conference days')
-        return
+        throw daysError
       }
 
+      console.log(`✅ Loaded ${daysData?.length || 0} days`)
       setDays(daysData || [])
-      
-      // Restore previously selected day or choose first
-      if (daysData && daysData.length > 0) {
-        let next = selectedDay
-        if (!next) {
-          let persisted: string | null = null
-          if (typeof window !== 'undefined') {
-            try { persisted = localStorage.getItem('selectedDay') } catch {}
-          }
-          if (persisted && daysData.some(d => d.name === persisted)) {
-            next = persisted
-          } else {
-            next = daysData[0].name
-          }
-        } else if (!daysData.some(d => d.name === next)) {
-          next = daysData[0].name
-        }
-        if (next !== selectedDay) selectDay(next)
-      }
 
-      // Load halls
-      const { data: hallsData, error: hallsError } = await supabase
+      // Load stages
+      const { data: stagesData, error: stagesError } = await supabase
         .from('stages')
         .select('*')
         .order('name', { ascending: true })
 
-      if (hallsError) {
-        console.error('❌ Error loading halls:', hallsError)
-        setError('Failed to load halls')
-        return
+      if (stagesError) {
+        console.error('❌ Error loading stages:', stagesError)
+        throw stagesError
       }
 
-      setHalls(hallsData || [])
+      console.log(`✅ Loaded ${stagesData?.length || 0} stages`)
+      setHalls(stagesData || [])
 
-      // Load speakers
-      const { data: speakersData, error: speakersError } = await supabase
-        .from('speakers')
-        .select('*')
-        .order('name', { ascending: true })
-
-      if (speakersError) {
-        console.error('❌ Error loading speakers:', speakersError)
-        setError('Failed to load speakers')
-        return
-      }
-
-      setSpeakers(speakersData || [])
-
-      // Load day-specific halls
-      const { data: dayHallsData, error: dayHallsError } = await supabase
-        .from('halls_with_days')
-        .select('*')
-        .order('day_date', { ascending: true })
-        .order('hall_order', { ascending: true })
-
-      if (dayHallsError) {
-        console.error('❌ Error loading day halls:', dayHallsError)
-        setError('Failed to load day halls')
-        return
-      }
-
-      setDayHalls(dayHallsData || [])
-
-      // Load sessions with participants using consistent query
+      // Load sessions with all related data
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
-        .select(supabaseUtils.getSessionQuery())
-        .order('created_at', { ascending: true })
+        .select(`
+          id,
+          title,
+          session_type,
+          day_id,
+          stage_id,
+          time_slot_id,
+          topic,
+          description,
+          is_parallel_meal,
+          parallel_meal_type,
+          custom_start_time,
+          custom_end_time,
+          start_time,
+          end_time,
+          session_number,
+          status,
+          created_at,
+          updated_at,
+          conference_days(name),
+          stages(name),
+          day_time_slots(start_time, end_time, is_break, break_title),
+          session_participants(
+            id,
+            role,
+            speakers(id, name, title, organization)
+          ),
+          sub_sessions(
+            id,
+            title,
+            start_time,
+            end_time,
+            topic,
+            sub_session_type,
+            speaker_id,
+            speakers!sub_sessions_speaker_id_fkey(name)
+          )
+        `)
 
       if (sessionsError) {
         console.error('❌ Error loading sessions:', sessionsError)
-        // Don't fail completely, just set empty sessions
-        setSessions([])
-      } else {
-        // Transform the data using consistent utility function
-        const transformedSessions = sessionsData?.map(supabaseUtils.transformSession) || []
-        setSessions(transformedSessions)
+        throw sessionsError
       }
-      console.log('✅ All data loaded successfully')
-      console.log('📊 Data summary:', {
-        days: daysData?.length || 0,
-        halls: hallsData?.length || 0,
-        sessions: sessionsData?.length || 0,
-        sessionsCount: sessions.length
-      })
+
+      console.log(`✅ Loaded ${sessionsData?.length || 0} sessions`)
+      if (sessionsData && sessionsData.length > 0) {
+        console.log('First session:', {
+          id: sessionsData[0].id,
+          title: sessionsData[0].title,
+          day_id: sessionsData[0].day_id,
+          stage_id: sessionsData[0].stage_id,
+          time_slot_id: sessionsData[0].time_slot_id
+        })
+      }
+      
+      setSessions(sessionsData || [])
+
+      // Load day-halls relationships
+      const { data: dayHallsData, error: dayHallsError } = await supabase
+        .from('day_halls')
+        .select('*')
+        .order('hall_order', { ascending: true })
+
+      if (dayHallsError) {
+        console.error('❌ Error loading day-halls:', dayHallsError)
+        throw dayHallsError
+      }
+
+      console.log(`✅ Loaded ${dayHallsData?.length || 0} day-hall relationships`)
+      setDayHalls(dayHallsData || [])
 
     } catch (error) {
       console.error('❌ Exception loading data:', error)
@@ -1279,22 +1282,36 @@ export default function EditSessionsPage() {
   const getSessionForTimeSlotAndHall = (timeSlotId: string, hallId: string) => {
     const selectedDayData = days.find(day => day.name === selectedDay)
     
+    console.log(`🔍 Looking for session: TimeSlot=${timeSlotId}, Hall=${hallId}, Day=${selectedDay}`)
+    console.log(`Available sessions: ${sessions.length}`)
+    
     // Find session by exact match first (most reliable)
     const exactMatch = sessions.find(session => {
       const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
       const matchesHall = session.stage_id === hallId
       const matchesTimeSlot = session.time_slot_id === timeSlotId
       
+      console.log(`Checking session "${session.title}":`)
+      console.log(`  Day match: ${matchesDay} (${session.day_name} === ${selectedDay} || ${session.day_id} === ${selectedDayData?.id})`)
+      console.log(`  Hall match: ${matchesHall} (${session.stage_id} === ${hallId})`)
+      console.log(`  Time slot match: ${matchesTimeSlot} (${session.time_slot_id} === ${timeSlotId})`)
+      
       return matchesDay && matchesHall && matchesTimeSlot
     })
     
     if (exactMatch) {
+      console.log(`✅ Found exact match: "${exactMatch.title}"`)
       return exactMatch
     }
     
+    console.log('❌ No exact match found, trying time overlap...')
+    
     // Fallback: match by time overlap (for sessions without time_slot_id)
     const slot = timeSlots.find(s => s.id === timeSlotId)
-    if (!slot) return undefined
+    if (!slot) {
+      console.log('❌ Time slot not found')
+      return undefined
+    }
     
     const slotStart = slot.start_time
     const slotEnd = slot.end_time
@@ -1327,6 +1344,12 @@ export default function EditSessionsPage() {
       
       return false
     })
+    
+    if (timeMatch) {
+      console.log(`✅ Found time overlap match: "${timeMatch.title}"`)
+    } else {
+      console.log('❌ No time overlap match found')
+    }
     
     return timeMatch || undefined
   }
