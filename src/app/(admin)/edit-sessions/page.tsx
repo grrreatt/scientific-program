@@ -1764,7 +1764,7 @@ export default function EditSessionsPage() {
                                           <div key={st.id || idx} className="truncate">
                                             <span className="text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)} • </span>
                                             <span className="font-medium">{st.title}</span>
-                                            {st.speaker_name ? <span className="text-gray-500"> — S: {st.speaker_name}</span> : null}
+                                            {st.speaker_name ? <span className="text-gray-500"> — S: <span className="font-bold text-blue-600">{st.speaker_name}</span></span> : null}
                                           </div>
                                         ))}
                                       </div>
