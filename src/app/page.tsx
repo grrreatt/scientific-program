@@ -22,13 +22,7 @@ export default function HomePage() {
                   href="/public-program"
                   className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                 >
-                  Program
-                </Link>
-                <Link
-                  href="/public-workshops"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Workshops
+                  View Program
                 </Link>
               </div>
             </div>

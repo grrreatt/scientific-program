@@ -564,7 +564,7 @@ export function SessionForm({
         <button
           type="button"
           onClick={() => addArrayItem(fieldName)}
-          className="text-sm text-indigo-600 hover:text-indigo-900"
+          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
           + Add {label}
         </button>
@@ -677,7 +677,7 @@ export function SessionForm({
         <button
           type="button"
           onClick={() => addArrayItem('symposium_subtalks')}
-          className="text-sm text-indigo-600 hover:text-indigo-900"
+          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
           + Add Subtalk
         </button>
@@ -846,7 +846,7 @@ export function SessionForm({
         <button
           type="button"
           onClick={() => setFormData(prev => ({ ...prev, custom_data: { ...prev.custom_data, [`custom_field_${Object.keys(prev.custom_data).length + 1}`]: '' } }))}
-          className="text-sm text-indigo-600 hover:text-indigo-900"
+          className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         >
           + Add Custom Field
         </button>
@@ -876,10 +876,16 @@ export function SessionForm({
           
           return (
               <div key={key} className="space-y-1">
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center space-x-2">
                   <span className="text-xs text-gray-500">{icon} {label}s:</span>
                   {/* Quick add buttons */}
-                  <button type="button" onClick={() => addParticipant(key)} className="text-[11px] text-indigo-600 hover:text-indigo-800">+ {label}</button>
+                  <button 
+                    type="button" 
+                    onClick={() => addParticipant(key)} 
+                    className="inline-flex items-center px-2 py-0.5 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    + Add
+                  </button>
               </div>
                 <div className="space-y-1">
                   {participants.map((participant, index) => {
@@ -1017,7 +1023,7 @@ export function SessionForm({
           <button
             type="button"
             onClick={addSubSession}
-            className="text-sm text-indigo-600 hover:text-indigo-800"
+            className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             data-testid="add-subtalk"
           >
             + Add Subtalk
@@ -1029,9 +1035,9 @@ export function SessionForm({
               <button
                 type="button"
                 onClick={() => addParticipant('chairpersons')}
-                className="text-xs text-indigo-600 hover:text-indigo-800"
+                className="inline-flex items-center px-2 py-0.5 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                + Add Chairperson
+                + Add
               </button>
             </div>
             {/* Selected chips */}
@@ -1077,7 +1083,7 @@ export function SessionForm({
             <button
               type="button"
               onClick={addDiscussionBlock}
-              className="text-sm text-indigo-600 hover:text-indigo-800"
+              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               + Add Discussion
             </button>
@@ -1085,7 +1091,7 @@ export function SessionForm({
             <button
               type="button"
               onClick={removeDiscussion}
-              className="text-sm text-red-600 hover:text-red-800"
+              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-red-600 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-1 focus:ring-red-500"
             >
               Remove Discussion
             </button>

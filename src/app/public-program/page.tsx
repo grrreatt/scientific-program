@@ -579,13 +579,7 @@ export default function PublicProgramPage() {
                   href="/public-program"
                   className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                 >
-                  Program
-                </a>
-                <a
-                  href="/public-workshops"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Workshops
+                  View Program
                 </a>
               </div>
             </div>
