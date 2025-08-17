@@ -16,8 +16,22 @@ export default function EditWorkshopSessionPage() {
   const [title, setTitle] = useState('')
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('09:30')
-  const [participants, setParticipants] = useState<Array<{ id?: string; role: 'speaker' | 'moderator'; speaker_id: string }>>([])
-  const [subtalks, setSubtalks] = useState<Array<{ id?: string; title: string; speaker_id: string; chairperson_id?: string; expert_ids: string[]; start_time: string; end_time: string; topic: string }>>([])
+  const [description, setDescription] = useState('')
+  const [capacity, setCapacity] = useState('')
+  const [participants, setParticipants] = useState<Array<{ id?: string; role: 'speaker' | 'moderator' | 'chairperson' | 'panelist' | 'expert'; speaker_id: string }>>([])
+  const [subtalks, setSubtalks] = useState<Array<{ 
+    id?: string; 
+    title: string; 
+    speaker_id: string; 
+    chairperson_id?: string; 
+    expert_ids: string[]; 
+    start_time: string; 
+    end_time: string; 
+    topic: string;
+    sub_session_type: 'lecture' | 'discussion';
+    description?: string;
+  }>>([])
+  const [customFields, setCustomFields] = useState<Array<{ key: string; value: string }>>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -33,8 +47,10 @@ export default function EditWorkshopSessionPage() {
           title,
           start_time,
           end_time,
+          description,
+          capacity,
           participants:workshop_session_participants(id, role, speaker_id, speakers(name)),
-          subtalks:workshop_sub_sessions(id, title, speaker_id, chairperson_id, expert_ids, start_time, end_time, topic)
+          subtalks:workshop_sub_sessions(id, title, speaker_id, chairperson_id, expert_ids, start_time, end_time, topic, sub_session_type, description)
         `)
         .eq('id', sessionId)
         .single()
@@ -46,8 +62,22 @@ export default function EditWorkshopSessionPage() {
       setTitle(data.title || '')
       setStartTime(data.start_time)
       setEndTime(data.end_time)
+      setDescription(data.description || '')
+      setCapacity(data.capacity || '')
       setParticipants((data.participants || []).map((p: any) => ({ id: p.id, role: p.role, speaker_id: p.speaker_id })))
-      setSubtalks((data.subtalks || []).map((st: any) => ({ id: st.id, title: st.title, speaker_id: st.speaker_id || '', chairperson_id: st.chairperson_id || '', expert_ids: st.expert_ids || [], start_time: st.start_time, end_time: st.end_time, topic: st.topic || '' })))
+      setSubtalks((data.subtalks || []).map((st: any) => ({ 
+        id: st.id, 
+        title: st.title, 
+        speaker_id: st.speaker_id || '', 
+        chairperson_id: st.chairperson_id || '', 
+        expert_ids: st.expert_ids || [], 
+        start_time: st.start_time, 
+        end_time: st.end_time, 
+        topic: st.topic || '',
+        sub_session_type: st.sub_session_type || 'lecture',
+        description: st.description || ''
+      })))
+      setCustomFields([])
       setLoading(false)
     }
     load()
@@ -65,8 +95,59 @@ export default function EditWorkshopSessionPage() {
     setParticipants(prev => prev.filter((_, i) => i !== index))
   }
 
-  const addParticipant = (role: 'speaker' | 'moderator') => {
+  const addParticipant = (role: 'speaker' | 'moderator' | 'chairperson' | 'panelist' | 'expert') => {
     setParticipants(prev => [...prev, { role, speaker_id: '' }])
+  }
+
+  const addSubTalk = () => {
+    setSubtalks(prev => [...prev, { 
+      title: '', 
+      speaker_id: '', 
+      chairperson_id: '', 
+      expert_ids: [], 
+      start_time: startTime, 
+      end_time: endTime, 
+      topic: '',
+      sub_session_type: 'lecture',
+      description: ''
+    }])
+  }
+
+  const addDiscussionBlock = () => {
+    const existingIndex = subtalks.findIndex(st => st.sub_session_type === 'discussion')
+    if (existingIndex !== -1) return
+    
+    const lectureOnly = subtalks.filter(st => st.sub_session_type !== 'discussion')
+    const start = lectureOnly.length > 0 ? (lectureOnly[lectureOnly.length - 1].end_time || startTime) : startTime
+    const end = endTime
+    
+    setSubtalks(prev => [...prev, { 
+      title: 'Discussion', 
+      speaker_id: '', 
+      chairperson_id: '', 
+      expert_ids: [], 
+      start_time: start, 
+      end_time: end, 
+      topic: '',
+      sub_session_type: 'discussion',
+      description: ''
+    }])
+  }
+
+  const removeDiscussion = () => {
+    setSubtalks(prev => prev.filter(st => st.sub_session_type !== 'discussion'))
+  }
+
+  const addCustomField = () => {
+    setCustomFields(prev => [...prev, { key: '', value: '' }])
+  }
+
+  const updateCustomField = (index: number, field: 'key' | 'value', value: string) => {
+    setCustomFields(prev => prev.map((cf, i) => i === index ? { ...cf, [field]: value } : cf))
+  }
+
+  const removeCustomField = (index: number) => {
+    setCustomFields(prev => prev.filter((_, i) => i !== index))
   }
 
   const save = async () => {
@@ -75,7 +156,13 @@ export default function EditWorkshopSessionPage() {
     try {
       const { error: upErr } = await supabase
         .from('workshop_sessions')
-        .update({ title, start_time: startTime, end_time: endTime })
+        .update({ 
+          title, 
+          start_time: startTime, 
+          end_time: endTime,
+          description: description || null,
+          capacity: capacity || null
+        })
         .eq('id', sessionId)
       if (upErr) throw upErr
 
@@ -97,7 +184,18 @@ export default function EditWorkshopSessionPage() {
         await supabase.from('workshop_sub_sessions').delete().in('id', toDelete)
       }
       for (const st of subtalks) {
-        const row = { workshop_session_id: sessionId, title: st.title, speaker_id: st.speaker_id || null, chairperson_id: st.chairperson_id || null, expert_ids: (st.expert_ids || []).filter(Boolean), start_time: st.start_time, end_time: st.end_time, topic: st.topic || null } as any
+        const row = { 
+          workshop_session_id: sessionId, 
+          title: st.title, 
+          speaker_id: st.speaker_id || null, 
+          chairperson_id: st.chairperson_id || null, 
+          expert_ids: (st.expert_ids || []).filter(Boolean), 
+          start_time: st.start_time, 
+          end_time: st.end_time, 
+          topic: st.topic || null,
+          sub_session_type: st.sub_session_type,
+          description: st.description || null
+        } as any
         if (st.id) {
           await supabase.from('workshop_sub_sessions').update(row).eq('id', st.id)
         } else {
@@ -113,91 +211,389 @@ export default function EditWorkshopSessionPage() {
     }
   }
 
+  const participantTypes = [
+    { key: 'speaker', label: 'Speaker', icon: '🎤' },
+    { key: 'moderator', label: 'Moderator', icon: '🎤' },
+    { key: 'chairperson', label: 'Chairperson', icon: '👔' },
+    { key: 'panelist', label: 'Panelist', icon: '🧑‍⚖️' },
+    { key: 'expert', label: 'Expert', icon: '🧠' }
+  ] as const
+
+  const subTalks = subtalks.filter(st => st.sub_session_type !== 'discussion')
+  const discussion = subtalks.find(st => st.sub_session_type === 'discussion')
+
   if (loading) return <div className="p-6">Loading…</div>
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-xl font-semibold mb-4">Edit Session</h1>
-      <Card className="p-4 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full border rounded px-3 py-2" />
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-xl font-semibold mb-4">Edit Workshop Session</h1>
+      <Card className="p-6 space-y-6">
+        {/* Basic Session Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
+              className="w-full border rounded px-3 py-2" 
+              placeholder="Session title"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+            <input
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+              className="w-full border rounded px-3 py-2"
+              placeholder="e.g., 50"
+              type="number"
+            />
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+
+        <div className="grid grid-cols-2 gap-4">
           <TimePicker label="Start Time" value={startTime} onChange={setStartTime} required />
           <TimePicker label="End Time" value={endTime} onChange={setEndTime} required />
         </div>
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-700">Participants</span>
-            <Button variant="outline" size="sm" onClick={() => addParticipant('speaker')}>+ Speaker</Button>
-            <Button variant="outline" size="sm" onClick={() => addParticipant('moderator')}>+ Moderator</Button>
-          </div>
-          {participants.map((p, i) => (
-            <div key={i} className="flex items-end gap-2">
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-700 mb-1">{p.role}</label>
-                <PersonAutocomplete value={p.speaker_id} onChange={(v) => updateParticipant(i, v)} placeholder="Select person" />
-              </div>
-              <Button variant="outline" size="sm" onClick={() => removeParticipant(i)}>Remove</Button>
-            </div>
-          ))}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            placeholder="Session description"
+            rows={3}
+          />
         </div>
-        {/* Sub-talks */}
-        <Card className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Sub-talks</span>
-            <Button variant="outline" size="sm" onClick={() => setSubtalks(prev => [...prev, { title: '', speaker_id: '', chairperson_id: '', expert_ids: [], start_time: startTime, end_time: endTime, topic: '' }])}>+ Add Sub-talk</Button>
-          </div>
-          {subtalks.map((st, i) => (
-            <Card key={st.id || i} className="p-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
-                  <input className="w-full border rounded px-2 py-1" value={st.title} onChange={(e) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, title: e.target.value } : x))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Topic</label>
-                  <input className="w-full border rounded px-2 py-1" value={st.topic} onChange={(e) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, topic: e.target.value } : x))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Speaker</label>
-                  <PersonAutocomplete value={st.speaker_id} onChange={(v) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, speaker_id: v } : x))} placeholder="Select person" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Chairperson</label>
-                  <PersonAutocomplete value={st.chairperson_id || ''} onChange={(v) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, chairperson_id: v } : x))} placeholder="Select person" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Experts</label>
-                  <div className="space-y-1">
-                    {(st.expert_ids || []).map((eid, j) => (
-                      <div key={j} className="flex items-end gap-2">
+
+        {/* Participants Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium text-gray-900">Participants</h3>
+          <div className="space-y-3">
+            {participantTypes.map(({ key, label, icon }) => {
+              const typeParticipants = participants.filter(p => p.role === key)
+              return (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-700">{icon} {label}s:</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => addParticipant(key as any)}
+                      className="px-2 py-0.5 text-xs bg-indigo-50 hover:bg-indigo-100 focus:ring-1 focus:ring-indigo-500"
+                    >
+                      + Add {label}
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {typeParticipants.map((p, i) => (
+                      <div key={i} className="flex items-end gap-2">
                         <div className="flex-1">
-                          <PersonAutocomplete value={eid} onChange={(v) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, expert_ids: x.expert_ids.map((y, k) => k === j ? v : y) } : x))} placeholder="Select expert" />
+                          <PersonAutocomplete 
+                            value={p.speaker_id} 
+                            onChange={(v) => updateParticipant(participants.indexOf(p), v)} 
+                            placeholder={`Select ${label.toLowerCase()}`} 
+                          />
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, expert_ids: x.expert_ids.filter((_, k) => k !== j) } : x))}>Remove</Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => removeParticipant(participants.indexOf(p))}
+                          className="px-2 py-0.5 text-xs"
+                        >
+                          Remove
+                        </Button>
                       </div>
                     ))}
-                    <Button variant="outline" size="sm" onClick={() => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, expert_ids: [...(x.expert_ids || []), ''] } : x))}>+ Add Expert</Button>
+                    {typeParticipants.length === 0 && (
+                      <div className="text-xs text-gray-500">No {label.toLowerCase()} added yet</div>
+                    )}
                   </div>
                 </div>
-                <div>
-                  <TimePicker label="Start" value={st.start_time} onChange={(t) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, start_time: t } : x))} required />
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Sub-talks and Discussion Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Sub-talks & Discussion</h3>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={addSubTalk}
+                className="px-2 py-0.5 text-xs bg-indigo-50 hover:bg-indigo-100 focus:ring-1 focus:ring-indigo-500"
+              >
+                + Add Sub-talk
+              </Button>
+              {!discussion ? (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addDiscussionBlock}
+                  className="px-2 py-0.5 text-xs bg-indigo-50 hover:bg-indigo-100 focus:ring-1 focus:ring-indigo-500"
+                >
+                  + Add Discussion
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={removeDiscussion}
+                  className="px-2 py-0.5 text-xs bg-red-50 hover:bg-red-100 text-red-600"
+                >
+                  Remove Discussion
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {subTalks.map((st, i) => (
+              <Card key={st.id || i} className="p-4 border-2 border-gray-200">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-900">Sub-talk {i + 1}</h4>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSubtalks(prev => prev.filter((_, idx) => idx !== i))}
+                      className="px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
+                      <input 
+                        className="w-full border rounded px-2 py-1 text-sm" 
+                        value={st.title} 
+                        onChange={(e) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, title: e.target.value } : x))} 
+                        placeholder="Sub-talk title"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Topic</label>
+                      <input 
+                        className="w-full border rounded px-2 py-1 text-sm" 
+                        value={st.topic} 
+                        onChange={(e) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, topic: e.target.value } : x))} 
+                        placeholder="Topic"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Speaker</label>
+                      <PersonAutocomplete 
+                        value={st.speaker_id} 
+                        onChange={(v) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, speaker_id: v } : x))} 
+                        placeholder="Select speaker" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Chairperson</label>
+                      <PersonAutocomplete 
+                        value={st.chairperson_id || ''} 
+                        onChange={(v) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, chairperson_id: v } : x))} 
+                        placeholder="Select chairperson" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Experts</label>
+                      <div className="space-y-1">
+                        {(st.expert_ids || []).map((eid, j) => (
+                          <div key={j} className="flex items-end gap-2">
+                            <div className="flex-1">
+                              <PersonAutocomplete 
+                                value={eid} 
+                                onChange={(v) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, expert_ids: x.expert_ids.map((y, k) => k === j ? v : y) } : x))} 
+                                placeholder="Select expert" 
+                              />
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, expert_ids: x.expert_ids.filter((_, k) => k !== j) } : x))}
+                              className="px-1 py-0.5 text-xs"
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, expert_ids: [...(x.expert_ids || []), ''] } : x))}
+                          className="px-2 py-0.5 text-xs bg-indigo-50 hover:bg-indigo-100 focus:ring-1 focus:ring-indigo-500"
+                        >
+                          + Add Expert
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <TimePicker 
+                      label="Start Time" 
+                      value={st.start_time} 
+                      onChange={(t) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, start_time: t } : x))} 
+                      required 
+                    />
+                    <TimePicker 
+                      label="End Time" 
+                      value={st.end_time} 
+                      onChange={(t) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, end_time: t } : x))} 
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                    <textarea 
+                      className="w-full border rounded px-2 py-1 text-sm" 
+                      value={st.description || ''} 
+                      onChange={(e) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x))} 
+                      placeholder="Sub-talk description"
+                      rows={2}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <TimePicker label="End" value={st.end_time} onChange={(t) => setSubtalks(prev => prev.map((x, idx) => idx === i ? { ...x, end_time: t } : x))} required />
+              </Card>
+            ))}
+
+            {/* Discussion Block */}
+            {discussion && (
+              <Card className="p-4 border-2 border-blue-200 bg-blue-50">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-blue-900">Discussion Block</h4>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={removeDiscussion}
+                      className="px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
+                      <input 
+                        className="w-full border rounded px-2 py-1 text-sm" 
+                        value={discussion.title} 
+                        onChange={(e) => setSubtalks(prev => prev.map((x, idx) => idx === subtalks.indexOf(discussion) ? { ...x, title: e.target.value } : x))} 
+                        placeholder="Discussion title"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Topic</label>
+                      <input 
+                        className="w-full border rounded px-2 py-1 text-sm" 
+                        value={discussion.topic} 
+                        onChange={(e) => setSubtalks(prev => prev.map((x, idx) => idx === subtalks.indexOf(discussion) ? { ...x, topic: e.target.value } : x))} 
+                        placeholder="Discussion topic"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <TimePicker 
+                      label="Start Time" 
+                      value={discussion.start_time} 
+                      onChange={(t) => setSubtalks(prev => prev.map((x, idx) => idx === subtalks.indexOf(discussion) ? { ...x, start_time: t } : x))} 
+                      required 
+                    />
+                    <TimePicker 
+                      label="End Time" 
+                      value={discussion.end_time} 
+                      onChange={(t) => setSubtalks(prev => prev.map((x, idx) => idx === subtalks.indexOf(discussion) ? { ...x, end_time: t } : x))} 
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                    <textarea 
+                      className="w-full border rounded px-2 py-1 text-sm" 
+                      value={discussion.description || ''} 
+                      onChange={(e) => setSubtalks(prev => prev.map((x, idx) => idx === subtalks.indexOf(discussion) ? { ...x, description: e.target.value } : x))} 
+                      placeholder="Discussion description"
+                      rows={2}
+                    />
+                  </div>
                 </div>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Custom Fields Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Custom Fields</h3>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={addCustomField}
+              className="px-2 py-0.5 text-xs bg-indigo-50 hover:bg-indigo-100 focus:ring-1 focus:ring-indigo-500"
+            >
+              + Add Custom Field
+            </Button>
+          </div>
+          
+          <div className="space-y-2">
+            {customFields.map((cf, i) => (
+              <div key={i} className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Field Name</label>
+                  <input 
+                    className="w-full border rounded px-2 py-1 text-sm" 
+                    value={cf.key} 
+                    onChange={(e) => updateCustomField(i, 'key', e.target.value)} 
+                    placeholder="Field name"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Value</label>
+                  <input 
+                    className="w-full border rounded px-2 py-1 text-sm" 
+                    value={cf.value} 
+                    onChange={(e) => updateCustomField(i, 'value', e.target.value)} 
+                    placeholder="Field value"
+                  />
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => removeCustomField(i)}
+                  className="px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+                >
+                  Remove
+                </Button>
               </div>
-              <div className="flex justify-end pt-2">
-                <Button variant="outline" size="sm" onClick={() => setSubtalks(prev => prev.filter((_, idx) => idx !== i))}>Delete Sub-talk</Button>
-              </div>
-            </Card>
-          ))}
-        </Card>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            ))}
+            {customFields.length === 0 && (
+              <div className="text-xs text-gray-500">No custom fields added yet</div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={saving}>
+            {saving ? 'Saving…' : 'Save Session'}
+          </Button>
         </div>
       </Card>
     </div>
