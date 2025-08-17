@@ -439,21 +439,6 @@ export default function DashboardPage() {
             </Link>
 
             {/* Workshop editor link removed per cleanup plan; workshops are handled within sessions flow */}
-            <Link
-              href="/speakers/new"
-              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
-            >
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">Add Speaker</p>
-                <p className="text-sm text-gray-500">Register a new speaker</p>
-              </div>
-            </Link>
 
             <Link
               href="/public-program"
@@ -471,11 +456,6 @@ export default function DashboardPage() {
               </div>
             </Link>
 
-            {/* Per-person export removed; use global export below */}
-            <div className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm">
-              <p className="text-sm text-gray-700">Per-person schedule download has been removed. Use Global Export to download everyone’s schedules.</p>
-            </div>
-
             <a
               href="/api/export"
               className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400"
@@ -491,99 +471,6 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-500">Excel by Day</p>
               </div>
             </a>
-
-            {/* Export all people schedules */}
-            <button
-              onClick={async () => {
-                try {
-                  const res = await fetch('/api/export/people')
-                  if (!res.ok) {
-                    const data = await res.json().catch(() => ({}))
-                    throw new Error(data.error || 'Export failed')
-                  }
-                  const blob = await res.blob()
-                  const a = document.createElement('a')
-                  a.href = URL.createObjectURL(blob)
-                  a.download = 'all-people-schedules.xlsx'
-                  document.body.appendChild(a)
-                  a.click()
-                  document.body.removeChild(a)
-                } catch (err: any) {
-                  alert(err.message || 'Failed to export')
-                }
-              }}
-              className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
-            >
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-          </div>
-              <div className="flex-1 min-w-0 text-left">
-                <span className="absolute inset-0" aria-hidden="true" />
-                <p className="text-sm font-medium text-gray-900">Export All People Schedules</p>
-                <p className="text-sm text-gray-500">Excel (.xlsx), live data</p>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Sessions */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-            Recent Sessions
-          </h3>
-          <div className="flow-root">
-            <ul className="-my-5 divide-y divide-gray-200">
-              <li className="py-4">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      Opening Keynote: Future of Medical Technology
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Dr. Sarah Johnson • Day 1 • 9:00am-10:30am
-                    </p>
-                  </div>
-                </div>
-              </li>
-              <li className="py-4">
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      Panel: AI in Healthcare
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Dr. Michael Chen (Moderator) • Day 1 • 2:00pm-3:30pm
-                    </p>
-                  </div>
-                </div>
-              </li>
-            </ul>
-          </div>
-          <div className="mt-6">
-            <Link
-              href="/sessions"
-              className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-            >
-              View all sessions
-            </Link>
           </div>
         </div>
       </div>

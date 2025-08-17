@@ -26,6 +26,18 @@ export default function ParticipantsPage() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
 
+  // Add person modal state
+  const [showAddPersonModal, setShowAddPersonModal] = useState(false)
+  const [newPerson, setNewPerson] = useState({
+    name: '',
+    email: '',
+    title: '',
+    organization: '',
+    bio: '',
+    role_type: ''
+  })
+  const [addingPerson, setAddingPerson] = useState(false)
+
   // Load speakers from database
   const loadSpeakers = async () => {
     setLoading(true)
@@ -210,6 +222,64 @@ export default function ParticipantsPage() {
     }
   }
 
+  // Add single person
+  const addSinglePerson = async () => {
+    if (!newPerson.name.trim()) {
+      alert('Please enter a name')
+      return
+    }
+
+    setAddingPerson(true)
+    
+    try {
+      const personData = {
+        name: newPerson.name.trim(),
+        email: newPerson.email.trim() || null,
+        title: newPerson.title.trim() || null,
+        organization: newPerson.organization.trim() || null,
+        bio: newPerson.bio.trim() || null,
+        role_type: newPerson.role_type.trim() || null
+      }
+
+      // Validate email if provided
+      if (personData.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i
+        if (!emailRegex.test(personData.email)) {
+          alert('Please enter a valid email address')
+          return
+        }
+      }
+
+      const { error } = await supabase
+        .from('speakers')
+        .insert([personData])
+
+      if (error) {
+        console.error('❌ Error adding person:', error)
+        alert('Error adding person. Please try again.')
+        return
+      }
+
+      alert('✅ Person added successfully')
+      setShowAddPersonModal(false)
+      setNewPerson({
+        name: '',
+        email: '',
+        title: '',
+        organization: '',
+        bio: '',
+        role_type: ''
+      })
+      await loadSpeakers()
+      
+    } catch (error) {
+      console.error('❌ Error adding person:', error)
+      alert('Error adding person. Please try again.')
+    } finally {
+      setAddingPerson(false)
+    }
+  }
+
   // Delete speaker
   const handleDeleteSpeaker = async (speakerId: string) => {
     const speaker = speakers.find(s => s.id === speakerId)
@@ -375,6 +445,12 @@ export default function ParticipantsPage() {
                 📥 Download Master Template
               </button>
               <button
+                onClick={() => setShowAddPersonModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                👤 Add Person
+              </button>
+              <button
                 onClick={() => setShowUploadModal(true)}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
               >
@@ -522,6 +598,128 @@ export default function ParticipantsPage() {
           )}
         </div>
       </div>
+
+      {/* Add Person Modal */}
+      <Modal
+        isOpen={showAddPersonModal}
+        onClose={() => setShowAddPersonModal(false)}
+        title="Add Individual Person"
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-6">
+          {/* Instructions */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-blue-900 mb-2">Add a Single Person</h3>
+            <p className="text-sm text-blue-800">
+              Add individual people to the master list. Only name is required, all other fields are optional.
+            </p>
+          </div>
+
+          {/* Form Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Name *
+              </label>
+              <input
+                type="text"
+                value={newPerson.name}
+                onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
+                placeholder="Enter full name"
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm py-2 px-3"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={newPerson.email}
+                onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
+                placeholder="Enter email address"
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm py-2 px-3"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Title/Designation
+              </label>
+              <input
+                type="text"
+                value={newPerson.title}
+                onChange={(e) => setNewPerson({ ...newPerson, title: e.target.value })}
+                placeholder="e.g., Professor, CEO, Director"
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm py-2 px-3"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Organization
+              </label>
+              <input
+                type="text"
+                value={newPerson.organization}
+                onChange={(e) => setNewPerson({ ...newPerson, organization: e.target.value })}
+                placeholder="Enter organization name"
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm py-2 px-3"
+              />
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Role Type
+              </label>
+              <select
+                value={newPerson.role_type}
+                onChange={(e) => setNewPerson({ ...newPerson, role_type: e.target.value })}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm py-2 px-3"
+              >
+                <option value="">Select Role (Optional)</option>
+                <option value="speaker">Speaker</option>
+                <option value="moderator">Moderator</option>
+                <option value="chairperson">Chairperson</option>
+                <option value="expert">Expert</option>
+                <option value="panelist">Panelist</option>
+              </select>
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bio
+              </label>
+              <textarea
+                value={newPerson.bio}
+                onChange={(e) => setNewPerson({ ...newPerson, bio: e.target.value })}
+                placeholder="Enter bio (optional)"
+                rows={3}
+                className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => setShowAddPersonModal(false)}
+              className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={addSinglePerson}
+              disabled={addingPerson || !newPerson.name.trim()}
+              className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {addingPerson ? 'Adding...' : 'Add Person'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Upload Modal */}
   <Modal
