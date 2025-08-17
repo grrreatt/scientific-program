@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { RealtimeStatus } from '@/components/ui/realtime-status'
+import realtimeService from '@/lib/supabase/realtime'
 
 interface Speaker {
   id: string
@@ -32,26 +33,79 @@ export default function ParticipantsPage() {
     setError(null)
     
     try {
-      const { data, error } = await supabase
+      console.log('🔄 Loading ALL speakers from Supabase...')
+      
+      // Load speakers from speakers table
+      const { data: speakersData, error: speakersError } = await supabase
         .from('speakers')
-        .select('id, name, email, title, organization, bio, role_type')
+        .select('id, name, email, title, organization, bio, role_type, created_at')
         .order('name', { ascending: true })
 
-      if (error) {
-        console.error('❌ Error loading speakers:', error)
+      if (speakersError) {
+        console.error('❌ Error loading speakers:', speakersError)
         setError('Failed to load speakers')
         return
       }
 
-      // Deduplicate by lower(email) if present, else by name
+      // Load speakers from session_participants (scientific program)
+      const { data: sessionParticipantsData, error: sessionError } = await supabase
+        .from('session_participants')
+        .select(`
+          speaker_id,
+          speakers!inner(id, name, email, title, organization, bio, created_at)
+        `)
+        .not('speaker_id', 'is', null)
+
+      if (sessionError) {
+        console.error('❌ Error loading session participants:', sessionError)
+      }
+
+      // Load speakers from workshop_session_participants (workshops)
+      const { data: workshopParticipantsData, error: workshopError } = await supabase
+        .from('workshop_session_participants')
+        .select(`
+          speaker_id,
+          speakers!inner(id, name, email, title, organization, bio, created_at)
+        `)
+        .not('speaker_id', 'is', null)
+
+      if (workshopError) {
+        console.error('❌ Error loading workshop participants:', workshopError)
+      }
+
+      // Combine all speakers
+      const allSpeakers = new Map<string, Speaker>()
+      
+      // Add speakers from speakers table
+      speakersData?.forEach(speaker => {
+        allSpeakers.set(speaker.id, speaker)
+      })
+
+      // Add speakers from session participants
+      sessionParticipantsData?.forEach(participant => {
+        if (participant.speakers && !allSpeakers.has(participant.speaker_id)) {
+          allSpeakers.set(participant.speaker_id, participant.speakers as unknown as Speaker)
+        }
+      })
+
+      // Add speakers from workshop participants
+      workshopParticipantsData?.forEach(participant => {
+        if (participant.speakers && !allSpeakers.has(participant.speaker_id)) {
+          allSpeakers.set(participant.speaker_id, participant.speakers as unknown as Speaker)
+        }
+      })
+
+      // Convert to array and deduplicate by email or name
       const seen = new Set<string>()
-      const deduped = (data || []).filter((s: Speaker) => {
+      const deduped = Array.from(allSpeakers.values()).filter((s: Speaker) => {
         const key = (s.email ? s.email.toLowerCase() : `name:${(s.name || '').toLowerCase()}`)
         if (seen.has(key)) return false
         seen.add(key)
         return true
-      })
+      }).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+
       setSpeakers(deduped)
+      console.log(`✅ Loaded ${deduped.length} unique speakers from all sources`)
     } catch (error) {
       console.error('❌ Exception loading speakers:', error)
       setError('Failed to load speakers')
@@ -283,7 +337,33 @@ export default function ParticipantsPage() {
 
   // Load data on mount
   useEffect(() => {
+    // Load initial data
     loadSpeakers()
+
+    // Setup real-time subscriptions
+    realtimeService.subscribeToAll({
+      onSessionChange: (payload) => {
+        console.log('🔄 Session change detected, reloading speakers...')
+        loadSpeakers()
+      },
+      onWorkshopChange: (payload) => {
+        console.log('🔄 Workshop change detected, reloading speakers...')
+        loadSpeakers()
+      },
+      onWorkshopSessionChange: (payload) => {
+        console.log('🔄 Workshop session change detected, reloading speakers...')
+        loadSpeakers()
+      },
+      onWorkshopParticipantChange: (payload) => {
+        console.log('🔄 Workshop participant change detected, reloading speakers...')
+    loadSpeakers()
+      }
+    })
+
+    // Cleanup on unmount
+    return () => {
+      realtimeService.unsubscribeFromAll()
+    }
   }, [])
 
   // Loading state

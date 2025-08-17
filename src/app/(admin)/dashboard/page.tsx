@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 import { DashboardStats } from '@/types'
 import { RealtimeStatus } from '@/components/ui/realtime-status'
+import { PersonAutocomplete } from '@/components/ui/person-autocomplete'
 import { useState as useReactState } from 'react'
 
 export default function DashboardPage() {
@@ -620,13 +621,7 @@ export default function DashboardPage() {
                     onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Enter full name"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        setShowAddPersonModal(false)
-                        setNewPerson({ name: '', designation: '', email: '' })
-                      }
-                    }}
+                    required
                   />
                 </div>
                 <div>
