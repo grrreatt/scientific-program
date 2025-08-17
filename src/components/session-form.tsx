@@ -148,8 +148,8 @@ export function SessionForm({
     chairperson_id: '',
     moderator_id: '',
     panelist_ids: [],
-    workshop_lead_ids: [],
-    assistant_ids: [],
+    workshop_lead_ids: [''],
+    assistant_ids: [''],
     capacity: '',
     introducer_id: '',
     presenter_ids: [],
@@ -172,6 +172,13 @@ export function SessionForm({
     setFormData(prev => ({
       ...prev,
       ...initialData,
+      // Ensure workshop arrays have at least one empty item for UI
+      workshop_lead_ids: initialData.workshop_lead_ids && initialData.workshop_lead_ids.length > 0 
+        ? initialData.workshop_lead_ids 
+        : [''],
+      assistant_ids: initialData.assistant_ids && initialData.assistant_ids.length > 0 
+        ? initialData.assistant_ids 
+        : [''],
     }))
     hasInitializedRef.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1256,7 +1263,7 @@ export function SessionForm({
             'session',
             'panel',
             'symposium',
-            // 'workshop' removed from session form; handled in dedicated Workshops page
+            'workshop',
             'oration',
             'guest_lecture',
             'discussion',
@@ -1406,7 +1413,98 @@ export function SessionForm({
               placeholder="Type a name (new or existing)"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             />
-      </div>
+          </div>
+        </div>
+      )}
+
+      {/* Workshop specific fields */}
+      {currentSessionType === 'workshop' && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-900">Workshop Details</h3>
+          
+          {/* Workshop Leads */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Workshop Leads (Convenors) *
+            </label>
+            {formData.workshop_lead_ids.map((leadId, index) => (
+              <div key={index} className="flex items-center space-x-2 mb-2">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={leadId}
+                    onChange={(e) => handleArrayChange('workshop_lead_ids', index, e.target.value)}
+                    placeholder="Type a name (search existing or add new)"
+                    className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Start typing to search existing speakers or enter a new name</p>
+                </div>
+                {formData.workshop_lead_ids.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeArrayItem('workshop_lead_ids', index)}
+                    className="text-red-600 hover:text-red-900 text-sm"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => addArrayItem('workshop_lead_ids')}
+              className="text-sm text-indigo-600 hover:text-indigo-900"
+            >
+              + Add Workshop Lead
+            </button>
+          </div>
+
+          {/* Workshop Assistants */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Workshop Assistants
+            </label>
+            {formData.assistant_ids.map((assistantId, index) => (
+              <div key={index} className="flex items-center space-x-2 mb-2">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={assistantId}
+                    onChange={(e) => handleArrayChange('assistant_ids', index, e.target.value)}
+                    placeholder="Type a name (search existing or add new)"
+                    className="w-full block border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm py-2 px-3"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Start typing to search existing speakers or enter a new name</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeArrayItem('assistant_ids', index)}
+                  className="text-red-600 hover:text-red-900 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => addArrayItem('assistant_ids')}
+              className="text-sm text-indigo-600 hover:text-indigo-900"
+            >
+              + Add Assistant
+            </button>
+          </div>
+
+          {/* Workshop Capacity */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
+            <input
+              type="number"
+              value={formData.capacity}
+              onChange={(e) => handleInputChange('capacity', e.target.value)}
+              placeholder="Maximum number of participants"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            />
+          </div>
         </div>
       )}
 
@@ -1417,8 +1515,8 @@ export function SessionForm({
         </div>
       )}
 
-      {/* Dynamic Participants Section (hidden for simplified Session flow) */}
-      {currentSessionType !== 'session' && (
+      {/* Dynamic Participants Section (hidden for simplified Session flow and workshop) */}
+      {currentSessionType !== 'session' && currentSessionType !== 'workshop' && (
         <div className="space-y-2">
         {renderDynamicParticipants()}
       </div>

@@ -38,7 +38,15 @@ export const SESSION_TYPES: Record<string, SessionTypeConfig> = {
       roles: ['moderator', 'speaker']
     }
   },
-  // workshop removed from generic sessions flow; handled via dedicated pages
+  workshop: {
+    id: 'workshop',
+    name: 'Workshop',
+    fields: {
+      required: ['title', 'topic', 'day_id', 'stage_id', 'time_slot_id'],
+      optional: ['description', 'capacity', 'workshop_lead_ids', 'assistant_ids'],
+      roles: ['workshop_lead', 'assistant']
+    }
+  },
   oration: {
     id: 'oration',
     name: 'Oration / Keynote / Plenary',

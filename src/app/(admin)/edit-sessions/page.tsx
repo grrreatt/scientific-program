@@ -1772,7 +1772,10 @@ export default function EditSessionsPage() {
             custom_end_time: editingSession.custom_end_time || editingSession.end_time || '',
             description: editingSession.description || '',
             is_parallel_meal: editingSession.is_parallel_meal || false,
-            parallel_meal_type: editingSession.parallel_meal_type || ''
+            parallel_meal_type: editingSession.parallel_meal_type || '',
+            capacity: editingSession.capacity || '',
+            workshop_lead_ids: editingSession.workshop_lead_ids || [],
+            assistant_ids: editingSession.assistant_ids || []
           } : {
             day_id: days.find(d => d.name === selectedDay)?.id || '',
             stage_id: selectedHallForSession || getHallsForSelectedDay()[0]?.id || '',
