@@ -561,6 +561,34 @@ export default function PublicProgramPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Navigation Bar */}
+      <nav className="bg-white border-b border-gray-200 print:hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-xl font-bold text-gray-900">APCON 2025</h1>
+              <div className="flex space-x-6">
+                <a href="/edit-sessions" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+                  📝 Edit Sessions
+                </a>
+                <a href="/public-program" className="text-indigo-600 font-medium">
+                  📅 View Program
+                </a>
+                <a href="/speakers" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+                  👥 Speakers
+                </a>
+                <a href="/participants" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+                  📋 Participants
+                </a>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <RealtimeStatus />
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-sm border-b print:shadow-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -762,6 +790,16 @@ export default function PublicProgramPage() {
                                                 Speaker: {st.speaker_name}
                                               </div>
                                             )}
+                                            {st.chairperson_name && (
+                                              <div className="text-xs text-violet-700 font-medium">
+                                                Chairperson: {st.chairperson_name}
+                                              </div>
+                                            )}
+                                            {st.expert_names && st.expert_names.length > 0 && (
+                                              <div className="text-xs text-teal-700 font-medium">
+                                                Experts: {st.expert_names.join(', ')}
+                                              </div>
+                                            )}
                                             {st.description && (
                                               <div className="text-xs text-gray-600 mt-1 italic">
                                                 {st.description}
@@ -795,6 +833,16 @@ export default function PublicProgramPage() {
                                             {st.speaker_name && (
                                               <div className="text-xs text-orange-700 font-medium">
                                                 Speaker: {st.speaker_name}
+                                              </div>
+                                            )}
+                                            {st.chairperson_name && (
+                                              <div className="text-xs text-violet-700 font-medium">
+                                                Chairperson: {st.chairperson_name}
+                                              </div>
+                                            )}
+                                            {st.expert_names && st.expert_names.length > 0 && (
+                                              <div className="text-xs text-teal-700 font-medium">
+                                                Experts: {st.expert_names.join(', ')}
                                               </div>
                                             )}
                                             {st.description && (
