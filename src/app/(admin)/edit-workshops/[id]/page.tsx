@@ -58,32 +58,41 @@ export default function WorkshopFormPage() {
     setSaving(true)
     try {
       const workshopData = {
-        ...formData,
+        topic: (formData.topic || '').trim(),
+        description: (formData.description || '') || null,
+        venue: (formData.venue || '') || null,
+        day_date: formData.day_date ? formData.day_date : null,
         convenor_id: convenorId || null,
         co_convenor_id: coConvenorId || null
       }
 
       if (isNew) {
-        const { data, error } = await supabase
-          .from('workshops')
-          .insert(workshopData)
-          .select()
-          .single()
-        
-        if (error) throw error
-        router.push(`/edit-workshops/${data.id}`)
+        const res = await fetch('/api/workshops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(workshopData)
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body?.error || `Failed (${res.status})`)
+        }
+        const body = await res.json()
+        router.push(`/edit-workshops/${body.id}`)
       } else {
-        const { error } = await supabase
-          .from('workshops')
-          .update(workshopData)
-          .eq('id', workshopId)
-        
-        if (error) throw error
+        const res = await fetch('/api/workshops', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: workshopId, ...workshopData })
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body?.error || `Failed (${res.status})`)
+        }
         alert('Workshop saved successfully!')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving workshop:', error)
-      alert('Error saving workshop')
+      alert(`Error saving workshop${error?.message ? `: ${error.message}` : ''}`)
     } finally {
       setSaving(false)
     }
