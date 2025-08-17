@@ -9,10 +9,6 @@ export interface RealtimeConfig {
   onDayChange?: (payload: any) => void
   onTimeSlotChange?: (payload: any) => void
   onDayHallChange?: (payload: any) => void
-  onWorkshopChange?: (payload: any) => void
-  onWorkshopSessionChange?: (payload: any) => void
-  onWorkshopParticipantChange?: (payload: any) => void
-  onWorkshopSubSessionChange?: (payload: any) => void
   onConnectionChange?: (status: string) => void
 }
 
@@ -77,14 +73,7 @@ class RealtimeService {
     // Subscribe to day_halls changes
     this.subscribeToDayHalls(config.onDayHallChange)
     
-    // Subscribe to workshops
-    this.subscribeToWorkshops(config.onWorkshopChange)
-    // Subscribe to workshop sessions
-    this.subscribeToWorkshopSessions(config.onWorkshopSessionChange)
-    // Subscribe to workshop participants
-    this.subscribeToWorkshopParticipants(config.onWorkshopParticipantChange)
-    // Subscribe to workshop sub-sessions
-    this.subscribeToWorkshopSubSessions(config.onWorkshopSubSessionChange)
+
     
     // Monitor connection changes
     if (config.onConnectionChange) {
@@ -291,101 +280,7 @@ class RealtimeService {
       })
   }
 
-  private subscribeToWorkshops(onChange?: (payload: any) => void) {
-    const channel = supabase
-      .channel('workshops-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'workshops' },
-        (payload) => {
-          console.log('🔄 Workshop change detected:', payload)
-          this.handleOptimisticUpdate('workshops', payload)
-          onChange?.(payload)
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Workshops subscription status:', status)
-        if (status === 'SUBSCRIBED') {
-          this.channels.set('workshops', channel)
-          this.connectionStatus = 'connected'
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          this.connectionStatus = 'disconnected'
-        } else {
-          this.connectionStatus = 'connecting'
-        }
-      })
-  }
 
-  private subscribeToWorkshopSessions(onChange?: (payload: any) => void) {
-    const channel = supabase
-      .channel('workshop-sessions-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'workshop_sessions' },
-        (payload) => {
-          console.log('🔄 Workshop Session change detected:', payload)
-          this.handleOptimisticUpdate('workshop_sessions', payload)
-          onChange?.(payload)
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Workshop Sessions subscription status:', status)
-        if (status === 'SUBSCRIBED') {
-          this.channels.set('workshop_sessions', channel)
-          this.connectionStatus = 'connected'
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          this.connectionStatus = 'disconnected'
-        } else {
-          this.connectionStatus = 'connecting'
-        }
-      })
-  }
-
-  private subscribeToWorkshopParticipants(onChange?: (payload: any) => void) {
-    const channel = supabase
-      .channel('workshop-participants-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'workshop_session_participants' },
-        (payload) => {
-          console.log('🔄 Workshop Participant change detected:', payload)
-          this.handleOptimisticUpdate('workshop_session_participants', payload)
-          onChange?.(payload)
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Workshop Participants subscription status:', status)
-        if (status === 'SUBSCRIBED') {
-          this.channels.set('workshop_session_participants', channel)
-          this.connectionStatus = 'connected'
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          this.connectionStatus = 'disconnected'
-        } else {
-          this.connectionStatus = 'connecting'
-        }
-      })
-  }
-
-  private subscribeToWorkshopSubSessions(onChange?: (payload: any) => void) {
-    const channel = supabase
-      .channel('workshop-sub-sessions-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'workshop_sub_sessions' },
-        (payload) => {
-          console.log('🔄 Workshop Sub-session change detected:', payload)
-          this.handleOptimisticUpdate('workshop_sub_sessions', payload)
-          onChange?.(payload)
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 Workshop Sub-sessions subscription status:', status)
-        if (status === 'SUBSCRIBED') {
-          this.channels.set('workshop_sub_sessions', channel)
-          this.connectionStatus = 'connected'
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          this.connectionStatus = 'disconnected'
-        } else {
-          this.connectionStatus = 'connecting'
-        }
-      })
-  }
 
   private handleOptimisticUpdate(type: string, payload: any) {
     const key = `${type}-${payload.new?.id || payload.old?.id}`

@@ -25,12 +25,7 @@ export default function HomePage() {
             >
               View Scientific Program
             </Link>
-            <Link 
-              href="/view-workshops"
-              className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-            >
-              View Workshops
-            </Link>
+
           </div>
           
           <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
