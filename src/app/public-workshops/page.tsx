@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
+import { RealtimeStatus } from '@/components/ui/realtime-status'
 
 export default function PublicWorkshopsPage() {
   const [items, setItems] = useState<any[]>([])
@@ -23,8 +24,45 @@ export default function PublicWorkshopsPage() {
   if (loading) return <div className="p-6">Loading…</div>
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Workshops</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex">
+              <div className="flex-shrink-0 flex items-center">
+                <span className="text-xl font-bold text-gray-900">Scientific Conference</span>
+              </div>
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                <a
+                  href="/"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Home
+                </a>
+                <a
+                  href="/public-program"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Program
+                </a>
+                <a
+                  href="/public-workshops"
+                  className="border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Workshops
+                </a>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <RealtimeStatus className="mr-3" />
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-2xl font-semibold mb-4">Workshops</h1>
       <div className="space-y-3">
         {items.map(w => (
           <div key={w.id} className="border rounded p-4">
@@ -40,6 +78,7 @@ export default function PublicWorkshopsPage() {
         ))}
         {items.length === 0 && <div className="text-gray-600">No workshops published yet.</div>}
       </div>
+    </div>
     </div>
   )
 }
