@@ -614,21 +614,14 @@ export default function DashboardPage() {
                   <label htmlFor="personName" className="block text-sm font-medium text-gray-700 mb-2">
                     Name
                   </label>
-                  <PersonAutocomplete
+                  <input
+                    type="text"
+                    id="personName"
                     value={newPerson.name}
-                    onChange={(value) => setNewPerson({ ...newPerson, name: value })}
+                    onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Enter full name"
-                    onPersonSelect={(person) => {
-                      if (person) {
-                        console.log('Selected person:', person)
-                        setNewPerson({ 
-                          ...newPerson, 
-                          name: person.name,
-                          designation: person.title || newPerson.designation,
-                          email: person.email || newPerson.email
-                        })
-                      }
-                    }}
+                    required
                   />
                 </div>
                 <div>

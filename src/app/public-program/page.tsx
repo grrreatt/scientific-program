@@ -598,6 +598,32 @@ export default function PublicProgramPage() {
         </div>
       </div>
 
+      {/* Navigation */}
+      <div className="bg-white border-b print:hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8 py-4">
+            <a
+              href="/"
+              className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Home
+            </a>
+            <a
+              href="/public-program"
+              className="text-indigo-600 border-b-2 border-indigo-600 px-3 py-2 text-sm font-medium"
+            >
+              View Scientific Program
+            </a>
+            <a
+              href="/view-workshops"
+              className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              View Workshops
+            </a>
+          </nav>
+        </div>
+      </div>
+
       {/* Day Navigation */}
       <div className="bg-white border-b print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -1315,15 +1315,15 @@ export function SessionForm({
         
         <div className="grid grid-cols-1 gap-3">
           {/* Session Title - Show for ALL session types */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
               {currentSessionType === 'lecture' ? 'Talk Title *' : 
                currentSessionType === 'session' ? 'Session Title' : 'Session Title *'}
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
               placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : 
                           currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${
@@ -1331,23 +1331,23 @@ export function SessionForm({
                 'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
               }`}
               required={currentSessionType === 'lecture'}
-            />
-          </div>
+              />
+              </div>
 
           {/* Topic - Show for all types except lecture (since lecture uses title as topic) */}
           {currentSessionType !== 'lecture' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
                 {currentSessionType === 'session' ? 'Session Topic' : 'Topic'}
-              </label>
-              <input
-                type="text"
-                value={formData.topic}
-                onChange={(e) => handleInputChange('topic', e.target.value)}
+            </label>
+            <input
+              type="text"
+              value={formData.topic}
+              onChange={(e) => handleInputChange('topic', e.target.value)}
                 placeholder={currentSessionType === 'session' ? 'Enter session topic' : 'Enter topic'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-              />
-            </div>
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            />
+          </div>
           )}
 
           {/* Time Range - Always visible */}
@@ -1425,7 +1425,7 @@ export function SessionForm({
                 }
               }}
             />
-          </div>
+      </div>
         </div>
       )}
 
