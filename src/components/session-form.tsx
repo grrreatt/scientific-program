@@ -1134,7 +1134,6 @@ export function SessionForm({
                         ariaDescribedById={`subtalk-${st.id || index}-help`}
                     />
                   </div>
-                  </div>
 
                   {/* Row 2: Speaker + Topic */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
@@ -1171,7 +1170,6 @@ export function SessionForm({
                     >
                       ×
                     </button>
-                  </div>
                   </div>
 
                   <div id={`subtalk-${st.id || index}-help`} className="sr-only">Subtalk {index + 1} controls: Start, End, Speaker, Topic, Remove</div>
