@@ -176,10 +176,11 @@ export default function EditSessionsPage() {
 
       setDayHalls(dayHallsData || [])
 
-      // Load sessions with participants using consistent query
+      // Load sessions with participants using consistent query (exclude workshops)
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('sessions')
         .select(supabaseUtils.getSessionQuery())
+        .neq('session_type', 'workshop')
         .order('created_at', { ascending: true })
 
       if (sessionsError) {

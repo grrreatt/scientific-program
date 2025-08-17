@@ -1016,7 +1016,7 @@ export function SessionForm({
     const coveredMinutes = getCoveredMinutes()
     const coverageOk = sessionMinutes > 0 && coveredMinutes === sessionMinutes
 
-  return (
+    return (
       <div className="space-y-4">
         {/* Actions */}
         <div className="flex items-center gap-4 flex-wrap">
@@ -1136,7 +1136,7 @@ export function SessionForm({
                   </div>
                   </div>
 
-                  {/* Row 2: Speaker + Chairperson */}
+                  {/* Row 2: Speaker + Topic */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                     <div className="sm:col-span-6 min-w-[180px] relative focus-within:z-10">
                       <label className="block text-xs font-medium text-gray-700 mb-1">Speaker *</label>
@@ -1148,38 +1148,18 @@ export function SessionForm({
                         aria-describedby={`subtalk-${st.id || index}-help`}
                       />
                     </div>
-                    <div className="sm:col-span-6 min-w-[180px]">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Chairperson</label>
-                      <input
-                        type="text"
-                        value={(st as any).chairperson_id || ''}
-                        onChange={(e) => updateSubSession(st.id, 'chairperson_id', e.target.value)}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                      />
-                    </div>
-                  </div>
-                  {/* Row 3: Expert + Topic */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-                    <div className="sm:col-span-6 min-w-[180px]">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Expert</label>
-                      <input
-                        type="text"
-                        value={(((st as any).expert_ids || [])[0]) || ''}
-                        onChange={(e) => updateSubSession(st.id, 'expert_ids', e.target.value ? [e.target.value] : [])}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                      />
-                    </div>
                     <div className="sm:col-span-6 min-w-[180px] relative">
                       <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor={`subtalk-${st.id || index}-topic`}>Topic</label>
-                    <input
+                      <input
                         id={`subtalk-${st.id || index}-topic`}
-                      type="text"
-                      value={st.topic}
-                      onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
-                        className="w-full h-11 px-3 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500"
+                        type="text"
+                        value={st.topic}
+                        onChange={(e) => updateSubSession(st.id, 'topic', e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-indigo-500"
                         placeholder="Enter topic"
                         aria-describedby={`subtalk-${st.id || index}-help`}
-                    />
+                      />
+                    </div>
                   </div>
                     <div className="sm:col-span-1 flex justify-end items-center">
                     <button
@@ -1262,11 +1242,9 @@ export function SessionForm({
             'session',
             'panel',
             'symposium',
-            // 'workshop' removed from session form; handled in dedicated Workshops page
             'oration',
             'guest_lecture',
             'discussion',
-            // 'break' removed; use Global Block for breaks/meals
             'other'
           ].filter(key => SESSION_TYPES[key]).map((key) => {
             const type = SESSION_TYPES[key]
