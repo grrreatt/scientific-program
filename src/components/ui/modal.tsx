@@ -76,7 +76,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-2xl'
         >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+          <h2 id="modal-title" className="text-2xl font-bold text-gray-900 text-center flex-1">
             {title}
           </h2>
           <button

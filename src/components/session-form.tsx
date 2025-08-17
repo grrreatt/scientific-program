@@ -77,7 +77,7 @@ interface SessionFormProps {
 
 export function SessionForm({ 
   initialData = {}, 
-  sessionType = 'lecture', 
+  sessionType = 'session', 
   onSubmit, 
   onCancel, 
   onDelete,
@@ -693,14 +693,14 @@ export function SessionForm({
     const subSessions = formData.sub_sessions || []
 
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-900">Sub-talks</h3>
+      <div className="space-y-4">
+        <div className="flex flex-col items-center space-y-3">
+          <h3 className="text-lg font-bold text-gray-900 text-center">Sub-talks</h3>
           <button
             type="button"
             onClick={addSubSession}
             data-testid="add-subtalk"
-            className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none"
+            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded text-indigo-600 bg-indigo-50 hover:bg-indigo-100 focus:outline-none"
           >
             + Add Sub-talk
           </button>
@@ -864,8 +864,8 @@ export function SessionForm({
     ] as const;
 
     return (
-      <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-900">Participants</h4>
+      <div className="space-y-4">
+          <h4 className="text-lg font-bold text-gray-900 text-center">Participants</h4>
 
         {/* Compact Participant Display */}
         <div className="space-y-2">
@@ -875,48 +875,46 @@ export function SessionForm({
             // Always render a role section; show helper if empty
           
           return (
-              <div key={key} className="space-y-1">
-                <div className="flex items-center space-x-1">
-                  <span className="text-xs text-gray-500">{icon} {label}s:</span>
+              <div key={key} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-700">{icon} {label}s:</span>
                   {/* Quick add buttons */}
-                  <button type="button" onClick={() => addParticipant(key)} className="text-[11px] text-indigo-600 hover:text-indigo-800">+ {label}</button>
+                  <button type="button" onClick={() => addParticipant(key)} className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">+ Add {label}</button>
               </div>
                 <div className="space-y-1">
                   {participants.map((participant, index) => {
                     const rowKey = `${key}-${index}`
                     const searchTerm = participantSearchTerms[rowKey] || ''
                     return (
-                      <div key={index} className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1">
+                      <div key={index} className="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2">
                       <input
-                        value={searchTerm}
-                        onChange={(e)=> setParticipantSearchTerms(prev => ({...prev, [rowKey]: e.target.value }))}
-                        placeholder="Type 2-3 chars…"
-                        className="w-40 px-2 py-1 border rounded text-xs"
+                        type="text"
+                        value={(() => {
+                          // Always try to resolve IDs to names for display, but allow direct text input
+                          const id = participant.id || ''
+                          if (id) {
+                            // First check if it's already a name (not a UUID)
+                            if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+                              return id  // It's already a name, show as-is
+                            }
+                            // It's a UUID, try to resolve to name
+                            const speaker = speakers.find(s => s.id === id)
+                            return speaker?.name || ''  // Show name or empty if not found
+                          }
+                          return ''
+                        })()}
+                        onChange={(e) => updateParticipant(key as any, index, e.target.value)}
+                        placeholder={`Type ${label.toLowerCase()} name (new or existing)`}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                       />
-                      <select
-                        value={participant.id}
-                          onChange={(e) => updateParticipant(key as any, index, e.target.value)}
-                          onKeyDown={(e:any)=>{
-                            if (e.key === 'Enter') { addParticipant(key); }
-                            // no-op: filtered influences options below via searchTerm state
-                          }}
-                          className="flex-1 block pl-2 pr-8 py-1 text-xs border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded"
-                      >
-                          <option value="">Select {label}</option>
-                          {getSortedSpeakers(searchTerm).map(speaker => (
-                          <option key={speaker.id} value={speaker.id}>
-                              {speaker.name}{speaker.email ? ` (${speaker.email})` : ''}
-                          </option>
-                        ))}
-                      </select>
                       {/* Conflict indicator */}
                       {participant.id && participantConflicts.some(c => c.speakerId === participant.id) && (
-                        <span className="text-[11px] text-amber-600">⚠️ conflict</span>
+                        <span className="text-xs text-amber-600">⚠️ conflict</span>
                       )}
                       <button
                         type="button"
                           onClick={() => removeArrayItem(key as any, index)}
-                          className="text-red-600 hover:text-red-900 text-xs"
+                          className="text-red-600 hover:text-red-900 text-sm font-bold"
                       >
                           ×
                       </button>
@@ -924,7 +922,7 @@ export function SessionForm({
                     );
                   })}
                   {participants.length === 0 && (
-                    <div className="text-[11px] text-gray-500">No {label.toLowerCase()} added yet</div>
+                    <div className="text-sm text-gray-500 text-center italic">No {label.toLowerCase()}s added yet</div>
                   )}
                 </div>
             </div>
@@ -1094,8 +1092,8 @@ export function SessionForm({
 
         {/* Subtalks list */}
         {subTalks.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-gray-900">Subtalks</h4>
+          <div className="space-y-3">
+            <h4 className="text-lg font-bold text-gray-900 text-center">Subtalks</h4>
             {subTalks.map((st, index) => {
               const isFirst = index === 0
               return (
@@ -1103,9 +1101,13 @@ export function SessionForm({
                   key={st.id || index}
                   role="group"
                   aria-label={`Subtalk ${index + 1}`}
-                  className="space-y-3 bg-gray-50 p-3 rounded-md border border-gray-200 overflow-visible"
+                  className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-visible"
                   data-testid="subtalk-row"
                 >
+                  {/* Talk Header */}
+                  <div className="text-center">
+                    <h5 className="text-lg font-bold text-gray-800">Talk {index + 1}</h5>
+                  </div>
                   {/* Row 1: Time */}
                   <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center">
                     <div className="sm:col-span-3 min-w-[160px] relative focus-within:z-20">
@@ -1246,10 +1248,10 @@ export function SessionForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl mx-auto">
       {/* Session Type Selection */}
-      <div className="bg-gray-50 rounded-lg p-3">
-        <h3 className="text-sm font-medium text-gray-900 mb-2">Session Type</h3>
+      <div className="space-y-3">
+        <h3 className="text-base font-medium text-gray-900">Session Type</h3>
         <div className="grid grid-cols-3 gap-2">
           {[
             'lecture',
@@ -1264,10 +1266,16 @@ export function SessionForm({
             'other'
           ].filter(key => SESSION_TYPES[key]).map((key) => {
             const type = SESSION_TYPES[key]
+            // Dynamic padding based on session type complexity
+            const getPadding = (sessionType: string) => {
+              if (sessionType === 'symposium') return 'p-1.5' // Less space for symposium
+              if (sessionType === 'oration' || sessionType === 'guest_lecture') return 'p-3' // More space for important types
+              return 'p-2' // Default for others
+            }
             return (
             <div
               key={key}
-              className={`relative rounded border p-2 cursor-pointer text-xs ${
+              className={`relative rounded border cursor-pointer transition-colors ${getPadding(key)} ${
                 currentSessionType === key
                   ? 'border-indigo-500 bg-indigo-50'
                   : 'border-gray-300 bg-white hover:border-gray-400'
@@ -1281,9 +1289,9 @@ export function SessionForm({
                   value={key}
                   checked={currentSessionType === key}
                   onChange={() => setCurrentSessionType(key)}
-                  className="h-3 w-3 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
                 />
-                <label className="ml-1 block text-xs font-medium text-gray-900">
+                <label className="ml-2 block text-sm font-medium text-gray-900">
                   {type.name}
                 </label>
               </div>
@@ -1294,15 +1302,11 @@ export function SessionForm({
       </div>
 
       {/* Core Fields: Title, Topic, Time */}
-      <div className="space-y-3">
-        
-        {/* Show pre-selected hall and time slot when adding new session */}
-        {/* Removed preview/info card to keep form minimal */}
-        
-        <div className="grid grid-cols-1 gap-3">
+      <div className="space-y-4">
+        <div className="space-y-4">
           {/* Session Title - Show for ALL session types */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               {currentSessionType === 'lecture' ? 'Talk Title *' : 
                currentSessionType === 'session' ? 'Session Title' : 'Session Title *'}
             </label>
@@ -1312,9 +1316,8 @@ export function SessionForm({
               onChange={(e) => handleInputChange('title', e.target.value)}
               placeholder={currentSessionType === 'lecture' ? 'Enter talk title' : 
                           currentSessionType === 'session' ? getSuggestedSessionTitle() : 'Enter session title'}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 text-sm ${
-                (currentSessionType === 'lecture' && !formData.title) ? 'border-red-300 focus:ring-red-300 focus:border-red-400' : 
-                'border-gray-300 focus:ring-indigo-500 focus:border-indigo-500'
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 ${
+                (currentSessionType === 'lecture' && !formData.title) ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
               }`}
               required={currentSessionType === 'lecture'}
             />
@@ -1323,7 +1326,7 @@ export function SessionForm({
           {/* Topic - Show for all types except lecture (since lecture uses title as topic) */}
           {currentSessionType !== 'lecture' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 {currentSessionType === 'session' ? 'Session Topic' : 'Topic'}
               </label>
               <input
@@ -1331,147 +1334,160 @@ export function SessionForm({
                 value={formData.topic}
                 onChange={(e) => handleInputChange('topic', e.target.value)}
                 placeholder={currentSessionType === 'session' ? 'Enter session topic' : 'Enter topic'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           )}
 
           {/* Time Range - Always visible */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <div className="text-[11px] text-gray-500">Select session start</div>
-              <TimePicker
-                value={formData.custom_start_time}
-                onChange={(t) => handleInputChange('custom_start_time', t)}
-                label="Start Time"
-                required
-                idBase="session-start"
-                ariaInvalid={Boolean(errors.time)}
-              />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Session Time</label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <TimePicker
+                  value={formData.custom_start_time}
+                  onChange={(t) => handleInputChange('custom_start_time', t)}
+                  label="Start Time"
+                  required
+                  idBase="session-start"
+                  ariaInvalid={Boolean(errors.time)}
+                />
+              </div>
+              <div>
+                <TimePicker
+                  value={formData.custom_end_time}
+                  onChange={(t) => handleInputChange('custom_end_time', t)}
+                  label="End Time"
+                  required
+                  idBase="session-end"
+                  ariaInvalid={Boolean(errors.time)}
+                  ariaDescribedById={errors.time ? 'session-time-error' : undefined}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <div className="text-[11px] text-gray-500">Select session end</div>
-              <TimePicker
-                value={formData.custom_end_time}
-                onChange={(t) => handleInputChange('custom_end_time', t)}
-                label="End Time"
-                required
-                idBase="session-end"
-                ariaInvalid={Boolean(errors.time)}
-                ariaDescribedById={errors.time ? 'session-time-error' : undefined}
-              />
+            {errors.time && (
+              <div id="session-time-error" className="text-sm text-red-600 mt-1">{errors.time}</div>
+            )}
           </div>
-          </div>
-          {errors.time && (
-            <div id="session-time-error" className="text-[11px] text-red-600">{errors.time}</div>
-          )}
         </div>
       </div>
 
       {/* Optional minimal fields by type (hidden for simplified Session flow and lecture/talk) */}
       {currentSessionType !== 'session' && currentSessionType !== 'lecture' && (
-      <div className="grid grid-cols-1 gap-3">
-          {optionalFields.map(field => {
-            // Description removed globally
-            if (field === 'description') return null
-            if (field === 'chairperson_id') return renderField(field, 'Chairperson', 'select')
-            if (field === 'assistant_ids') return renderArrayField(field, 'Assistant')
-            if (field === 'capacity') return renderField(field, 'Capacity', 'number')
-            if (field === 'introducer_id') return renderField(field, 'Introducer', 'select')
-            if (field === 'is_parallel_meal') return renderField(field, 'Parallel with Meal', 'checkbox')
-            if (field === 'parallel_meal_type') {
-              return formData.is_parallel_meal ? renderField(field, 'Meal Type', 'select') : null
-            }
-            if (field === 'symposium_subtalks') {
-              return currentSessionType === 'symposium' ? renderSymposiumSubtalkFields() : null
-            }
-            if (field === 'custom_data') {
-              return currentSessionType === 'other' ? renderCustomDataFields() : null
-            }
-            return null
-          })}
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Additional Details</h3>
+          <div className="space-y-3">
+            {optionalFields.map(field => {
+              // Description removed globally
+              if (field === 'description') return null
+              if (field === 'chairperson_id') return renderField(field, 'Chairperson', 'select')
+              if (field === 'assistant_ids') return renderArrayField(field, 'Assistant')
+              if (field === 'capacity') return renderField(field, 'Capacity', 'number')
+              if (field === 'introducer_id') return renderField(field, 'Introducer', 'select')
+              if (field === 'is_parallel_meal') return renderField(field, 'Parallel with Meal', 'checkbox')
+              if (field === 'parallel_meal_type') {
+                return formData.is_parallel_meal ? renderField(field, 'Meal Type', 'select') : null
+              }
+              if (field === 'symposium_subtalks') {
+                return currentSessionType === 'symposium' ? renderSymposiumSubtalkFields() : null
+              }
+              if (field === 'custom_data') {
+                return currentSessionType === 'other' ? renderCustomDataFields() : null
+              }
+              return null
+            })}
+          </div>
         </div>
       )}
 
       {/* Lecture/Talk specific: primary Speaker free-text */}
       {currentSessionType === 'lecture' && (
-        <div className="grid grid-cols-1 gap-3">
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Speaker Information</h3>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Speaker *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Speaker *</label>
             <input
               type="text"
               value={formData.speaker_id}
               onChange={(e) => handleInputChange('speaker_id', e.target.value)}
               required
               placeholder="Type a name (new or existing)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
             />
-      </div>
+          </div>
         </div>
       )}
 
       {/* Simplified Session flow */}
       {currentSessionType === 'session' && (
-        <div className="space-y-3 will-change-auto">
-          {renderSessionSimplifiedFlow()}
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Session Management</h3>
+          <div className="space-y-3">
+            {renderSessionSimplifiedFlow()}
+          </div>
         </div>
       )}
 
       {/* Dynamic Participants Section (hidden for simplified Session flow) */}
       {currentSessionType !== 'session' && (
-        <div className="space-y-2">
-        {renderDynamicParticipants()}
-      </div>
+        <div className="space-y-4">
+          <h3 className="text-base font-medium text-gray-900">Participants</h3>
+          <div className="space-y-3">
+            {renderDynamicParticipants()}
+          </div>
+        </div>
       )}
 
       {/* Symposium Subtalks Section */}
       {currentSessionType === 'symposium' && (
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-900">Symposium Subtalks</h3>
-          {renderSymposiumSubtalkFields()}
+          <h3 className="text-base font-medium text-gray-900">Symposium Subtalks</h3>
+          <div className="space-y-3">
+            {renderSymposiumSubtalkFields()}
+          </div>
         </div>
       )}
 
       {/* Custom Data Section */}
       {currentSessionType === 'other' && (
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-900">Custom Fields</h3>
-          {renderCustomDataFields()}
+          <h3 className="text-base font-medium text-gray-900">Custom Fields</h3>
+          <div className="space-y-3">
+            {renderCustomDataFields()}
+          </div>
         </div>
       )}
 
-      {/* Removed preview to keep form compact */}
-
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-3 border-top border-gray-200">
+      {/* Actions - Compact spacing */}
+      <div className="flex items-center justify-between pt-3 border-t border-gray-200">
         {/* Left: Delete when editing */}
         <div>
           {onDelete && (
             <button
               type="button"
               onClick={onDelete}
-              className="px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              className="px-3 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500"
             >
-              Delete Session
+              Delete
             </button>
           )}
-              </div>
+        </div>
         {/* Right: Cancel / Save */}
-        <div className="flex space-x-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? 'Saving...' : 'Save Session'}
-        </button>
+        <div className="flex space-x-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-4 py-1.5 border border-transparent text-sm font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Saving...' : 'Save'}
+          </button>
         </div>
       </div>
     </form>

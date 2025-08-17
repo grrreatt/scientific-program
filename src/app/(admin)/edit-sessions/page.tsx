@@ -65,10 +65,7 @@ export default function EditSessionsPage() {
   const [globalBlockStartTime, setGlobalBlockStartTime] = useState('')
   const [globalBlockEndTime, setGlobalBlockEndTime] = useState('')
   const [selectedDayForGlobalBlock, setSelectedDayForGlobalBlock] = useState<string>('')
-
-  // Search state (removed from main interface)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<Session[]>([])
+  const [editingGlobalBlock, setEditingGlobalBlock] = useState<DayTimeSlot | null>(null)
 
   // Persist selected day across reloads
   const selectDay = (dayName: string) => {
@@ -294,66 +291,69 @@ export default function EditSessionsPage() {
     }
   }
 
-  // Initialize realtime connection
-  useEffect(() => {
-    if (!REALTIME_ENABLED) return
-      try {
-        console.log('🚀 Initializing realtime connections...')
-        realtimeService.subscribeToAll({
-        onSessionChange: () => { loadAllData(); setLastUpdate(new Date()) },
-        onHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
-        onDayChange: () => { loadAllData(); setLastUpdate(new Date()) },
-        onTimeSlotChange: () => { loadTimeSlots(); setLastUpdate(new Date()) },
-        onDayHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
-        onConnectionChange: (status) => setConnectionStatus(status as any)
-      })
-        setConnectionStatus('connecting')
-      } catch (error) {
-        console.error('❌ Error initializing realtime:', error)
-        setConnectionStatus('disconnected')
-      }
-    return () => { realtimeService.unsubscribeFromAll() }
-  }, [])
+  // Disabled automatic realtime refresh - only refresh on manual save
+  // useEffect(() => {
+  //   if (!REALTIME_ENABLED) return
+  //     try {
+  //       console.log('🚀 Initializing realtime connections...')
+  //       realtimeService.subscribeToAll({
+  //       onSessionChange: () => { loadAllData(); setLastUpdate(new Date()) },
+  //       onHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
+  //       onDayChange: () => { loadAllData(); setLastUpdate(new Date()) },
+  //       onTimeSlotChange: () => { loadTimeSlots(); setLastUpdate(new Date()) },
+  //       onDayHallChange: () => { loadAllData(); setLastUpdate(new Date()) },
+  //       onConnectionChange: (status) => setConnectionStatus(status as any)
+  //     })
+  //       setConnectionStatus('connecting')
+  //     } catch (error) {
+  //       console.error('❌ Error initializing realtime:', error)
+  //       setConnectionStatus('disconnected')
+  //     }
+  //   return () => { realtimeService.unsubscribeFromAll() }
+  // }, [])
 
   // Keep a live flag of whether user is editing to avoid refresh during input
   useEffect(() => {
     editingRef.current = isModalOpen || isSubmitting
   }, [isModalOpen, isSubmitting])
 
-  // Polling fallback when realtime disabled (paused while editing)
-  useEffect(() => {
-    if (REALTIME_ENABLED) return
-    const intervalMs = Number(process.env.NEXT_PUBLIC_POLL_INTERVAL_MS || 15000)
-    let timer: any
-    const tick = async () => {
-      try {
-        if (!editingRef.current) {
-          await loadAllData()
-        }
-      } finally {
-        timer = setTimeout(tick, intervalMs)
-      }
-    }
-    timer = setTimeout(tick, intervalMs)
-    const onVisible = () => { if (document.visibilityState === 'visible' && !editingRef.current) loadAllData() }
-    const onOnline = () => { if (!editingRef.current) loadAllData() }
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('online', onOnline)
-    return () => {
-      clearTimeout(timer)
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('online', onOnline)
-    }
-  }, [])
+  // Disabled automatic polling - only refresh on manual save
+  // useEffect(() => {
+  //   if (REALTIME_ENABLED) return
+  //   const intervalMs = Number(process.env.NEXT_PUBLIC_POLL_INTERVAL_MS || 15000)
+  //   let timer: any
+  //   const tick = async () => {
+  //     try {
+  //       if (!editingRef.current) {
+  //         await loadAllData()
+  //       }
+  //     } finally {
+  //       timer = setTimeout(tick, intervalMs)
+  //     }
+  //   }
+  //   timer = setTimeout(tick, intervalMs)
+  //   const onVisible = () => { if (document.visibilityState === 'visible' && !editingRef.current) loadAllData() }
+  //   const onOnline = () => { if (!editingRef.current) loadAllData() }
+  //   document.addEventListener('visibilitychange', onVisible)
+  //   window.addEventListener('online', onOnline)
+  //   return () => {
+  //     clearTimeout(timer)
+  //     document.removeEventListener('visibilitychange', onVisible)
+  //     window.removeEventListener('online', onOnline)
+  //   }
+  // }, [])
 
   // Load data on mount and when selected day changes
   useEffect(() => {
     loadAllData()
   }, [])
 
+  // Load time slots only when selectedDay changes (not automatically)
   useEffect(() => {
-    loadTimeSlots()
-  }, [selectedDay, days])
+    if (selectedDay) {
+      loadTimeSlots()
+    }
+  }, [selectedDay])
 
   // Utility functions
   const getSessionTypeLabel = (type: string) => {
@@ -438,6 +438,15 @@ export default function EditSessionsPage() {
       const derivedStart = formData.custom_start_time || chosenTimeSlot?.start_time || null
       const derivedEnd = formData.custom_end_time || chosenTimeSlot?.end_time || null
 
+      // Prepare data field for symposium_subtalks and custom_data
+      const dataField: any = {}
+      if (sessionType === 'symposium' && formData.symposium_subtalks?.length > 0) {
+        dataField.symposium_subtalks = formData.symposium_subtalks
+      }
+      if (sessionType === 'other' && formData.custom_data) {
+        Object.assign(dataField, formData.custom_data)
+      }
+
       const insertData = {
         title: formData.title,
         session_type: sessionType,
@@ -450,6 +459,7 @@ export default function EditSessionsPage() {
         parallel_meal_type: formData.parallel_meal_type,
         custom_start_time: formData.custom_start_time || null,
         custom_end_time: formData.custom_end_time || null,
+        data: Object.keys(dataField).length > 0 ? dataField : null,
         // legacy required columns kept in schema; set for DB NOT NULL safety
         start_time: derivedStart,
         end_time: derivedEnd
@@ -518,28 +528,43 @@ export default function EditSessionsPage() {
           participantsToAdd.push({ session_id: sessionId, speaker_id: formData.moderator_id, role: 'moderator' })
         }
 
-        // Add chairpersons (dynamic array)
-        if (formData.chairpersons && formData.chairpersons.length > 0) {
-          formData.chairpersons.forEach((chairperson: any) => {
-            // collect for resolution
-          })
-        }
-        // Panelists array (dynamic)
-        if (formData.panelists && formData.panelists.length > 0) {
-          formData.panelists.forEach((p: any) => {
-            // collect for resolution
-          })
+        // Function to ensure a person exists in the database and return their ID
+        const ensurePerson = async (nameOrId: string): Promise<string | null> => {
+          if (!nameOrId || !nameOrId.trim()) return null
+          
+          const input = nameOrId.trim()
+          
+          // If it's already a UUID, return it
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input)) {
+            return input
+          }
+          
+          // It's a name, try to find existing person first
+          const { data: existingPerson } = await supabase
+            .from('speakers')
+            .select('id')
+            .ilike('name', input)
+            .single()
+          
+          if (existingPerson) {
+            return existingPerson.id
+          }
+          
+          // Create new person
+          const { data: newPerson, error } = await supabase
+            .from('speakers')
+            .insert({ name: input, email: '' })
+            .select('id')
+            .single()
+          
+          if (error) {
+            console.error('Error creating person:', error)
+            return null
+          }
+          
+          return newPerson?.id || null
         }
 
-        // Experts array (dynamic)
-        if (formData.experts && formData.experts.length > 0) {
-          formData.experts.forEach((e: any) => {
-            // collect for resolution
-          })
-        }
-
-
-        // Single chairperson field
         // Resolve all role fields to IDs and build participants list
         const resolveMany = async (items: any[], role: string) => {
           for (const it of items || []) {
@@ -1006,7 +1031,20 @@ export default function EditSessionsPage() {
   }
 
   const handleSubmitGlobalBlock = async () => {
+    console.log('🔄 Creating global block with:', {
+      selectedDayForGlobalBlock,
+      globalBlockStartTime,
+      globalBlockEndTime,
+      globalBlockType,
+      globalBlockTitle
+    })
+
     if (!selectedDayForGlobalBlock || !globalBlockStartTime || !globalBlockEndTime) {
+      console.error('❌ Missing required fields:', {
+        selectedDayForGlobalBlock: !!selectedDayForGlobalBlock,
+        globalBlockStartTime: !!globalBlockStartTime,
+        globalBlockEndTime: !!globalBlockEndTime
+      })
       alert('Please select day and time')
       return
     }
@@ -1031,31 +1069,73 @@ export default function EditSessionsPage() {
       }
       const finalTitle = globalBlockType === 'custom' ? (globalBlockTitle?.trim() || 'Custom Block') : (typeToTitle[globalBlockType] || 'Break')
 
-      // Compute next slot order for the day to avoid conflicts
+      // Find the correct slot order based on time position
       const { data: existingSlots } = await supabase
         .from('day_time_slots')
-        .select('slot_order')
+        .select('id, slot_order, start_time')
         .eq('day_id', selectedDayData.id)
-      const nextOrder = (existingSlots?.reduce((m: number, s: any) => Math.max(m, s.slot_order || 0), 0) || 0) + 1
+        .order('start_time', { ascending: true })
+      
+      // Find where this time slot should be inserted
+      let insertOrder = 1
+      if (existingSlots && existingSlots.length > 0) {
+        // Find the first slot that starts after our global block start time
+        const laterSlotIndex = existingSlots.findIndex((slot: any) => slot.start_time > globalBlockStartTime)
+        if (laterSlotIndex !== -1) {
+          insertOrder = existingSlots[laterSlotIndex].slot_order
+          // Update all slots that come after this time to have higher slot_order
+          const slotsToUpdate = existingSlots.slice(laterSlotIndex)
+          for (const slotToUpdate of slotsToUpdate) {
+            await supabase
+              .from('day_time_slots')
+              .update({ slot_order: slotToUpdate.slot_order + 1 })
+              .eq('id', slotToUpdate.id)
+          }
+        } else {
+          // This goes at the end
+          insertOrder = (existingSlots.reduce((m: number, s: any) => Math.max(m, s.slot_order || 0), 0) || 0) + 1
+        }
+      }
 
-      // Create a new time slot for the global block
-      const { data: newTimeSlot, error: timeSlotError } = await supabase
-        .from('day_time_slots')
-        .insert({
-          day_id: selectedDayData.id,
-          start_time: globalBlockStartTime,
-          end_time: globalBlockEndTime,
-          slot_order: nextOrder,
-          is_break: true,
-          break_title: finalTitle
-        })
-        .select()
+      // Create or update the global block
+      let newTimeSlot, timeSlotError
+      if (editingGlobalBlock) {
+        // Update existing global block
+        const { data, error } = await supabase
+          .from('day_time_slots')
+          .update({
+            start_time: globalBlockStartTime,
+            end_time: globalBlockEndTime,
+            break_title: finalTitle
+          })
+          .eq('id', editingGlobalBlock.id)
+          .select()
+        newTimeSlot = data
+        timeSlotError = error
+      } else {
+        // Create new global block
+        const { data, error } = await supabase
+          .from('day_time_slots')
+          .insert({
+            day_id: selectedDayData.id,
+            start_time: globalBlockStartTime,
+            end_time: globalBlockEndTime,
+            slot_order: insertOrder,
+            is_break: true,
+            break_title: finalTitle
+          })
+          .select()
+        newTimeSlot = data
+        timeSlotError = error
+      }
 
       if (timeSlotError) {
-        console.error('❌ Error creating global block:', timeSlotError)
-        alert(`Error creating global block: ${timeSlotError.message || 'Please try again.'}`)
+        console.error(`❌ Error ${editingGlobalBlock ? 'updating' : 'creating'} global block:`, timeSlotError)
+        alert(`Error ${editingGlobalBlock ? 'updating' : 'creating'} global block: ${timeSlotError.message || 'Please try again.'}`)
         return
       }
+
+      console.log(`✅ Global block ${editingGlobalBlock ? 'updated' : 'created'} in database:`, newTimeSlot)
 
       setShowGlobalBlockModal(false)
       setGlobalBlockType('registration')
@@ -1063,9 +1143,10 @@ export default function EditSessionsPage() {
       setGlobalBlockStartTime('08:00')
       setGlobalBlockEndTime('09:00')
       setSelectedDayForGlobalBlock('')
+      setEditingGlobalBlock(null)
       
       await loadTimeSlots()
-      console.log('✅ Global block created successfully')
+      console.log(`✅ Global block ${editingGlobalBlock ? 'updated' : 'created'} successfully`)
       
     } catch (error: any) {
       console.error('❌ Error creating global block:', error)
@@ -1081,32 +1162,55 @@ export default function EditSessionsPage() {
     setGlobalBlockStartTime('')
     setGlobalBlockEndTime('')
     setSelectedDayForGlobalBlock('')
+    setEditingGlobalBlock(null)
+  }
+
+  const handleEditGlobalBlock = (timeSlot: DayTimeSlot) => {
+    if (!timeSlot.is_break) return
+
+    setEditingGlobalBlock(timeSlot)
+    setSelectedDayForGlobalBlock(timeSlot.day_id)
+    setGlobalBlockStartTime(timeSlot.start_time)
+    setGlobalBlockEndTime(timeSlot.end_time)
+    
+    // Determine the type from the title
+    const title = timeSlot.break_title || ''
+    if (title === 'Registration') setGlobalBlockType('registration')
+    else if (title === 'Tea Break') setGlobalBlockType('tea_break')
+    else if (title === 'Lunch') setGlobalBlockType('lunch')
+    else if (title === 'Coffee Break') setGlobalBlockType('coffee_break')
+    else if (title === 'Inauguration') setGlobalBlockType('inauguration')
+    else if (title === 'Valedictory') setGlobalBlockType('valedictory')
+    else {
+      setGlobalBlockType('custom')
+      setGlobalBlockTitle(title)
+    }
+    
+    setShowGlobalBlockModal(true)
   }
 
   const handleDeleteGlobalBlock = async (timeSlot: DayTimeSlot) => {
     if (!timeSlot.is_break) return
 
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${timeSlot.break_title || 'this global block'}"? This action cannot be undone.`
+    )
+    
+    if (!confirmed) return
+
     try {
       const { error } = await supabase
         .from('day_time_slots')
-        .update({ 
-          is_break: false, 
-          break_title: undefined 
-        })
+        .delete()
         .eq('id', timeSlot.id)
 
       if (error) throw error
 
-      // Update local state
-      setTimeSlots(prev => prev.map(ts => 
-        ts.id === timeSlot.id 
-          ? { ...ts, is_break: false, break_title: undefined }
-          : ts
-      ))
-
+      await loadTimeSlots()
       console.log('Global block deleted successfully')
     } catch (error) {
       console.error('Error deleting global block:', error)
+      alert('Error deleting global block. Please try again.')
     }
   }
 
@@ -1137,31 +1241,7 @@ export default function EditSessionsPage() {
     setItemToDelete(null)
   }
 
-  // Search functionality (kept for future use)
-  const performSearch = (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([])
-      return
-    }
 
-    const results = sessions.filter(session => {
-      const searchLower = query.toLowerCase()
-      return (
-        session.title?.toLowerCase().includes(searchLower) ||
-        session.topic?.toLowerCase().includes(searchLower) ||
-        session.stage_name?.toLowerCase().includes(searchLower) ||
-        session.session_type?.toLowerCase().includes(searchLower) ||
-        session.description?.toLowerCase().includes(searchLower)
-      )
-    })
-    setSearchResults(results)
-  }
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value
-    setSearchQuery(query)
-    performSearch(query)
-  }
 
   // Time slot editing functions
   const handleEditTimeSlot = (timeSlot: DayTimeSlot) => {
@@ -1287,48 +1367,61 @@ export default function EditSessionsPage() {
       
       return matchesDay && matchesHall && matchesTimeSlot
     })
+
+    return exactMatch
+  }
+
+  // Helper function to determine if we should show "Add Session" button
+  const shouldShowAddSessionButton = (timeSlotId: string, hallId: string) => {
+    const selectedDayData = days.find(day => day.name === selectedDay)
     
-    if (exactMatch) {
-      return exactMatch
-    }
-    
-    // Fallback: match by time overlap (for sessions without time_slot_id)
-    const slot = timeSlots.find(s => s.id === timeSlotId)
-    if (!slot) return undefined
-    
-    const slotStart = slot.start_time
-    const slotEnd = slot.end_time
-    
-    const toMinutes = (t: string) => {
-      if (!t) return -1
-      const [h, m] = t.split(':').map(Number)
-      return h * 60 + (m || 0)
-    }
-    
-    const sStartMin = toMinutes(slotStart)
-    const sEndMin = toMinutes(slotEnd)
-    
-    const timeMatch = sessions.find(session => {
+    // Get all sessions for this hall on the selected day
+    const hallSessions = sessions.filter(session => {
       const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
       const matchesHall = session.stage_id === hallId
-      
-      if (!matchesDay || !matchesHall) return false
-      
-      // Only use time overlap if session doesn't have a time_slot_id
-      if (session.time_slot_id) return false
-      
-      if (session.start_time && session.end_time) {
-        const a1 = toMinutes(String(session.start_time))
-        const a2 = toMinutes(String(session.end_time))
-        if (a1 === -1 || a2 === -1 || sStartMin === -1 || sEndMin === -1) return false
-        
-        return a1 < sEndMin && sStartMin < a2
-      }
-      
-      return false
+      return matchesDay && matchesHall
     })
+
+    // If no sessions exist in this hall, show all "Add Session" buttons
+    if (hallSessions.length === 0) {
+      return true
+    }
+
+    // If sessions exist, only show "Add Session" for the next available time slot
+    // Get all time slots for the day, ordered by time
+    const currentTimeSlots = timeSlots
+      .filter(ts => ts.day_id === selectedDayData?.id)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+
+    // Find occupied time slot IDs for this hall
+    const occupiedTimeSlotIds = new Set(hallSessions.map(s => s.time_slot_id))
+
+    // Find the first empty time slot after any occupied slot
+    const currentTimeSlotIndex = currentTimeSlots.findIndex(ts => ts.id === timeSlotId)
     
-    return timeMatch || undefined
+    // If this is a break (global block), don't show add session button
+    const currentTimeSlot = currentTimeSlots[currentTimeSlotIndex]
+    if (currentTimeSlot?.is_break) {
+      return false
+    }
+
+    // Find the latest occupied time slot index
+    let latestOccupiedIndex = -1
+    for (let i = 0; i < currentTimeSlots.length; i++) {
+      if (occupiedTimeSlotIds.has(currentTimeSlots[i].id)) {
+        latestOccupiedIndex = i
+      }
+    }
+
+    // Show "Add Session" only for the first empty slot after the latest occupied one
+    if (latestOccupiedIndex === -1) {
+      // No occupied slots, show only for the first time slot
+      return currentTimeSlotIndex === 0
+    } else {
+      // Show for the first empty slot after the latest occupied slot
+      const nextAvailableIndex = latestOccupiedIndex + 1
+      return currentTimeSlotIndex === nextAvailableIndex && !occupiedTimeSlotIds.has(timeSlotId)
+    }
   }
 
   // Calendar utility functions
@@ -1395,22 +1488,10 @@ export default function EditSessionsPage() {
       }))
   }
 
-  // Filter sessions for selected day and search
+  // Filter sessions for selected day
   const filteredSessions = sessions.filter(session => {
     const selectedDayData = days.find(d => d.name === selectedDay)
-    const matchesDay = session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
-    if (!matchesDay) return false
-    
-    if (!searchQuery.trim()) return true
-    
-    const searchLower = searchQuery.toLowerCase()
-    return (
-      session.title?.toLowerCase().includes(searchLower) ||
-      session.topic?.toLowerCase().includes(searchLower) ||
-      session.stage_name?.toLowerCase().includes(searchLower) ||
-      session.session_type?.toLowerCase().includes(searchLower) ||
-      session.description?.toLowerCase().includes(searchLower)
-    )
+    return session.day_name === selectedDay || (selectedDayData ? session.day_id === selectedDayData.id : false)
   })
 
   // Loading state
@@ -1453,31 +1534,7 @@ export default function EditSessionsPage() {
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Conference Program Editor</h1>
               <p className="text-sm text-gray-600">{selectedDay} Schedule - {halls.length} Halls • {timeSlots.length} Time Slots</p>
             </div>
-            {/* Global Search */}
             <div className="flex items-center space-x-2">
-                <input
-                  value={searchQuery}
-                onChange={(e)=> setSearchQuery(e.target.value)}
-                placeholder="Search title, topic, speaker, hall…"
-                className="px-3 py-1.5 border rounded-md text-sm"
-              />
-              {/* Add Day Button */}
-              <button
-                onClick={() => setShowAddDayModal(true)}
-                className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-              >
-                <span>📅</span>
-                <span>Add Day</span>
-              </button>
-
-              {/* Add Hall Button */}
-              <button
-                onClick={() => setShowAddHallModal(true)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-              >
-                <span>🏛️</span>
-                <span>Add Hall</span>
-              </button>
               <RealtimeStatus />
             </div>
           </div>
@@ -1540,31 +1597,36 @@ export default function EditSessionsPage() {
               ))}
             </div>
             
-            {/* Add Day Button */}
-            <button
-              onClick={() => setShowAddDayModal(true)}
-              className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-            >
-              <span>📅</span>
-              <span>Add Day</span>
-            </button>
+            {/* Management Actions */}
+            <div className="flex items-center space-x-3">
+              {/* Add Day Button */}
+              <button
+                onClick={() => setShowAddDayModal(true)}
+                className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+              >
+                <span>📅</span>
+                <span>Add Day</span>
+              </button>
 
-            {/* Add Hall Button */}
-            <button
-              onClick={() => setShowAddHallModal(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
-            >
-              <span>🏛️</span>
-              <span>Add Hall</span>
-            </button>
+              {/* Add Hall Button */}
+              <button
+                onClick={() => setShowAddHallModal(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
+              >
+                <span>🏛️</span>
+                <span>Add Hall</span>
+              </button>
 
-            {/* Global Block Button */}
+              {/* Global Block Button */}
             <button
               onClick={() => {
                 const day = days.find(d => d.name === selectedDay)
+                console.log('🔄 Opening global block modal for day:', day)
                 setSelectedDayForGlobalBlock(day?.id || '')
                 setGlobalBlockStartTime('08:00')
                 setGlobalBlockEndTime('09:00')
+                setGlobalBlockType('registration')
+                setGlobalBlockTitle('')
                 setShowGlobalBlockModal(true)
               }}
               className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm font-medium flex items-center space-x-2 whitespace-nowrap"
@@ -1572,6 +1634,7 @@ export default function EditSessionsPage() {
               <span>🌐</span>
               <span>Global Block</span>
             </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1643,8 +1706,15 @@ export default function EditSessionsPage() {
                       {/* Check if this is a global block (break) */}
                       {timeSlot.is_break ? (
                         <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-2 text-center group relative">
-                          {/* Delete Icon - Top Right */}
-                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                          {/* Action Icons - Top Right */}
+                          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <button
+                              onClick={() => handleEditGlobalBlock(timeSlot)}
+                              className="w-4 h-4 bg-blue-600 text-white rounded text-xs flex items-center justify-center hover:bg-blue-700 transition-colors"
+                              title="Edit Global Block"
+                            >
+                              ✏️
+                            </button>
                             <button
                               onClick={() => handleDeleteGlobalBlock(timeSlot)}
                               className="w-4 h-4 bg-red-600 text-white rounded text-xs flex items-center justify-center hover:bg-red-700 transition-colors"
@@ -1686,23 +1756,23 @@ export default function EditSessionsPage() {
                               </button>
                             </div>
                                   
-                                  {/* Session Content with Time at Top - aligned like reference */}
-                                  <div className="text-left space-y-1 pr-8">
-                                    {/* TIME RANGE (bold) */}
-                                    <div className="text-xs font-semibold text-gray-800">
+                                  {/* Session Content with Time at Top - improved styling with better centering and bigger fonts */}
+                                  <div className="text-center space-y-2 pr-8">
+                                    {/* TIME RANGE (bold and bigger) */}
+                                    <div className="text-sm font-bold text-gray-800">
                                       <span className="mr-1">🕘</span>{formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
                                     </div>
-                                    {/* TITLE (larger) */}
-                                    <div className="text-sm font-semibold text-gray-900">
+                                    {/* TITLE (larger and bold, centered) */}
+                                    <div className="text-lg font-bold text-gray-900 text-center">
                                       {session.title}
                                     </div>
                                     {/* PARTICIPANTS COMPACT S/M/C/P/E */}
-                                    <div className="text-xs text-gray-600 min-h-[16px]">
+                                    <div className="text-sm text-gray-600 min-h-[20px] text-center">
                                       {formatParticipantsDisplay(session)}
                                     </div>
-                                    {/* TOPIC (optional) */}
+                                    {/* TOPIC (optional, bold and centered) */}
                                     {session.topic ? (
-                                      <div className="text-[11px] text-gray-600">Topic: {session.topic}</div>
+                                      <div className="text-sm font-bold text-gray-700 text-center">Topic: {session.topic}</div>
                                     ) : null}
                                     {/* Sub-talks list (compact, admin abbreviations) */}
                                     {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
@@ -1712,23 +1782,23 @@ export default function EditSessionsPage() {
                                           <div key={st.id || idx} className="truncate">
                                             <span className="text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)} • </span>
                                             <span className="font-medium">{st.title}</span>
-                                            {st.speaker_name ? <span className="text-gray-500"> — S: {st.speaker_name}</span> : null}
+                                            {st.speaker_name ? <span className="text-gray-500"> — S: <span className="font-bold text-blue-600">{st.speaker_name}</span></span> : null}
                                           </div>
                                         ))}
                                       </div>
                                     )}
                           </div>
                         </div>
-                      ) : (
-                        <div className="h-full flex items-center justify-center">
-                          <button
-                            onClick={() => handleAddSession(hall.id, timeSlot.id)}
-                            className="text-gray-400 hover:text-gray-600 text-xs border-2 border-dashed border-gray-300 rounded p-2 w-full h-16 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
-                          >
-                            + Add Session
-                          </button>
-                        </div>
-                      )}
+                                                  ) : shouldShowAddSessionButton(timeSlot.id, hall.id) ? (
+                              <div className="h-full flex items-center justify-center">
+                                <button
+                                  onClick={() => handleAddSession(hall.id, timeSlot.id)}
+                                  className="text-gray-400 hover:text-gray-600 text-xs border-2 border-dashed border-gray-300 rounded p-2 w-full h-16 flex items-center justify-center hover:border-gray-400 transition-colors hover:bg-gray-50"
+                                >
+                                  + Add Session
+                                </button>
+                              </div>
+                            ) : null}
                             </td>
                           )
                         })
@@ -1772,7 +1842,21 @@ export default function EditSessionsPage() {
             custom_end_time: editingSession.custom_end_time || editingSession.end_time || '',
             description: editingSession.description || '',
             is_parallel_meal: editingSession.is_parallel_meal || false,
-            parallel_meal_type: editingSession.parallel_meal_type || ''
+            parallel_meal_type: editingSession.parallel_meal_type || '',
+            // Pass existing participant data (dynamic arrays)
+            speakers: editingSession.speakers_ids?.map(id => ({ id, role: 'speaker' })) || [],
+            moderators: editingSession.moderators_ids?.map(id => ({ id, role: 'moderator' })) || [],
+            chairpersons: editingSession.chairpersons_ids?.map(id => ({ id, role: 'chairperson' })) || [],
+            panelists: editingSession.panelists_ids?.map(id => ({ id, role: 'panelist' })) || [],
+            experts: editingSession.experts_ids?.map(id => ({ id, role: 'expert' })) || [],
+            // Pass existing single participant fields
+            speaker_id: editingSession.speakers_ids?.[0] || '',
+            moderator_id: editingSession.moderators_ids?.[0] || '',
+            chairperson_id: editingSession.chairpersons_ids?.[0] || '',
+            // Pass other session-specific data
+            sub_sessions: (editingSession as any).sub_sessions || [],
+            symposium_subtalks: (editingSession as any).symposium_subtalks || [],
+            custom_data: (editingSession as any).custom_data || {}
           } : {
             day_id: days.find(d => d.name === selectedDay)?.id || '',
             stage_id: selectedHallForSession || getHallsForSelectedDay()[0]?.id || '',
@@ -1992,7 +2076,9 @@ export default function EditSessionsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-medium text-gray-900">Add Global Block</h3>
+              <h3 className="text-lg font-medium text-gray-900">
+                {editingGlobalBlock ? 'Edit Global Block' : 'Add Global Block'}
+              </h3>
               <button
                 onClick={handleCancelGlobalBlock}
                 className="text-gray-400 hover:text-gray-600 text-xl font-bold"
@@ -2085,12 +2171,12 @@ export default function EditSessionsPage() {
 
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-3">
-                <button
-                  onClick={handleSubmitGlobalBlock}
-                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-                >
-                  Add Global Block
-                </button>
+                                  <button
+                    onClick={handleSubmitGlobalBlock}
+                    className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                  >
+                    {editingGlobalBlock ? 'Update Global Block' : 'Add Global Block'}
+                  </button>
                 <button
                   onClick={handleCancelGlobalBlock}
                   className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"

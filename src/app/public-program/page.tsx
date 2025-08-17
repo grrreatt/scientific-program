@@ -380,17 +380,18 @@ export default function PublicProgramPage() {
 
   const getSessionTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      lecture: 'bg-blue-50 border-blue-200 text-blue-800',
-      panel: 'bg-green-50 border-green-200 text-green-800',
-      workshop: 'bg-purple-50 border-purple-200 text-purple-800',
-      symposium: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-      oration: 'bg-red-50 border-red-200 text-red-800',
-      guest_lecture: 'bg-indigo-50 border-indigo-200 text-indigo-800',
-      discussion: 'bg-pink-50 border-pink-200 text-pink-800',
-      break: 'bg-gray-50 border-gray-200 text-gray-800',
-      other: 'bg-gray-50 border-gray-200 text-gray-800'
+      lecture: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+      panel: 'bg-violet-50 border-violet-200 text-violet-800',
+      workshop: 'bg-rose-50 border-rose-200 text-rose-800',
+      symposium: 'bg-amber-50 border-amber-200 text-amber-800',
+      oration: 'bg-orange-50 border-orange-200 text-orange-800',
+      guest_lecture: 'bg-teal-50 border-teal-200 text-teal-800',
+      discussion: 'bg-fuchsia-50 border-fuchsia-200 text-fuchsia-800',
+      session: 'bg-cyan-50 border-cyan-200 text-cyan-800',
+      break: 'bg-slate-50 border-slate-200 text-slate-800',
+      other: 'bg-stone-50 border-stone-200 text-stone-800'
     }
-    return colors[type] || 'bg-gray-50 border-gray-200 text-gray-800'
+    return colors[type] || 'bg-stone-50 border-stone-200 text-stone-800'
   }
 
   const getSessionIcon = (type: string) => {
@@ -560,6 +561,34 @@ export default function PublicProgramPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Navigation Bar */}
+      <nav className="bg-white border-b border-gray-200 print:hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-8">
+              <h1 className="text-xl font-bold text-gray-900">APCON 2025</h1>
+              <div className="flex space-x-6">
+                <a href="/edit-sessions" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+                  📝 Edit Sessions
+                </a>
+                <a href="/public-program" className="text-indigo-600 font-medium">
+                  📅 View Program
+                </a>
+                <a href="/speakers" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+                  👥 Speakers
+                </a>
+                <a href="/participants" className="text-gray-600 hover:text-indigo-600 font-medium transition-colors">
+                  📋 Participants
+                </a>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <RealtimeStatus />
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-sm border-b print:shadow-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -622,112 +651,221 @@ export default function PublicProgramPage() {
       {/* Program Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Day Header */}
-        <div className="mb-8 text-center print:mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 print:text-xl">
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-900">
             {selectedDay}
           </h2>
-          <p className="mt-1 text-indigo-600 print:text-sm">
+          <p className="mt-1 text-indigo-600">
             {days.find(d => d.name === selectedDay)?.date || 'March 15, 2024'}
           </p>
         </div>
 
-        {/* Timeline Table */}
-        <div className="h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto">
-          <div className="min-w-max">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-50">
-                  {/* Hall Column Headers only */}
-                  {getHallsForSelectedDay().map((hall) => (
-                    <th key={hall.id} className="w-64 bg-indigo-50 border-r border-indigo-100 p-2 font-semibold text-sm text-indigo-800 text-left">
-                      🏛️ {hall.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {timeSlots.map((timeSlot) => (
-                  <tr key={timeSlot.id} className="bg-white border-b hover:bg-gray-50 transition-colors">
-                    {/* Check if this is a global block (break) */}
-                    {timeSlot.is_break ? (
-                      <td colSpan={getHallsForSelectedDay().length} className="bg-orange-50 border-r border-gray-200 p-2 text-center">
+        {/* Hall Headers */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 mb-6">
+          {getHallsForSelectedDay().map((hall) => (
+            <div key={hall.id} className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center">
+              <h3 className="font-semibold text-indigo-800">🏛️ {hall.name}</h3>
+            </div>
+          ))}
+        </div>
+
+        {/* Independent Hall Columns - Each hall has its own structure */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {getHallsForSelectedDay().map((hall) => (
+            <div key={hall.id} className="space-y-4">
+              <div className="bg-indigo-100 border border-indigo-200 rounded-lg p-2 text-center sticky top-0 z-10">
+                <h4 className="font-semibold text-indigo-800">{hall.name}</h4>
+              </div>
+              
+              {/* Sessions for this hall only */}
+              <div className="space-y-3">
+                {timeSlots.map((timeSlot) => {
+                  // Handle global blocks
+                  if (timeSlot.is_break) {
+                    return (
+                      <div key={timeSlot.id} className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
                         <div className="text-sm font-medium text-orange-800">
                           🔶 {timeSlot.break_title || 'Global Block'}
                         </div>
-                      </td>
-                    ) : (
-                      /* Hall Columns only */
-                      getHallsForSelectedDay().map((hall) => {
-                        const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
-                        return (
-                          <td key={hall.id} className="w-64 border-r border-gray-200 p-1">
-                            {session ? (
-                              <div className="bg-white border border-gray-200 rounded p-1 shadow-sm">
-                                {/* Public Session Block with Time at Top */}
-                                <div className="text-center space-y-0.5">
-                                  {/* TIME RANGE (bold) */}
-                                  <div className="text-xs font-bold text-gray-900">
-                                    {formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
+                        <div className="text-xs text-orange-600">
+                          {formatTimeRangeCompact(timeSlot.start_time, timeSlot.end_time)}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // Get session for this specific hall and time slot
+                  const session = getSessionForTimeSlotAndHall(timeSlot.id, hall.id)
+                  
+                  // Only render if there's a session (no empty blocks)
+                  if (!session) return null
+
+                  return (
+                    <div key={timeSlot.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-teal-400">
+                                      {/* Session Content */}
+                      <div className="text-center space-y-2">
+                                  {/* Individual Session Time - Show actual session time, not time slot time */}
+                                  <div className="flex justify-center mb-2">
+                                    <div className="bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full">
+                                      <span className="text-xs font-bold text-emerald-800">
+                                        {formatTimeRangeCompact(session.start_time || '', session.end_time || '')}
+                                      </span>
+                                    </div>
                                   </div>
-                                  {/* TITLE (larger) */}
-                                  <div className="text-sm font-semibold text-gray-900">
+
+                                  {/* Session Type Badge - No icons, better colors */}
+                                  <div className="flex justify-center mb-2">
+                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getSessionTypeColor(session.session_type)}`}>
+                                      {getSessionTypeLabel(session.session_type)}
+                                    </span>
+                                  </div>
+
+                                  {/* TITLE (large and prominent) */}
+                                  <div className="text-lg font-bold text-gray-900 leading-tight mb-2">
                                     {session.title}
                                   </div>
-                                  {/* Full role names for public view */}
-                                  {session.speakers && session.speakers.length > 0 && (
-                                    <div className="text-xs text-gray-700">
-                                      <span className="font-medium">Speaker:</span> {session.speakers.join(', ')}
-                                    </div>
-                                  )}
-                                  {session.moderators && session.moderators.length > 0 && (
-                                    <div className="text-xs text-gray-700">
-                                      <span className="font-medium">Moderator:</span> {session.moderators.join(', ')}
-                                    </div>
-                                  )}
-                                  {session.chairpersons && session.chairpersons.length > 0 && (
-                                    <div className="text-xs text-gray-700">
-                                      <span className="font-medium">Chairperson:</span> {session.chairpersons.join(', ')}
-                                    </div>
-                                  )}
+
                                   {/* Topic */}
-                                  {session.topic ? (
-                                    <div className="text-[11px] text-gray-600">Topic: {session.topic}</div>
-                                  ) : null}
-                                  {/* Sub-talks (public view) */}
-                                  {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
-                                    <div className="text-[11px] text-gray-700 border-t border-gray-100 pt-1 space-y-0.5 text-left">
-                                      <div className="font-medium text-gray-800 mb-0.5">Sub-talks:</div>
-                                      {(session as any).sub_sessions.map((st: any, idx: number) => (
-                                        <div key={st.id || idx} className="truncate">
-                                          <span className="text-gray-500">{formatTime(st.start_time)}–{formatTime(st.end_time)} • </span>
-                                          <span className="font-medium">{st.title}</span>
-                                          {st.speaker_name ? <span className="text-gray-500"> — Speaker: {st.speaker_name}</span> : null}
-                                        </div>
-                                      ))}
+                                  {session.topic && (
+                                    <div className="text-sm font-semibold text-gray-800 mb-2">
+                                      <span className="text-emerald-700 font-bold">Topic:</span> {session.topic}
                                     </div>
                                   )}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="h-full flex items-center justify-center">
-                                <div className="text-gray-300 text-xs border-2 border-dashed border-gray-200 rounded p-2 w-full h-16 flex items-center justify-center">
-                                  No Session
-                                </div>
-                              </div>
-                            )}
-                          </td>
-                        )
-                      })
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+                                  {/* All Participants in one section for better space usage */}
+                                  <div className="text-sm space-y-1">
+                                    {session.speakers && session.speakers.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-emerald-700">Speaker:</span> {session.speakers.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {session.moderators && session.moderators.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-violet-700">Moderator:</span> {session.moderators.join(', ')}
+                                      </div>
+                                    )}
+                                    
+                                    {session.chairpersons && session.chairpersons.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-orange-700">Chairperson:</span> {session.chairpersons.join(', ')}
+                                      </div>
+                                    )}
+
+                                    {/* Add other participant types */}
+                                    {(session as any).panelists && (session as any).panelists.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-rose-700">Panelists:</span> {(session as any).panelists.join(', ')}
+                                      </div>
+                                    )}
+
+                                    {(session as any).experts && (session as any).experts.length > 0 && (
+                                      <div className="text-gray-800">
+                                        <span className="font-bold text-teal-700">Experts:</span> {(session as any).experts.join(', ')}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Sub-talks - Complete information without icons */}
+                                  {Array.isArray((session as any).sub_sessions) && (session as any).sub_sessions.length > 0 && (
+                                    <div className="text-xs border-t border-gray-300 pt-2 mt-3">
+                                      <div className="font-bold text-gray-900 mb-2 text-center">Sub-talks</div>
+                                      <div className="space-y-2">
+                                        {(session as any).sub_sessions.map((st: any, idx: number) => (
+                                          <div key={st.id || idx} className="bg-gray-50 rounded-md p-2 text-left border border-gray-200">
+                                            <div className="flex justify-between items-center mb-1">
+                                              <span className="text-xs text-emerald-700 font-bold">
+                                                {formatTime(st.start_time)}–{formatTime(st.end_time)}
+                                              </span>
+                                              <span className="text-xs text-gray-500">#{idx + 1}</span>
+                                            </div>
+                                            <div className="font-bold text-gray-900 text-xs leading-tight mb-1">{st.title}</div>
+                                            {st.topic && (
+                                              <div className="text-xs text-violet-700 font-medium mb-1">
+                                                Topic: {st.topic}
+                                              </div>
+                                            )}
+                                            {st.speaker_name && (
+                                              <div className="text-xs text-orange-700 font-medium">
+                                                Speaker: {st.speaker_name}
+                                              </div>
+                                            )}
+                                            {st.chairperson_name && (
+                                              <div className="text-xs text-violet-700 font-medium">
+                                                Chairperson: {st.chairperson_name}
+                                              </div>
+                                            )}
+                                            {st.expert_names && st.expert_names.length > 0 && (
+                                              <div className="text-xs text-teal-700 font-medium">
+                                                Experts: {st.expert_names.join(', ')}
+                                              </div>
+                                            )}
+                                            {st.description && (
+                                              <div className="text-xs text-gray-600 mt-1 italic">
+                                                {st.description}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Symposium Subtalks if available */}
+                                  {Array.isArray((session as any).symposium_subtalks) && (session as any).symposium_subtalks.length > 0 && (
+                                    <div className="text-xs border-t border-gray-300 pt-2 mt-3">
+                                      <div className="font-bold text-gray-900 mb-2 text-center">Symposium Subtalks</div>
+                                      <div className="space-y-2">
+                                        {(session as any).symposium_subtalks.map((st: any, idx: number) => (
+                                          <div key={idx} className="bg-blue-50 rounded-md p-2 text-left border border-blue-200">
+                                            <div className="flex justify-between items-center mb-1">
+                                              <span className="text-xs text-emerald-700 font-bold">
+                                                {formatTime(st.start_time)}–{formatTime(st.end_time)}
+                                              </span>
+                                              <span className="text-xs text-gray-500">#{idx + 1}</span>
+                                            </div>
+                                            <div className="font-bold text-gray-900 text-xs leading-tight mb-1">{st.title}</div>
+                                            {st.topic && (
+                                              <div className="text-xs text-violet-700 font-medium mb-1">
+                                                Topic: {st.topic}
+                                              </div>
+                                            )}
+                                            {st.speaker_name && (
+                                              <div className="text-xs text-orange-700 font-medium">
+                                                Speaker: {st.speaker_name}
+                                              </div>
+                                            )}
+                                            {st.chairperson_name && (
+                                              <div className="text-xs text-violet-700 font-medium">
+                                                Chairperson: {st.chairperson_name}
+                                              </div>
+                                            )}
+                                            {st.expert_names && st.expert_names.length > 0 && (
+                                              <div className="text-xs text-teal-700 font-medium">
+                                                Experts: {st.expert_names.join(', ')}
+                                              </div>
+                                            )}
+                                            {st.description && (
+                                              <div className="text-xs text-gray-600 mt-1 italic">
+                                                {st.description}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Print Button */}
-        <div className="mt-8 text-center print:hidden">
+        <div className="mt-8 text-center">
           <button
             onClick={() => window.print()}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
