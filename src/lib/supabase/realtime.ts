@@ -12,6 +12,7 @@ export interface RealtimeConfig {
   onWorkshopChange?: (payload: any) => void
   onWorkshopSessionChange?: (payload: any) => void
   onWorkshopParticipantChange?: (payload: any) => void
+  onWorkshopSubSessionChange?: (payload: any) => void
   onConnectionChange?: (status: string) => void
 }
 
@@ -82,6 +83,8 @@ class RealtimeService {
     this.subscribeToWorkshopSessions(config.onWorkshopSessionChange)
     // Subscribe to workshop participants
     this.subscribeToWorkshopParticipants(config.onWorkshopParticipantChange)
+    // Subscribe to workshop sub-sessions
+    this.subscribeToWorkshopSubSessions(config.onWorkshopSubSessionChange)
     
     // Monitor connection changes
     if (config.onConnectionChange) {
@@ -351,6 +354,30 @@ class RealtimeService {
         console.log('📡 Workshop Participants subscription status:', status)
         if (status === 'SUBSCRIBED') {
           this.channels.set('workshop_session_participants', channel)
+          this.connectionStatus = 'connected'
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.connectionStatus = 'disconnected'
+        } else {
+          this.connectionStatus = 'connecting'
+        }
+      })
+  }
+
+  private subscribeToWorkshopSubSessions(onChange?: (payload: any) => void) {
+    const channel = supabase
+      .channel('workshop-sub-sessions-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'workshop_sub_sessions' },
+        (payload) => {
+          console.log('🔄 Workshop Sub-session change detected:', payload)
+          this.handleOptimisticUpdate('workshop_sub_sessions', payload)
+          onChange?.(payload)
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Workshop Sub-sessions subscription status:', status)
+        if (status === 'SUBSCRIBED') {
+          this.channels.set('workshop_sub_sessions', channel)
           this.connectionStatus = 'connected'
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           this.connectionStatus = 'disconnected'

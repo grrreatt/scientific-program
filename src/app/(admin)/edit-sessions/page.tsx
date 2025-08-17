@@ -169,6 +169,7 @@ export default function EditSessionsPage() {
             speakers!sub_sessions_speaker_id_fkey(name)
           )
         `)
+        .neq('session_type', 'workshop')
 
       if (sessionsError) {
         console.error('❌ Error loading sessions:', sessionsError)
@@ -1795,7 +1796,22 @@ export default function EditSessionsPage() {
             custom_end_time: editingSession.custom_end_time || editingSession.end_time || '',
             description: editingSession.description || '',
             is_parallel_meal: editingSession.is_parallel_meal || false,
-            parallel_meal_type: editingSession.parallel_meal_type || ''
+            parallel_meal_type: editingSession.parallel_meal_type || '',
+            // Prefill participant single-role fields from session_participants
+            speaker_id: (editingSession as any)?.session_participants?.find((p: any) => p.role === 'speaker')?.speakers?.id || '',
+            moderator_id: (editingSession as any)?.session_participants?.find((p: any) => p.role === 'moderator')?.speakers?.id || '',
+            chairperson_id: (editingSession as any)?.session_participants?.find((p: any) => p.role === 'chairperson')?.speakers?.id || '',
+            panelist_ids: ((editingSession as any)?.session_participants || []).filter((p: any) => p.role === 'panelist').map((p: any) => p.speakers?.id).filter(Boolean),
+            // Prefill sub-sessions
+            sub_sessions: ((editingSession as any)?.sub_sessions || []).map((ss: any) => ({
+              id: ss.id,
+              title: ss.title,
+              speaker_id: ss.speaker_id || '',
+              start_time: ss.start_time,
+              end_time: ss.end_time,
+              topic: ss.topic,
+              sub_session_type: ss.sub_session_type || 'lecture'
+            })),
           } : {
             day_id: days.find(d => d.name === selectedDay)?.id || '',
             stage_id: selectedHallForSession || getHallsForSelectedDay()[0]?.id || '',

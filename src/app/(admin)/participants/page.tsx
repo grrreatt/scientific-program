@@ -356,7 +356,7 @@ export default function ParticipantsPage() {
       },
       onWorkshopParticipantChange: (payload) => {
         console.log('🔄 Workshop participant change detected, reloading speakers...')
-        loadSpeakers()
+    loadSpeakers()
       }
     })
 

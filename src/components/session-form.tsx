@@ -429,14 +429,6 @@ export function SessionForm({
                 value={(value as string) || ''}
                 onChange={(newValue) => handleInputChange(fieldName, newValue)}
                 placeholder={`Type a name (new or existing)`}
-                required={required}
-                onPersonSelect={(person) => {
-                  if (person) {
-                    console.log(`Selected ${fieldName}:`, person)
-                    // You can store the person ID if needed
-                    // handleInputChange(fieldName, person.id)
-                  }
-                }}
               />
               <p className="text-xs text-gray-500 mt-1">You can type an existing name or a new person; it will be created on save.</p>
             </div>
@@ -552,13 +544,6 @@ export function SessionForm({
                 value={value}
                 onChange={(newValue) => handleArrayChange(fieldName, index, newValue)}
                 placeholder="Type a name"
-                onPersonSelect={(person) => {
-                  if (person) {
-                    console.log(`Selected ${fieldName} ${index}:`, person)
-                    // You can store the person ID if needed
-                    // handleArrayChange(fieldName, index, person.id)
-                  }
-                }}
               />
             </div>
             {values.length > 1 && (
@@ -618,22 +603,13 @@ export function SessionForm({
                 Speaker
               </label>
               <PersonAutocomplete
-                value={(subtalk as any).speaker_name || ''}
+                value={(subtalk as any).speaker_id || ''}
                 onChange={(newValue) => {
                   const newSubtalks = [...subtalks];
-                  (newSubtalks[index] as any).speaker_name = newValue;
+                  (newSubtalks[index] as any).speaker_id = newValue;
                   setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
                 }}
                 placeholder="Type a name"
-                onPersonSelect={(person) => {
-                  if (person) {
-                    console.log(`Selected subtalk speaker ${index}:`, person)
-                    const newSubtalks = [...subtalks];
-                    (newSubtalks[index] as any).speaker_name = person.name;
-                    (newSubtalks[index] as any).speaker_id = person.id;
-                    setFormData(prev => ({ ...prev, symposium_subtalks: newSubtalks }));
-                  }
-                }}
               />
             </div>
             <div>
@@ -1416,14 +1392,6 @@ export function SessionForm({
               value={formData.speaker_id || ''}
               onChange={(value) => handleInputChange('speaker_id', value)}
               placeholder="Type a name (new or existing)"
-              required
-              onPersonSelect={(person) => {
-                if (person) {
-                  console.log('Selected person:', person)
-                  // You can store the person ID if needed
-                  // handleInputChange('speaker_id', person.id)
-                }
-              }}
             />
       </div>
         </div>
