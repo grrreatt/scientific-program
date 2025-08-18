@@ -203,6 +203,56 @@ export default function EditSessionsPage() {
       console.log(`✅ Loaded ${dayHallsData?.length || 0} day-hall relationships`)
       setDayHalls(dayHallsData || [])
 
+      // Load speakers for autocomplete from all sources
+      const { data: speakersData, error: speakersError } = await supabase
+        .from('speakers')
+        .select('id, name, email, title, organization')
+        .order('name', { ascending: true })
+
+      if (speakersError) {
+        console.error('❌ Error loading speakers:', speakersError)
+      }
+
+      // Load speakers from session_participants (scientific program)
+      const { data: sessionParticipantsData, error: sessionError } = await supabase
+        .from('session_participants')
+        .select(`
+          speaker_id,
+          speakers!inner(id, name, email, title, organization)
+        `)
+        .not('speaker_id', 'is', null)
+
+      if (sessionError) {
+        console.error('❌ Error loading session participants:', sessionError)
+      }
+
+      // Combine all speakers
+      const allSpeakers = new Map<string, any>()
+      
+      // Add speakers from speakers table
+      speakersData?.forEach(speaker => {
+        allSpeakers.set(speaker.id, speaker)
+      })
+
+      // Add speakers from session participants
+      sessionParticipantsData?.forEach(participant => {
+        if (participant.speakers && !allSpeakers.has(participant.speaker_id)) {
+          allSpeakers.set(participant.speaker_id, participant.speakers)
+        }
+      })
+
+      // Convert to array and deduplicate
+      const seen = new Set<string>()
+      const deduped = Array.from(allSpeakers.values()).filter((s: any) => {
+        const key = (s.email ? s.email.toLowerCase() : `name:${(s.name || '').toLowerCase()}`)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      }).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''))
+
+      console.log(`✅ Loaded ${deduped.length} unique speakers from all sources`)
+      setSpeakers(deduped)
+
     } catch (error) {
       console.error('❌ Exception loading data:', error)
       setError('Failed to load data. Please refresh the page.')
