@@ -169,7 +169,7 @@ export default function EditSessionsPage() {
             speakers!sub_sessions_speaker_id_fkey(name)
           )
         `)
-        .neq('session_type', 'workshop')
+
 
       if (sessionsError) {
         console.error('❌ Error loading sessions:', sessionsError)
@@ -634,13 +634,7 @@ export default function EditSessionsPage() {
         // Panelists array
         
 
-        // Workshop leads and assistants
-        if (formData.workshop_lead_ids && formData.workshop_lead_ids.length > 0) {
-          for (const raw of formData.workshop_lead_ids) {
-            const id = await ensurePerson(raw)
-            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'workshop_lead' })
-          }
-        }
+
         if (formData.assistant_ids && formData.assistant_ids.length > 0) {
           for (const raw of formData.assistant_ids) {
             const id = await ensurePerson(raw)
