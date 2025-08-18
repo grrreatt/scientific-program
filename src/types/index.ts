@@ -17,7 +17,7 @@ export type Role =
   | 'panelist'
   | 'expert'
   | 'chairperson'
-  | 'workshop_lead'
+  
   | 'assistant'
   | 'presenter'
   | 'introducer'
@@ -169,7 +169,6 @@ export interface SessionFormData {
   chairperson_id?: string
   moderator_id?: string
   panelist_ids?: string[]
-  workshop_lead_ids?: string[]
   assistant_ids?: string[]
   capacity?: number
   introducer_id?: string
@@ -317,8 +316,6 @@ export interface SessionFormData {
 
   panelist_ids?: string[];
 
-  workshop_lead_ids?: string[];
-
   assistant_ids?: string[];
 
   capacity?: number;
@@ -394,45 +391,4 @@ export interface DashboardStats {
 
 } 
 
-// Workshop System Types
-export interface Workshop {
-  id: string;
-  topic: string;
-  description?: string;
-  convenor_id?: string;
-  co_convenor_id?: string;
-  venue?: string;
-  day_date?: string;
-  created_at: string;
-  updated_at: string;
-}
 
-export interface WorkshopSession {
-  id: string;
-  workshop_id: string;
-  title: string;
-  start_time: string;
-  end_time: string;
-  session_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface WorkshopSessionParticipant {
-  id: string;
-  workshop_session_id: string;
-  speaker_id: string;
-  role: 'lead' | 'assistant' | 'speaker' | 'moderator';
-  created_at: string;
-}
-
-// Extended types with relationships
-export interface WorkshopWithDetails extends Workshop {
-  convenor?: Speaker;
-  co_convenor?: Speaker;
-  sessions?: WorkshopSessionWithParticipants[];
-}
-
-export interface WorkshopSessionWithParticipants extends WorkshopSession {
-  participants?: (WorkshopSessionParticipant & { speaker?: Speaker })[];
-}

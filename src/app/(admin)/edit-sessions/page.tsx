@@ -445,7 +445,11 @@ export default function EditSessionsPage() {
   }
 
   // Session management functions
-  const handleEditSession = (session: Session) => {
+  const handleEditSession = async (session: Session) => {
+    // Ensure speakers are loaded before opening edit modal
+    if (speakers.length === 0) {
+      await loadAllData()
+    }
     setEditingSession(session)
     setIsModalOpen(true)
   }

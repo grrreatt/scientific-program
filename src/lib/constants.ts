@@ -98,7 +98,7 @@ export const ROLE_LABELS: Record<string, string> = {
   moderator: 'Moderator',
   panelist: 'Panelist',
   chairperson: 'Chairperson',
-  workshop_lead: 'Workshop Lead',
+
   assistant: 'Assistant',
   presenter: 'Presenter',
   introducer: 'Introducer',
