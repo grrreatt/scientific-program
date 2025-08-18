@@ -49,7 +49,7 @@ After thoroughly analyzing the 4 Word files containing scientific program data a
 1. **Multi-day support** - Can handle multiple conference days
 2. **Multi-hall support** - Can manage different halls/rooms
 3. **Time slot management** - Flexible time slot creation and editing
-4. **Session types** - Supports lecture, panel, symposium, workshop, etc.
+4. **Session types** - Supports lecture, panel, symposium, etc.
 5. **Participant management** - Speakers, moderators, chairpersons
 6. **Real-time updates** - Live collaboration features
 

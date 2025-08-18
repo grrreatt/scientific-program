@@ -156,7 +156,7 @@ export default function EditSessionsPage() {
           session_participants(
             id,
             role,
-            speakers(id, name, title, organization)
+            speakers(id, name, email, title, organization)
           ),
           sub_sessions(
             id,
@@ -166,10 +166,11 @@ export default function EditSessionsPage() {
             topic,
             sub_session_type,
             speaker_id,
-            speakers!sub_sessions_speaker_id_fkey(name)
+            chairperson_id,
+            speakers!sub_sessions_speaker_id_fkey(id, name, email, title, organization)
           )
         `)
-        .neq('session_type', 'workshop')
+
 
       if (sessionsError) {
         console.error('❌ Error loading sessions:', sessionsError)
@@ -418,7 +419,7 @@ export default function EditSessionsPage() {
     const colors: Record<string, string> = {
       lecture: 'bg-blue-100 text-blue-800 border-blue-200',
       panel: 'bg-green-100 text-green-800 border-green-200',
-      workshop: 'bg-purple-100 text-purple-800 border-purple-200',
+      
       symposium: 'bg-orange-100 text-orange-800 border-orange-200',
       oration: 'bg-red-100 text-red-800 border-red-200',
       guest_lecture: 'bg-indigo-100 text-indigo-800 border-indigo-200',
@@ -433,7 +434,7 @@ export default function EditSessionsPage() {
     const icons: Record<string, string> = {
       lecture: '🩺',
       panel: '👥',
-      workshop: '🔧',
+      
       symposium: '🎓',
       oration: '🏆',
       guest_lecture: '👨‍🏫',
@@ -634,13 +635,7 @@ export default function EditSessionsPage() {
         // Panelists array
         
 
-        // Workshop leads and assistants
-        if (formData.workshop_lead_ids && formData.workshop_lead_ids.length > 0) {
-          for (const raw of formData.workshop_lead_ids) {
-            const id = await ensurePerson(raw)
-            if (id) participantsToAdd.push({ session_id: sessionId, speaker_id: id, role: 'workshop_lead' })
-          }
-        }
+
         if (formData.assistant_ids && formData.assistant_ids.length > 0) {
           for (const raw of formData.assistant_ids) {
             const id = await ensurePerson(raw)
@@ -1861,6 +1856,7 @@ export default function EditSessionsPage() {
               id: ss.id,
               title: ss.title,
               speaker_id: ss.speaker_id || '',
+              chairperson_id: ss.chairperson_id || '',
               start_time: ss.start_time,
               end_time: ss.end_time,
               topic: ss.topic,

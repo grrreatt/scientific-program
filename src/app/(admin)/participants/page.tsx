@@ -60,18 +60,7 @@ export default function ParticipantsPage() {
         console.error('❌ Error loading session participants:', sessionError)
       }
 
-      // Load speakers from workshop_session_participants (workshops)
-      const { data: workshopParticipantsData, error: workshopError } = await supabase
-        .from('workshop_session_participants')
-        .select(`
-          speaker_id,
-          speakers!inner(id, name, email, title, organization, bio, created_at)
-        `)
-        .not('speaker_id', 'is', null)
 
-      if (workshopError) {
-        console.error('❌ Error loading workshop participants:', workshopError)
-      }
 
       // Combine all speakers
       const allSpeakers = new Map<string, Speaker>()
@@ -88,12 +77,7 @@ export default function ParticipantsPage() {
         }
       })
 
-      // Add speakers from workshop participants
-      workshopParticipantsData?.forEach(participant => {
-        if (participant.speakers && !allSpeakers.has(participant.speaker_id)) {
-          allSpeakers.set(participant.speaker_id, participant.speakers as unknown as Speaker)
-        }
-      })
+
 
       // Convert to array and deduplicate by email or name
       const seen = new Set<string>()

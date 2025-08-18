@@ -39,12 +39,12 @@ Views (existing/used):
 - `sessions_with_sub_sessions` — convenience join for container sessions
 
 Roles used across the app:
-- `speaker`, `moderator`, `chairperson`, `panelist`, `expert`, `workshop_lead`, `assistant`, `presenter`, `introducer`, `discussion_leader`, `orator`
+- `speaker`, `moderator`, `chairperson`, `panelist`, `expert`, `assistant`, `presenter`, `introducer`, `discussion_leader`, `orator`
 
 Session types (generic sessions flow):
 - `session` (container with optional `sub_sessions`)
 - `lecture`, `panel`, `symposium`, `oration`, `guest_lecture`, `discussion`, `break`, `other`
-- Note: **`workshop` is handled separately** (see Routes) but still stored in `sessions.session_type = 'workshop'`.
+
 
 Data conventions:
 - Times saved in Postgres `TIME` (24h). UI shows 12h via `TimePicker` and utils.
@@ -61,14 +61,13 @@ Admin
   - Grid: Day × Halls with time slots
   - Click cell → Add/Edit Session modal using `SessionForm`
   - “Global Block” creates a break spanning all halls for a selected day/time range
-- `src/app/(admin)/workshops/index/page.tsx` — Workshop list (separate from sessions)
-- `src/app/(admin)/workshops/[id]/page.tsx` — Add/Edit Workshop (title, topic, day, hall, custom times, Leads, Assistants)
+
 - `src/app/(admin)/participants/page.tsx` — Participants utility page (existing)
 - `src/app/(admin)/dashboard/page.tsx`, `src/app/(admin)/sessions/page.tsx` — informational/legacy
 
 Public
 - `src/app/public-program/page.tsx` — Public program view synced with sessions
-- `src/app/public-workshops/page.tsx` — Public workshop list with Leads/Assistants
+
 
 API
 - `src/app/api/export/route.ts` — CSV export (sessions, sub‑sessions, participants)
@@ -80,7 +79,7 @@ Key components
 
 Utilities
 - `src/lib/utils.ts` — time formatters, query helpers, transformers
-- `src/lib/constants.ts` — session type metadata (workshop removed from generic form)
+- `src/lib/constants.ts` — session type metadata
 - `src/lib/supabase/*` — client and realtime helpers
 
 ---
@@ -96,10 +95,7 @@ Sessions (admin grid)
 Global Blocks
 - Added beside Add Day/Add Hall; creates `day_time_slots.is_break = true` rows that span all halls for a day and time range (e.g., Registration, Lunch)
 
-Workshops (separate flow)
-- Admin list and dedicated editor; saved to `sessions` with `session_type = 'workshop'`
-- Leads/Assistants saved in `session_participants` with roles `workshop_lead` and `assistant`
-- Public page lists workshops with times and team
+
 
 Export
 - CSV includes main sessions and sub‑sessions, participants, and role labels for email workflows
@@ -119,15 +115,15 @@ Export
 - Speaker CSV import: endpoint + UI to upsert `speakers` by case‑insensitive email
 - Email confirmation CLI reading from a `person_schedule` view (to be finalized) or from export
 - Tighten role validation (optional `CHECK(role IN (...))`), only if we want strictness
-- Add admin navigation links to Workshops and a public nav link to `public-workshops`
+
 
 ---
 
 ## Quick How‑To for New Contributors
 1) Set `.env.local` with Supabase public keys; run `npm run dev`
 2) Ensure migrations are applied on the target Supabase project (see `/supabase/migrations`)
-3) Edit sessions via `/edit-sessions`; workshops via `/admin/workshops` and `/workshops/[id]`
-4) Public program at `/public-program`; public workshops at `/public-workshops`
+3) Edit sessions via `/edit-sessions`
+4) Public program at `/public-program`
 5) Export CSV at `/api/export`
 
 

@@ -3,7 +3,7 @@
     "admin_edit_sessions": "src/app/(admin)/edit-sessions/page.tsx",
     "admin_participants": "src/app/(admin)/participants/page.tsx",
     "public_program": "src/app/public-program/page.tsx",
-    "public_workshops": "src/app/public-workshops/page.tsx",
+
     "dashboard": "src/app/(admin)/dashboard/page.tsx",
     "api_export": "src/app/api/export/route.ts",
     "api_download_template": "src/app/api/download-template/route.ts"
@@ -78,14 +78,7 @@
     "fix/day-selection-persistence-S004",
     "fix/export-fallback-E005"
   ],
-  "workshop_references": [
-    "src/app/(admin)/dashboard/page.tsx",
-    "src/app/public-workshops/page.tsx",
-    "src/lib/constants.ts",
-    "src/lib/utils.ts",
-    "src/types/index.ts",
-    "PROJECT_STRUCTURE.md"
-  ],
+
   "env": {
     "template": "env.example",
     "client_env": ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"],

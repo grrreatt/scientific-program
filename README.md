@@ -5,7 +5,7 @@ A modern, production-ready conference program management system built with Next.
 ## 🚀 Features
 
 ### Core Functionality
-- **Dynamic Session Types**: Support for 9 different session types (Lecture, Panel, Workshop, Symposium, etc.)
+- **Dynamic Session Types**: Support for 8 different session types (Lecture, Panel, Symposium, etc.)
 - **Intelligent Forms**: Each session type shows only relevant fields
 - **Real-time Updates**: Instant synchronization across devices
 - **Conflict Detection**: Prevents scheduling conflicts in the same hall
@@ -16,7 +16,7 @@ A modern, production-ready conference program management system built with Next.
 1. **Lecture / Talk** - Single expert presentation
 2. **Panel Discussion** - Moderated Q&A with multiple panelists
 3. **Symposium** - Multiple speakers on a common theme
-4. **Workshop** - Hands-on training sessions
+
 5. **Oration / Keynote** - Prestigious opening/closing lectures
 6. **Guest Lecture** - Distinguished guest presentations
 7. **Discussion / Free Paper** - Short presentations with Q&A
