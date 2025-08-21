@@ -206,233 +206,46 @@ export interface DashboardStats {
   sessions_by_type: Record<string, number>
   upcoming_sessions: number
 }
-// Legacy duplicates removed
-
-
-
-export interface SessionParticipant {
-
-  id: string
-
-  session_id: string
-
-  speaker_id: string
-
-  role: string
-
-  created_at?: string
-
-}
-
-
-export interface SubSession {
-  id: string
-  parent_session_id: string
-  title: string
-  speaker_id?: string
-  start_time?: string
-  end_time?: string
-  topic?: string
-  sub_session_type: 'lecture' | 'discussion'
-  created_at?: string
-  updated_at?: string
-  // Joined fields
-  speaker_name?: string
-  speaker_title?: string
-  speaker_organization?: string
-}
-
-
-export interface SessionTypeConfig {
-
-  id: string
-
-  name: string
-
-  fields: {
-
-    required: string[];
-
-    optional: string[];
-
-    roles: Role[];
-
-  }
-
-  created_at?: string
-
-}
-
-
-
-export interface SymposiumSubtalk {
-
-  id: string;
-
-  title: string;
-
-  speaker_id: string;
-
-  start_time: string;
-
-  end_time: string;
-
-  topic: string;
-
-}
-
-
-
-export interface SessionFormData {
-
-  title: string;
-
-  session_type: SessionType;
-
-  day_id: string;
-
-  stage_id: string;
-
-  start_time: string;
-
-  end_time: string;
-
-  topic?: string;
-
-  description?: string;
-
-  is_parallel_meal: boolean;
-
-  parallel_meal_type?: MealType;
-
-  
-
-  // Dynamic fields based on session type
-
-  speaker_id?: string;
-
-  chairperson_id?: string;
-
-  moderator_id?: string;
-
-  panelist_ids?: string[];
-
-  workshop_lead_ids?: string[];
-
-  assistant_ids?: string[];
-
-  capacity?: number;
-
-  introducer_id?: string;
-
-  presenter_ids?: string[];
-
-  discussion_leader_id?: string;
-
-  
-
-  // Symposium specific
-
-  symposium_subtalks?: SymposiumSubtalk[];
-
-  
-  // Sub-sessions for Session type
-  sub_sessions?: SubSession[];
-  
-
-  // Other custom fields
-
-  custom_data?: Record<string, any>;
-
-}
-
-
-
-export interface CSVExportRow {
-
-  session_name: string;
-
-  session_type: string;
-
-  day: string;
-
-  stage: string;
-
-  start_time: string;
-
-  end_time: string;
-
-  duration: string;
-
-  topic: string;
-
-  person_name: string;
-
-  role: string;
-
-  organization?: string;
-
-  email?: string;
-
-}
-
-
-
-export interface DashboardStats {
-
-  total_sessions: number;
-
-  total_speakers: number;
-
-  total_days: number;
-
-  total_stages: number;
-
-  sessions_by_type: Record<string, number>;
-
-  upcoming_sessions: number;
-
-} 
 
 // Workshop System Types
 export interface Workshop {
-  id: string;
-  topic: string;
-  description?: string;
-  convenor_id?: string;
-  co_convenor_id?: string;
-  venue?: string;
-  day_date?: string;
-  created_at: string;
-  updated_at: string;
+  id: string
+  topic: string
+  description?: string
+  convenor_id?: string
+  co_convenor_id?: string
+  venue?: string
+  day_date?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface WorkshopSession {
-  id: string;
-  workshop_id: string;
-  title: string;
-  start_time: string;
-  end_time: string;
-  session_order: number;
-  created_at: string;
-  updated_at: string;
+  id: string
+  workshop_id: string
+  title: string
+  start_time: string
+  end_time: string
+  session_order: number
+  created_at: string
+  updated_at: string
 }
 
 export interface WorkshopSessionParticipant {
-  id: string;
-  workshop_session_id: string;
-  speaker_id: string;
-  role: 'lead' | 'assistant' | 'speaker' | 'moderator';
-  created_at: string;
+  id: string
+  workshop_session_id: string
+  speaker_id: string
+  role: 'lead' | 'assistant' | 'speaker' | 'moderator'
+  created_at: string
 }
 
 // Extended types with relationships
 export interface WorkshopWithDetails extends Workshop {
-  convenor?: Speaker;
-  co_convenor?: Speaker;
-  sessions?: WorkshopSessionWithParticipants[];
+  convenor?: Speaker
+  co_convenor?: Speaker
+  sessions?: WorkshopSessionWithParticipants[]
 }
 
 export interface WorkshopSessionWithParticipants extends WorkshopSession {
-  participants?: (WorkshopSessionParticipant & { speaker?: Speaker })[];
+  participants?: (WorkshopSessionParticipant & { speaker?: Speaker })[]
 }

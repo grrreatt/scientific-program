@@ -8,11 +8,8 @@ export function cn(...inputs: ClassValue[]) {
 export function formatTime(time: string): string {
   if (!time) return ''
   
-  // Handle both "HH:MM" and "HH:MM:SS" formats
-  const timeStr = time.split(':').slice(0, 2).join(':')
-  
   try {
-    const [hours, minutes] = timeStr.split(':').map(Number)
+    const [hours, minutes] = time.split(':').slice(0, 2).map(Number)
     const date = new Date()
     date.setHours(hours, minutes, 0)
     
@@ -23,7 +20,7 @@ export function formatTime(time: string): string {
     })
   } catch (error) {
     console.error('Error formatting time:', error)
-    return timeStr
+    return time
   }
 }
 
@@ -36,7 +33,6 @@ export function formatTimeRange(startTime: string, endTime: string): string {
   return `${formattedStart} - ${formattedEnd}`
 }
 
-// Compact 12-hour time format without space and with lowercase am/pm, e.g., 08:30am
 export function formatTimeCompact(time: string): string {
   if (!time) return ''
   const [h, m] = time.split(':')
@@ -74,280 +70,87 @@ export function calculateDuration(startTime: string, endTime: string): string {
   }
 }
 
-// Supabase data loading utilities for consistent data fetching
-export const supabaseUtils = {
-  // Transform session data consistently across pages
-  transformSession: (session: any) => {
-    const participants = session.session_participants || []
-    const speakers = participants
-      .filter((p: any) => ['speaker', 'orator', 'presenter', 'workshop_lead'].includes(p.role))
-      .map((p: any) => p.speakers?.name || 'Unknown Speaker')
-    const moderators = participants
-      .filter((p: any) => ['moderator', 'discussion_leader'].includes(p.role))
-      .map((p: any) => p.speakers?.name || 'Unknown Moderator')
-    const chairpersons = participants
-      .filter((p: any) => ['chairperson', 'introducer'].includes(p.role))
-      .map((p: any) => p.speakers?.name || 'Unknown Chairperson')
-
-    const panelists = participants
-      .filter((p: any) => p.role === 'panelist')
-      .map((p: any) => p.speakers?.name || 'Unknown Panelist')
-
-    const experts = participants
-      .filter((p: any) => p.role === 'expert')
-      .map((p: any) => p.speakers?.name || 'Unknown Expert')
-
-    // Sub-sessions (sub-talks)
-    const subSessionsRaw = session.sub_sessions || []
-    const subSessions = subSessionsRaw.map((st: any) => ({
-      id: st.id,
-      title: st.title,
-      topic: st.topic || '',
-      start_time: st.start_time || '',
-      end_time: st.end_time || '',
-      type: st.sub_session_type || 'lecture',
-      speaker_name: st.speakers?.name || ''
-    }))
-
-    const transformed = {
-      ...session,
-      day_name: session.conference_days?.name || 'Unknown Day',
-      stage_name: session.stages?.name || 'Unknown Hall',
-      // Prefer custom_* if present, else day_time_slots
-      start_time: session.custom_start_time || session.day_time_slots?.start_time || '',
-      end_time: session.custom_end_time || session.day_time_slots?.end_time || '',
-      is_break: session.day_time_slots?.is_break || false,
-      break_title: session.day_time_slots?.break_title,
-      speakers,
-      moderators,
-      chairpersons,
-      panelists,
-      experts,
-      sub_sessions: subSessions
-    }
-
-    return transformed
-  },
-
-  // Standard session query for both pages
-  getSessionQuery: () => `
-    id,
-    title,
-    session_type,
-    day_id,
-    stage_id,
-    time_slot_id,
-    topic,
-    description,
-    is_parallel_meal,
-    parallel_meal_type,
-    custom_start_time,
-    custom_end_time,
-    start_time,
-    end_time,
-    session_number,
-    status,
-    created_at,
-    updated_at,
-    conference_days(name),
-    stages(name),
-    day_time_slots(start_time, end_time, is_break, break_title),
-    session_participants(
-      id,
-      role,
-      speakers(id, name, title, organization)
-    ),
-    sub_sessions(
-      id,
-      title,
-      start_time,
-      end_time,
-      topic,
-      sub_session_type,
-      speaker_id,
-      speakers!sub_sessions_speaker_id_fkey(name)
-    )
-  `,
-
-  // Standard halls query
-  getHallsQuery: () => `
-    *,
-    day_halls!inner(day_id, hall_order)
-  `,
-
-  // Standard days query
-  getDaysQuery: () => `
-    *,
-    day_halls(hall_id, hall_order)
-  `
-}
-
-// Person resolution helper used by save flows
-// Pass a Supabase client and an optional in-memory list to speed lookups.
-export async function ensurePersonByNameOrId(
-  supabaseClient: any,
-  existingPeople: Array<{ id: string; name: string }> | undefined,
-  rawInput: string | null | undefined,
-  onCreated?: (person: { id: string; name: string }) => void
-): Promise<string | null> {
-  const isUuid = (val: string) => /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(val || '')
-  if (!rawInput) return null
-  let value = String(rawInput).trim()
-  // Handle optimistic placeholders like "temp:Name"
-  if (value.toLowerCase().startsWith('temp:')) value = value.slice(5)
-  if (!value) return null
-  if (isUuid(value)) return value
-  const match = (existingPeople || []).find(p => (p.name || '').toLowerCase() === value.toLowerCase())
-  if (match) return match.id
-  try {
-    const { data, error } = await supabaseClient
-      .from('speakers')
-      .insert({ name: value })
-      .select('id, name')
-      .single()
-    if (error) {
-      console.error('Failed to create person', error)
-      return null
-    }
-    if (onCreated) onCreated({ id: data!.id, name: data!.name })
-    return data!.id
-  } catch (e) {
-    console.error('Exception creating person', e)
-    return null
-  }
-}
-
-export function parseTimeInput(timeString: string): string {
-  // Convert 12-hour format to 24-hour format
-  const match = timeString.match(/^(\d{1,2}):(\d{2})(am|pm)$/i)
-  if (!match) return timeString
-  
-  let [_, hours, minutes, period] = match
-  let hour = parseInt(hours)
-  
-  if (period.toLowerCase() === 'pm' && hour !== 12) {
-    hour += 12
-  } else if (period.toLowerCase() === 'am' && hour === 12) {
-    hour = 0
-  }
-  
-  return `${hour.toString().padStart(2, '0')}:${minutes}`
-}
-
-export function formatTimeForInput(time: string): string {
-  // Convert 24-hour format to 12-hour format for input fields
-  const [hours, minutes] = time.split(':').map(Number)
-  const period = hours >= 12 ? 'pm' : 'am'
-  const displayHours = hours % 12 || 12
-  const displayMinutes = minutes.toString().padStart(2, '0')
-  return `${displayHours}:${displayMinutes}${period}`
+export function formatParticipantsDisplay(participants: string[]): string {
+  if (!participants || participants.length === 0) return ''
+  if (participants.length === 1) return participants[0]
+  if (participants.length === 2) return participants.join(' & ')
+  return `${participants[0]} +${participants.length - 1} more`
 }
 
 export function generateId(): string {
   return Math.random().toString(36).substr(2, 9)
 }
 
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => func(...args), wait)
+export function ensurePersonByNameOrId(nameOrId: string, speakers: any[]): string {
+  if (!nameOrId) return ''
+  
+  // If it's already an ID, return it
+  if (speakers.some(s => s.id === nameOrId)) {
+    return nameOrId
   }
+  
+  // If it's a name, find the ID
+  const speaker = speakers.find(s => s.name.toLowerCase() === nameOrId.toLowerCase())
+  return speaker?.id || ''
+}
+
+// Time conversion utilities
+export function formatTime12h(time24h: string): string {
+  if (!time24h) return ''
+  const [hours, minutes] = time24h.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12
+  return `${displayHour}:${String(minutes).padStart(2, '0')} ${period}`
+}
+
+export function parseTime12h(time12h: string): string {
+  if (!time12h) return ''
+  const match = time12h.match(/(\d+):(\d+)\s*(AM|PM)/i)
+  if (!match) return time12h
+  
+  let hours = parseInt(match[1], 10)
+  const minutes = parseInt(match[2], 10)
+  const period = match[3].toUpperCase()
+  
+  if (period === 'PM' && hours !== 12) hours += 12
+  if (period === 'AM' && hours === 12) hours = 0
+  
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+export function getSessionNumberDisplay(number: number): string {
+  const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+  return romanNumerals[number - 1] || String(number)
+}
+
+export function getSessionTitleSuggestions(sessionType: string): string[] {
+  const suggestions: Record<string, string[]> = {
+    lecture: ['Introduction to Topic', 'Advanced Concepts', 'Case Study Presentation'],
+    panel: ['Expert Panel Discussion', 'Industry Roundtable', 'Q&A Session'],
+    symposium: ['Research Symposium', 'Academic Discussion', 'Scientific Presentation'],
+    workshop: ['Hands-on Workshop', 'Interactive Session', 'Practical Training'],
+    oration: ['Keynote Address', 'Plenary Lecture', 'Opening Ceremony'],
+    guest_lecture: ['Guest Speaker Presentation', 'Special Lecture', 'Invited Talk'],
+    discussion: ['Open Discussion', 'Free Paper Session', 'Interactive Discussion'],
+    break: ['Coffee Break', 'Lunch Break', 'Networking Session'],
+    other: ['Special Session', 'Custom Event', 'Additional Activity']
+  }
+  
+  return suggestions[sessionType] || ['Session Title']
+}
+
+export function getNextStartTime(sessions: any[], dayId: string, stageId: string): string {
+  const daySessions = sessions.filter(s => s.day_id === dayId && s.stage_id === stageId)
+  if (daySessions.length === 0) return '09:00'
+  
+  const lastSession = daySessions.sort((a, b) => 
+    new Date(`2000-01-01T${b.end_time}`).getTime() - new Date(`2000-01-01T${a.end_time}`).getTime()
+  )[0]
+  
+  if (!lastSession.end_time) return '09:00'
+  
+  const endTime = new Date(`2000-01-01T${lastSession.end_time}`)
+  endTime.setMinutes(endTime.getMinutes() + 15) // 15 min break
+  
+  return endTime.toTimeString().slice(0, 5)
 } 
-
-// Time utility functions
-export const formatTime12h = (time: string): string => {
-  if (!time) return '';
-  try {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes} ${ampm}`;
-  } catch {
-    return time;
-  }
-};
-
-export const parseTime12h = (timeStr: string): string => {
-  if (!timeStr) return '';
-  try {
-    // Handle formats like "9:00 AM", "9.00am", "09:00 PM"
-    const cleanTime = timeStr.replace(/\./g, ':').toUpperCase();
-    const match = cleanTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/);
-    if (match) {
-      let [_, hours, minutes, ampm] = match;
-      let hour = parseInt(hours);
-      if (ampm === 'PM' && hour !== 12) hour += 12;
-      if (ampm === 'AM' && hour === 12) hour = 0;
-      return `${hour.toString().padStart(2, '0')}:${minutes}`;
-    }
-    return timeStr;
-  } catch {
-    return timeStr;
-  }
-};
-
-// Session numbering utility
-export const getSessionNumberDisplay = (number: number): string => {
-  const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-  if (number >= 1 && number <= 10) {
-    return `Session ${romanNumerals[number - 1]}`;
-  }
-  return `Session ${number}`;
-};
-
-// Participant display utility
-export const formatParticipantsDisplay = (session: any): string => {
-  const parts = [];
-  
-  if (session.speakers && session.speakers.length > 0) {
-    parts.push(`S: ${session.speakers.join(', ')}`);
-  }
-  
-  if (session.moderators && session.moderators.length > 0) {
-    parts.push(`M: ${session.moderators.join(', ')}`);
-  }
-  
-  if (session.chairpersons && session.chairpersons.length > 0) {
-    parts.push(`C: ${session.chairpersons.join(', ')}`);
-  }
-
-  if (session.panelists && session.panelists.length > 0) {
-    parts.push(`P: ${session.panelists.join(', ')}`);
-  }
-
-  if (session.experts && session.experts.length > 0) {
-    parts.push(`E: ${session.experts.join(', ')}`);
-  }
-  
-  return parts.join(' | ');
-};
-
-// Time suggestion utility
-export const getNextStartTime = (endTime: string): string => {
-  if (!endTime) return '';
-  try {
-    const [hours, minutes] = endTime.split(':');
-    const date = new Date();
-    date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    return date.toTimeString().slice(0, 5);
-  } catch {
-    return '';
-  }
-};
-
-// Session title suggestions
-export const getSessionTitleSuggestions = (sessionNumber: number): string[] => {
-  const baseSuggestions = [
-    getSessionNumberDisplay(sessionNumber),
-    `Session ${sessionNumber}`,
-    `Day ${sessionNumber} Session`,
-    `Main Session ${sessionNumber}`
-  ];
-  
-  return baseSuggestions;
-}; 
