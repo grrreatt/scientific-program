@@ -23,7 +23,7 @@ interface SessionFormData {
   chairperson_id: string
   moderator_id: string
   panelist_ids: string[]
-  workshop_lead_ids: string[]
+
   assistant_ids: string[]
   capacity: string
   introducer_id: string
@@ -149,7 +149,7 @@ export function SessionForm({
     chairperson_id: '',
     moderator_id: '',
     panelist_ids: [],
-    workshop_lead_ids: [],
+
     assistant_ids: [],
     capacity: '',
     introducer_id: '',
