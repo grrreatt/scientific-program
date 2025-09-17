@@ -154,3 +154,65 @@ export function getNextStartTime(sessions: any[], dayId: string, stageId: string
   
   return endTime.toTimeString().slice(0, 5)
 } 
+
+// Utilities used by public program page for consistent Supabase queries and transforms
+export const supabaseUtils = {
+  // Build a typed select for sessions including joined participant names and view fields
+  getSessionQuery(): string {
+    // Select base session fields and join related tables for names/times
+    // Also join participant names via session_participants for display
+    return `
+      id, title, session_type, day_id, stage_id, time_slot_id, topic, description,
+      is_parallel_meal, parallel_meal_type, data, created_at, updated_at,
+      session_number, status, custom_start_time, custom_end_time,
+      day_time_slots:start_time_id(
+        start_time, end_time, is_break, break_title
+      ),
+      conference_days:day_id(name, date),
+      stages:stage_id(name),
+      session_participants!left(
+        role,
+        speakers!inner(name)
+      )
+    `
+  },
+
+  // Transform a raw row into the shape the UI expects
+  transformSession(raw: any) {
+    const speakers: string[] = []
+    const moderators: string[] = []
+    const chairpersons: string[] = []
+
+    const participants = Array.isArray(raw.session_participants) ? raw.session_participants : []
+    for (const p of participants) {
+      const personName = p?.speakers?.name || ''
+      const role = (p?.role || '').toLowerCase()
+      if (!personName) continue
+      if (role === 'speaker' || role === 'panelist' || role === 'presenter') {
+        speakers.push(personName)
+      } else if (role === 'moderator') {
+        moderators.push(personName)
+      } else if (role === 'chairperson' || role === 'chair') {
+        chairpersons.push(personName)
+      }
+    }
+
+    // Extract joined fields safely depending on how Postgrest aliases are returned
+    const day = (raw as any).conference_days || (raw as any).day_id || {}
+    const slot = (raw as any).day_time_slots || (raw as any).start_time_id || {}
+    const stage = (raw as any).stages || (raw as any).stage_id || {}
+
+    return {
+      ...raw,
+      start_time: raw.custom_start_time || slot.start_time,
+      end_time: raw.custom_end_time || slot.end_time,
+      is_break: slot.is_break,
+      break_title: slot.break_title,
+      day_name: day.name,
+      stage_name: stage.name,
+      speakers,
+      moderators,
+      chairpersons,
+    }
+  },
+}

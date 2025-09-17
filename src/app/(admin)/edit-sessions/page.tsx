@@ -291,7 +291,7 @@ export default function EditSessionsPage() {
             chairperson_id: editingSession.chairpersons?.[0] || '',
             moderator_id: editingSession.moderators?.[0] || ''
           } : {}}
-          sessionType={editingSession.session_type}
+          sessionType={editingSession ? editingSession.session_type : 'lecture'}
           onSubmit={handleSubmitSession}
           onCancel={closeModal}
           isSubmitting={isSubmitting}
